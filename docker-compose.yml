@@ -1,0 +1,27 @@
+name: sport-crawl
+
+services:
+  worker:
+    build: .
+    image: sport-crawl:1.0.0
+    command: ["java", "-jar", "/opt/sport-crawl/worker.jar"]
+    environment:
+      AWS_REGION: ap-northeast-1
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
+      SPORT_CRAWL_BACKFILL_ON_START: "false"
+    mem_limit: 2g
+    cpus: 1.5
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8891:8891"
+  api:
+    image: sport-crawl:1.0.0
+    command: ["java", "-jar", "/opt/sport-crawl/api.jar"]
+    environment:
+      AWS_REGION: ap-northeast-1
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
+    mem_limit: 1g
+    cpus: 0.5
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8892:8892"

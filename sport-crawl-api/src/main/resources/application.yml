@@ -1,0 +1,16 @@
+server:
+  port: 8892
+
+spring:
+  application:
+    name: sport-crawl-api
+
+sport:
+  aws:
+    region: ${AWS_REGION:ap-northeast-1}
+    league-table: sport_league
+    date-table: sport_match_date
+    match-table: sport_match
+    image-table: sport_image
+    image-bucket: sport-crawl-images-562904761216
+    image-prefix: images/

@@ -1,0 +1,4 @@
+target/
+data/images/
+*.part
+.DS_Store
