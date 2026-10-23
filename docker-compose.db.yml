@@ -1,0 +1,17 @@
+# 资料库抓取。不要并进上面的 compose，那个由发布脚本拉起比赛抓取和读接口。
+# ECS 服务副本数 1，镜像命令：java -jar /opt/sport-crawl/db.jar
+name: sport-crawl-db
+
+services:
+  database:
+    build: .
+    image: sport-crawl:1.0.0
+    command: ["java", "-jar", "/opt/sport-crawl/db.jar"]
+    environment:
+      AWS_REGION: ap-northeast-1
+      JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
+    mem_limit: 1g
+    cpus: 0.25
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8893:8893"

@@ -1,0 +1,14 @@
+server:
+  port: 8893
+
+spring:
+  application:
+    name: sport-crawl-chat
+
+sport:
+  aws:
+    region: ${AWS_REGION:ap-northeast-1}
+    image-bucket: sport-crawl-images-562904761216
+    chat-prefix: chat/
+  chat:
+    upstream: https://kzb001.net

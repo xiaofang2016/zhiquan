@@ -12,7 +12,8 @@ phases:
       - mkdir -p output/scripts
       - cp sport-crawl-worker/target/sport-crawl-worker-1.0.0.jar output/worker.jar
       - cp sport-crawl-api/target/sport-crawl-api-1.0.0.jar output/api.jar
-      - cp Dockerfile docker-compose.yml appspec.yml output/
+      - cp sport-crawl-db/target/sport-crawl-db-1.0.0.jar output/db.jar
+      - cp Dockerfile docker-compose.yml docker-compose.db.yml appspec.yml output/
       - cp scripts/*.sh output/scripts/
       - chmod 755 output/scripts/*.sh
 

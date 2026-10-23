@@ -24,4 +24,4 @@ services:
     cpus: 0.5
     restart: unless-stopped
     ports:
-      - "127.0.0.1:8892:8892"
+      - "172.31.5.227:8892:8892"

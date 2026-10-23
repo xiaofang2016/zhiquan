@@ -20,6 +20,8 @@
         <module>sport-crawl-store</module>
         <module>sport-crawl-worker</module>
         <module>sport-crawl-api</module>
+        <module>sport-crawl-chat</module>
+        <module>sport-crawl-db</module>
     </modules>
 
     <properties>

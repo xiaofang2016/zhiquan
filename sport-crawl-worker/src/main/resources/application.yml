@@ -18,6 +18,9 @@ sport:
     image-table: sport_image
     image-bucket: sport-crawl-images-562904761216
     image-prefix: images/
+    chat-prefix: chat/
+    db-prefix: database/
+    db-table: sport_db_doc
   crawl:
     enabled: true
     backfill-on-start: true

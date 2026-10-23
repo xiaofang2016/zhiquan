@@ -73,6 +73,37 @@ public class SportMatchRepository {
         return page(date, section, sportType, cid, hot, limit, null).items();
     }
 
+    public List<SportMatch> pageNumber(LocalDate date, String section, Integer sportType, Integer cid, Integer hot,
+                                       int page, int size) {
+        int skip = Math.max(0, page - 1) * size;
+        Map<String, AttributeValue> start = null;
+        int skipped = 0;
+        List<SportMatch> collected = new ArrayList<>();
+        boolean unfiltered = sportType == null && hot == null;
+        int queryLimit = unfiltered ? 300 : Math.max(size, 200);
+        int guard = 0;
+        while (collected.size() < size && guard++ < 5000) {
+            QueryResponse response = dynamo.query(request(date, section, sportType, cid, hot, start)
+                    .limit(queryLimit)
+                    .build());
+            for (Map<String, AttributeValue> item : response.items()) {
+                if (skipped < skip) {
+                    skipped++;
+                    continue;
+                }
+                collected.add(toMatch(item));
+                if (collected.size() == size) {
+                    return collected;
+                }
+            }
+            if (!response.hasLastEvaluatedKey()) {
+                return collected;
+            }
+            start = response.lastEvaluatedKey();
+        }
+        return collected;
+    }
+
     public MatchSlice page(LocalDate date, String section, Integer sportType, Integer cid, Integer hot, int size, String nextToken) {
         Map<String, AttributeValue> start = KeyToken.decode(nextToken);
         List<SportMatch> collected = new ArrayList<>();
@@ -111,6 +142,7 @@ public class SportMatchRepository {
         names.put("#k", "list_key");
         values.put(":h", Attrs.s(byCid ? MatchKeys.dateCid(date, cid) : date.toString()));
         values.put(":p", Attrs.s(section + "#"));
+        String filter = filter(names, values, sportType, hot);
         QueryRequest.Builder request = QueryRequest.builder()
                 .tableName(aws.getMatchTable())
                 .indexName(byCid ? "by_date_cid" : "by_date")
@@ -118,7 +150,6 @@ public class SportMatchRepository {
                 .expressionAttributeNames(names)
                 .expressionAttributeValues(values)
                 .scanIndexForward(true);
-        String filter = filter(names, values, sportType, hot);
         if (filter != null) {
             request.filterExpression(filter);
         }

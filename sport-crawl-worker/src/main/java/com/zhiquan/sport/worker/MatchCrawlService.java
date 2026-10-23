@@ -150,8 +150,15 @@ public class MatchCrawlService {
     }
 
     public List<LocalDate> pastDates(List<LocalDate> dates) {
-        LocalDate today = today();
-        return dates.stream().filter(date -> date.isBefore(today)).sorted(java.util.Comparator.reverseOrder()).toList();
+        return pastWithin(dates, today(), 7);
+    }
+
+    static List<LocalDate> pastWithin(List<LocalDate> dates, LocalDate today, int days) {
+        LocalDate earliest = today.minusDays(days);
+        return dates.stream()
+                .filter(date -> !date.isBefore(earliest) && date.isBefore(today))
+                .sorted(java.util.Comparator.reverseOrder())
+                .toList();
     }
 
     private void ingest(LocalDate date, JsonNode data, int pageNumber, boolean firstPage, Set<Long> pinned) {

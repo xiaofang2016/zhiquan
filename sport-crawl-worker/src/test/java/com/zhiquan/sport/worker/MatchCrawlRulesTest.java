@@ -17,6 +17,19 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MatchCrawlRulesTest {
 
     @Test
+    void pastCrawlStopsAtOneWeek() {
+        LocalDate today = LocalDate.parse("2026-10-23");
+        var dates = java.util.List.of(
+                today.minusDays(8),
+                today.minusDays(7),
+                today.minusDays(1),
+                today,
+                today.plusDays(20));
+        assertEquals(java.util.List.of(today.minusDays(1), today.minusDays(7)),
+                MatchCrawlService.pastWithin(dates, today, 7));
+    }
+
+    @Test
     void pageSizeIgnoredWhenServerTreatsPageAsOne() {
         assertTrue(MatchListPages.pageSizeIgnored(3553, 3553, 1, 200));
         assertFalse(MatchListPages.pageSizeIgnored(3553, 18, 200, 200));

@@ -10,9 +10,12 @@ public final class SourceHash {
     }
 
     public static String sha256(String value) {
+        return sha256(value.getBytes(StandardCharsets.UTF_8));
+    }
+
+    public static String sha256(byte[] value) {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(value.getBytes(StandardCharsets.UTF_8));
+            byte[] digest = MessageDigest.getInstance("SHA-256").digest(value);
             return HexFormat.of().formatHex(digest);
         } catch (Exception ex) {
             throw new IllegalStateException(ex);
