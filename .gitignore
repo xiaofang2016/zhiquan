@@ -1,4 +1,6 @@
 target/
 data/images/
 *.part
+*.zip
+node_modules/
 .DS_Store

@@ -1,0 +1,9 @@
+{
+  "name": "sport-crawl-chat",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.758.0",
+    "ws": "8.18.1"
+  }
+}

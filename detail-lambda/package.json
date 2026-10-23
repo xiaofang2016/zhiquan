@@ -1,0 +1,8 @@
+{
+  "name": "sport-crawl-detail",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@aws-sdk/client-s3": "3.758.0"
+  }
+}
