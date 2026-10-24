@@ -56,7 +56,7 @@ public class ProdApiService {
         return result;
     }
 
-    public MatchListData matchList(LocalDate date, Integer type, Integer cid, Integer ishot, int page, int size, int liveType) {
+    public Object matchList(LocalDate date, Integer type, Integer cid, Integer ishot, int page, int size, int liveType, String since) {
         Integer sportType = type == null || type <= 0 ? null : type;
         Integer leagueId = cid == null || cid == 0 ? null : cid;
         Integer hot = ishot == null || ishot < 0 ? null : ishot;
@@ -64,17 +64,36 @@ public class ProdApiService {
         Integer topHot = ishot != null && ishot == 1 ? null : hot;
         long total = matches.count(date, ListSection.DATA, sportType, leagueId, hot);
         int totalPage = total == 0 ? 0 : (int) ((total + size - 1) / size);
-        List<JsonNode> notop = page == 1
-                ? nodes(matches.listLimited(date, ListSection.NOTOP, sportType, leagueId, hot, PINNED_LIMIT))
+        List<SportMatch> notopRows = page == 1
+                ? matches.listLimited(date, ListSection.NOTOP, sportType, leagueId, hot, PINNED_LIMIT)
                 : List.of();
-        List<JsonNode> top = page == 1
-                ? nodes(matches.listLimited(date, ListSection.TOP, sportType, leagueId, topHot, PINNED_LIMIT))
+        List<SportMatch> topRows = page == 1
+                ? matches.listLimited(date, ListSection.TOP, sportType, leagueId, topHot, PINNED_LIMIT)
                 : List.of();
-        List<JsonNode> data = nodes(matches.pageNumber(date, ListSection.DATA, sportType, leagueId, hot, page, size));
+        List<SportMatch> dataRows = matches.pageNumber(date, ListSection.DATA, sportType, leagueId, hot, page, size);
+        String rev = revision(total, totalPage, notopRows, topRows, dataRows);
+        if (since != null && !since.isBlank() && since.equals(rev)) {
+            return new MatchListDelta(rev, List.of(), List.of());
+        }
         String token = DigestUtils.md5DigestAsHex((date + "|" + page + "|" + size + "|" + type + "|" + cid + "|" + ishot)
                 .getBytes(StandardCharsets.UTF_8));
-        return new MatchListData((int) Math.min(total, Integer.MAX_VALUE), totalPage, notop, data, top,
-                liveType, date.toString(), page, token);
+        return new MatchListData((int) Math.min(total, Integer.MAX_VALUE), totalPage, nodes(notopRows), nodes(dataRows), nodes(topRows),
+                liveType, date.toString(), page, token, rev);
+    }
+
+    static String revision(long total, int totalPage, List<SportMatch> notop, List<SportMatch> top, List<SportMatch> data) {
+        StringBuilder raw = new StringBuilder();
+        raw.append(total).append('|').append(totalPage);
+        append(raw, top);
+        append(raw, notop);
+        append(raw, data);
+        return DigestUtils.md5DigestAsHex(raw.toString().getBytes(StandardCharsets.UTF_8));
+    }
+
+    private static void append(StringBuilder raw, List<SportMatch> rows) {
+        for (SportMatch row : rows) {
+            raw.append('\n').append(row.getSourceId()).append('#').append(row.getSortOrder()).append('#').append(row.getPayload());
+        }
     }
 
     private List<JsonNode> nodes(List<SportMatch> rows) {
@@ -103,6 +122,10 @@ public class ProdApiService {
     }
 
     public record MatchListData(int total, int totalPage, List<JsonNode> notopList, List<JsonNode> dataList,
-                                List<JsonNode> topList, int live_type, String starttime, int currentPage, String token) {
+                                List<JsonNode> topList, int live_type, String starttime, int currentPage, String token,
+                                String rev) {
+    }
+
+    public record MatchListDelta(String rev, List<JsonNode> changed, List<Long> removed) {
     }
 }

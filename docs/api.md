@@ -211,6 +211,7 @@
 | `cid` | 否 | 联赛 id。`0` 或不传为全部 |
 | `ishot` | 否 | `-1` 或不传为全部。`1` 只留 `isHot` 为 `1` 的场次，置顶段 `topList` 例外，里面 `isHot` 为 `0` 的场次也返回。顺序仍是抓取时的位置 |
 | `live_type` | 否 | 原样回在 `data.live_type`，缺省为 `0` |
+| `since` | 否 | 上次响应里的 `rev`。列表没变时只返回空的 `changed`。对不上时仍返回整页 |
 | `isfanye` `langtype` `pid` `zoneId` `zhuboType` `token` | 否 | 可以照原站传，服务端不使用 |
 
 ```json
@@ -226,7 +227,8 @@
     "live_type": 0,
     "starttime": "2026-10-23",
     "currentPage": 1,
-    "token": "f475aa3c723da4152cb4a22885211a4e"
+    "token": "f475aa3c723da4152cb4a22885211a4e",
+    "rev": "f475aa3c723da4152cb4a22885211a4e"
   }
 }
 ```
@@ -241,6 +243,23 @@
 | `topList` | 另一组置顶，同样只在第 1 页返回 |
 | `dataList` | 当前页比赛，最多 `ps` 条 |
 | `token` | 保留字段，不是登录令牌 |
+| `rev` | 这一页列表的版本。轮询时作为 `since` 传回 |
+
+带 `since` 并且和当前 `rev` 相同，不再返回三个列表：
+
+```json
+{
+  "msg": "ok",
+  "code": "0",
+  "data": {
+    "rev": "f475aa3c723da4152cb4a22885211a4e",
+    "changed": [],
+    "removed": []
+  }
+}
+```
+
+`changed` 和 `removed` 都空时，页面不用改。`since` 对不上时响应变回整页，记下新的 `rev` 再继续轮询。
 
 翻页：第 1 页按 `topList`、`notopList`、`dataList` 的顺序接起来。从第 2 页起只把 `dataList` 接在后面，置顶不要重复画。`pn` 大于 `totalPage` 时三个列表都是空的，`total` 不变。
 
@@ -317,6 +336,7 @@
 | `ishot` | 否 | `-1` 或不传为全部。`1` 只看热门。`0` 只看非热门 |
 | `starttime` | 否 | `yyyy-MM-dd`。传了就只留 `matchtime` 落在这一天的场次。格式不对返回 400，「starttime 格式应为 yyyy-MM-dd」。不传返回当前整板 |
 | `live_type` | 否 | 原样回在 `data.live_type`，缺省为 `0` |
+| `since` | 否 | 上次响应里的 `updatedAt`。相同就只返回空的 `changed`。比分有更新时只返回变过的场次。对不上时仍返回整页，用来重新对齐 |
 | `isfanye` `langtype` `pid` `zoneId` `zhuboType` | 否 | 可以照原站传，服务端不使用 |
 
 ```json
@@ -334,7 +354,8 @@
     "starttime": "",
     "currentPage": 1,
     "otherList": [],
-    "token": "a9809dfc2c2dd82265264a7b8566d40f"
+    "token": "a9809dfc2c2dd82265264a7b8566d40f",
+    "updatedAt": 1792839202471
   }
 }
 ```
@@ -351,6 +372,28 @@
 | `overList` | 完场，整份都在第 1 页，不随 `pn` 再翻 |
 | `otherList` | 推迟、取消、待定，同样只在第 1 页 |
 | `token` | 保留字段，不是登录令牌 |
+| `updatedAt` | 这块比分板的更新时间，毫秒。轮询时作为 `since` 传回 |
+
+带 `since` 并且还能对上时，不再返回上面五个列表：
+
+```json
+{
+  "msg": "ok",
+  "code": "0",
+  "data": {
+    "updatedAt": 1792839202471,
+    "changed": [],
+    "removed": []
+  }
+}
+```
+
+| 字段 | 说明 |
+|---|---|
+| `changed` | 比分、状态、分钟、半场、角球、红黄牌或即时赔率有变化的场次，只带这些字段和 `id` |
+| `removed` | 这次从比分板上消失的比赛 id |
+
+`changed` 和 `removed` 都空时，页面不用改。把 `changed` 按 `id` 盖到已有场次上，`removed` 从页面去掉。`since` 落后超过一块比分板时，响应变回整页，记下新的 `updatedAt` 再继续轮询。
 
 第 1 页要同时画五个列表。从第 2 页起只把 `dataList` 接在未开赛后面，进行中、完场、推迟不要重复画。`pn` 大于 `totalPage` 时 `dataList` 为空，`total` 不变，另外四个列表也是空的。
 
@@ -632,7 +675,7 @@ GET https://chat.kzbzcq.com/chat?mid=4498761&type=1
 | `mid` | 是 | 比赛 id，1 到 18 位数字。缺失或格式不对返回 HTTP 400，「mid 应为比赛编号」 |
 | `type` | 否 | `1` 足球，`2` 篮球，`3` 娱乐。缺省或不在这三项里时按 `1` |
 | `before` | 否 | 毫秒时间戳。往上翻时传当前最早一条的 `time`，返回比它更早的记录，最多 100 条 |
-| `after` | 否 | 毫秒时间戳。轮询新消息时传当前最新一条的 `time`，只返回比它更新的记录 |
+| `after` | 否 | 毫秒时间戳。轮询新消息时传当前最新一条的 `time`，只返回比它更新的记录，最多 100 条，不带 `badges`。没有新消息时 `messages` 为空 |
 
 `before` 和 `after` 都传时按 `before` 处理。两个都不传，返回最新 100 条。
 
@@ -645,6 +688,7 @@ GET https://chat.kzbzcq.com/chat?mid=4498761&type=1
   "roomId": "房间编号",
   "closed": false,
   "exhausted": false,
+  "badges": {},
   "messages": []
 }
 ```
@@ -657,6 +701,7 @@ GET https://chat.kzbzcq.com/chat?mid=4498761&type=1
 | `roomId` | 聊天室编号。还没有房间时为 `null` |
 | `closed` | 聊天室已关闭 |
 | `exhausted` | 更早的历史已经取完。为 `true` 时不要再用 `before` 往上翻 |
+| `badges` | 这次出现过的等级图标，键是等级，值是图片地址。同一等级只给一次 |
 | `messages` | 按 `time` 从早到晚 |
 
 暂时拿不到时仍是 HTTP 200，`code` 为 `"1"`，`messages` 为空数组，`msg` 是「聊天暂时没有拿到」。过一会儿再请求。
@@ -670,8 +715,7 @@ GET https://chat.kzbzcq.com/chat?mid=4498761&type=1
 | `nick` | 昵称。没有时页面可以显示「游客」 |
 | `content` | 文字。纯图片消息可能是空字符串 |
 | `images` | 图片，最多 4 张。没有图片时不返回这个字段 |
-| `level` | 等级。没有等级时不返回 |
-| `badge` | 等级图标。有对应等级时才返回，是图片地址 |
+| `level` | 等级。没有等级时不返回。图标用响应里的 `badges[level]` |
 | `bubble` | 气泡底图地址。没有时不返回 |
 | `color` | 文字颜色，`#` 色值或 `rgb` / `rgba`。没有时不返回 |
 
@@ -682,7 +726,7 @@ GET https://chat.kzbzcq.com/chat?mid=4498761&type=1
 | `url` | 图片地址 |
 | `w` / `h` | 宽高。上游没给时不返回 |
 
-打开聊天先不带 `before`、`after`。贴在底部时，用最新一条的 `time` 作为 `after` 问新消息，把返回的 `messages` 接在后面。往上滚时，用最早一条的 `time` 作为 `before`，把返回的记录插到前面。同一条 `id` 不要画两次。
+打开聊天先不带 `before`、`after`，把 `badges` 按等级记下来。贴在底部时，用最新一条的 `time` 作为 `after` 问新消息，把返回的 `messages` 接在后面。`after` 不再带图标。往上滚时，用最早一条的 `time` 作为 `before`，把返回的记录插到前面，并补上这次带回的 `badges`。同一条 `id` 不要画两次。
 
 ## 直播、指数、数据、预测
 

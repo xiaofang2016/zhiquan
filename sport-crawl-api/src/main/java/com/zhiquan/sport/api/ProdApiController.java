@@ -33,7 +33,8 @@ public class ProdApiController {
                                @RequestParam(required = false) Integer ishot,
                                @RequestParam(required = false) Integer pn,
                                @RequestParam(required = false) Integer ps,
-                               @RequestParam(name = "live_type", required = false) Integer liveType) {
+                               @RequestParam(name = "live_type", required = false) Integer liveType,
+                               @RequestParam(required = false) String since) {
         if (starttime == null || starttime.isBlank()) {
             throw new IllegalArgumentException("缺少必传请求参数");
         }
@@ -48,6 +49,6 @@ public class ProdApiController {
         if (size < 1 || size > 200) {
             throw new IllegalArgumentException("ps 必须在 1 到 200 之间");
         }
-        return KzbResult.ok(matches.matchList(date, type, cid, ishot, page, size, liveType == null ? 0 : liveType));
+        return KzbResult.ok(matches.matchList(date, type, cid, ishot, page, size, liveType == null ? 0 : liveType, since));
     }
 }
