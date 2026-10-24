@@ -9,6 +9,7 @@ import com.zhiquan.sport.store.entity.SportMatch;
 import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
+import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
@@ -18,8 +19,10 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 @Repository
 public class SportMatchRepository {
@@ -34,7 +37,7 @@ public class SportMatchRepository {
 
     public void upsert(SportMatch row) {
         Map<String, AttributeValue> item = new HashMap<>();
-        item.put("source_id", Attrs.s(Long.toString(row.getSourceId())));
+        item.put("source_id", Attrs.s(MatchKeys.itemKey(row.getListDate(), row.getSourceId())));
         item.put("list_date", Attrs.s(row.getListDate().toString()));
         item.put("list_key", Attrs.s(MatchKeys.listKey(row.getListSection(), row.getSortOrder(), row.getSourceId())));
         item.put("date_cid", Attrs.s(MatchKeys.dateCid(row.getListDate(), row.getCid())));
@@ -53,6 +56,42 @@ public class SportMatchRepository {
         }
         item.put("updated_at", Attrs.s(Attrs.now()));
         dynamo.putItem(PutItemRequest.builder().tableName(aws.getMatchTable()).item(item).build());
+    }
+
+    public int deleteAbsent(LocalDate date, Set<String> kept) {
+        int removed = 0;
+        for (String key : itemKeys(date)) {
+            if (kept.contains(key)) {
+                continue;
+            }
+            dynamo.deleteItem(DeleteItemRequest.builder()
+                    .tableName(aws.getMatchTable())
+                    .key(Map.of("source_id", Attrs.s(key)))
+                    .build());
+            removed++;
+        }
+        return removed;
+    }
+
+    private Set<String> itemKeys(LocalDate date) {
+        Set<String> keys = new HashSet<>();
+        for (String section : List.of(ListSection.NOTOP, ListSection.TOP, ListSection.DATA)) {
+            Map<String, AttributeValue> start = null;
+            int guard = 0;
+            do {
+                QueryResponse response = dynamo.query(request(date, section, null, null, null, start)
+                        .projectionExpression("source_id")
+                        .build());
+                for (Map<String, AttributeValue> item : response.items()) {
+                    String key = Attrs.str(item, "source_id");
+                    if (key != null) {
+                        keys.add(key);
+                    }
+                }
+                start = response.hasLastEvaluatedKey() ? response.lastEvaluatedKey() : null;
+            } while (start != null && ++guard < 5000);
+        }
+        return keys;
     }
 
     public long count(LocalDate date, String section, Integer sportType, Integer cid, Integer hot) {
@@ -184,7 +223,10 @@ public class SportMatchRepository {
 
     private static SportMatch toMatch(Map<String, AttributeValue> item) {
         SportMatch row = new SportMatch();
-        row.setSourceId(Attrs.lng(item, "source_id"));
+        String sourceKey = Attrs.str(item, "source_id");
+        if (sourceKey != null) {
+            row.setSourceId(MatchKeys.matchId(sourceKey));
+        }
         row.setCid(Attrs.num(item, "cid"));
         row.setSportType(Attrs.num(item, "sport_type"));
         String listDate = Attrs.str(item, "list_date");

@@ -36,6 +36,20 @@ class MatchCrawlRulesTest {
     }
 
     @Test
+    void firstPageUnderReportsTheList() {
+        assertEquals(87, MatchListPages.laterPageCount(18, 87));
+        assertEquals(80, MatchListPages.laterPageCount(80, 79));
+    }
+
+    @Test
+    void sameMatchCanStayOnTwoDates() {
+        assertEquals("2026-10-24#4558644", MatchKeys.itemKey(LocalDate.parse("2026-10-24"), 4558644));
+        assertEquals("2026-10-25#4558644", MatchKeys.itemKey(LocalDate.parse("2026-10-25"), 4558644));
+        assertEquals(4558644L, MatchKeys.matchId("2026-10-25#4558644"));
+        assertEquals(4558644L, MatchKeys.matchId("4558644"));
+    }
+
+    @Test
     void pageCountFollowsShorterBody() {
         assertEquals(18, MatchListPages.pageCount(3553, 18, 200, 200, 500));
         assertEquals(178, MatchListPages.pageCount(3553, 18, 20, 200, 500));

@@ -11,6 +11,15 @@ public final class MatchKeys {
         return section + "#" + pad(sortOrder, 10) + "#" + pad(sourceId, 18);
     }
 
+    public static String itemKey(LocalDate date, long sourceId) {
+        return date + "#" + sourceId;
+    }
+
+    public static long matchId(String itemKey) {
+        int cut = itemKey.lastIndexOf('#');
+        return Long.parseLong(cut >= 0 ? itemKey.substring(cut + 1) : itemKey);
+    }
+
     public static String dateCid(LocalDate date, Integer cid) {
         return date + "#" + (cid == null ? "" : cid);
     }

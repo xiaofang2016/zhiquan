@@ -3,6 +3,7 @@ package com.zhiquan.sport.worker;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhiquan.sport.store.ListSection;
+import com.zhiquan.sport.store.MatchKeys;
 import com.zhiquan.sport.store.entity.SportLeague;
 import com.zhiquan.sport.store.entity.SportMatch;
 import com.zhiquan.sport.store.entity.SportMatchDate;
@@ -126,21 +127,46 @@ public class MatchCrawlService {
             totalPage = data.path("totalPage").asInt(0);
             dataSize = arraySize(data, "dataList");
         }
-        int pages = MatchListPages.pageCount(total, totalPage, dataSize, requested, properties.getMaxPages());
-        if (pages < 1) {
-            pages = hasRows(data) ? 1 : 0;
+        JsonNode second = null;
+        if (totalPage > 1) {
+            second = client.matchList(date, 2, requested).path("data");
+            int reported = totalPage;
+            totalPage = MatchListPages.laterPageCount(totalPage, second.path("totalPage").asInt(0));
+            total = Math.max(total, second.path("total").asInt(0));
+            if (totalPage != reported) {
+                log.info("match date {} page count {} widened to {}", date, reported, totalPage);
+            }
         }
-        log.info("match date {} total={} pages={} pageSize={}", date, total, pages, requested);
-        if (pages == 0) {
+        int pages = MatchListPages.pageCount(total, totalPage, dataSize, requested, 0);
+        int capped = MatchListPages.pageCount(total, totalPage, dataSize, requested, properties.getMaxPages());
+        if (capped < 1) {
+            capped = hasRows(data) ? 1 : 0;
+            pages = capped;
+        }
+        log.info("match date {} total={} pages={} pageSize={}", date, total, capped, requested);
+        Set<Long> pinned = new HashSet<>();
+        Set<String> kept = new HashSet<>();
+        if (capped > 0) {
+            status.page(date, 1, capped);
+            ingest(date, data, 1, true, pinned, kept);
+            if (capped >= 2) {
+                JsonNode pageData = second == null ? client.matchList(date, 2, requested).path("data") : second;
+                status.page(date, 2, capped);
+                ingest(date, pageData, 2, false, pinned, kept);
+            }
+            for (int page = 3; page <= capped; page++) {
+                JsonNode pageData = client.matchList(date, page, requested).path("data");
+                status.page(date, page, capped);
+                ingest(date, pageData, page, false, pinned, kept);
+            }
+        }
+        if (capped < pages) {
+            log.warn("match date {} stopped at {} of {} pages, leave existing rows", date, capped, pages);
             return;
         }
-        Set<Long> pinned = new HashSet<>();
-        status.page(date, 1, pages);
-        ingest(date, data, 1, true, pinned);
-        for (int page = 2; page <= pages; page++) {
-            JsonNode pageData = client.matchList(date, page, requested).path("data");
-            status.page(date, page, pages);
-            ingest(date, pageData, page, false, pinned);
+        int removed = matchMapper.deleteAbsent(date, kept);
+        if (removed > 0) {
+            log.info("match date {} removed stale {}", date, removed);
         }
     }
 
@@ -161,16 +187,17 @@ public class MatchCrawlService {
                 .toList();
     }
 
-    private void ingest(LocalDate date, JsonNode data, int pageNumber, boolean firstPage, Set<Long> pinned) {
+    private void ingest(LocalDate date, JsonNode data, int pageNumber, boolean firstPage,
+                        Set<Long> pinned, Set<String> kept) {
         if (firstPage) {
-            saveSection(date, data, "notopList", ListSection.NOTOP, pageNumber, pinned);
-            saveSection(date, data, "topList", ListSection.TOP, pageNumber, pinned);
+            saveSection(date, data, "notopList", ListSection.NOTOP, pageNumber, pinned, kept);
+            saveSection(date, data, "topList", ListSection.TOP, pageNumber, pinned, kept);
         }
-        saveSection(date, data, "dataList", ListSection.DATA, pageNumber, pinned);
+        saveSection(date, data, "dataList", ListSection.DATA, pageNumber, pinned, kept);
     }
 
     private void saveSection(LocalDate date, JsonNode data, String field, String section,
-                             int pageNumber, Set<Long> pinned) {
+                             int pageNumber, Set<Long> pinned, Set<String> kept) {
         JsonNode list = data.get(field);
         if (list == null || !list.isArray() || list.isEmpty()) {
             return;
@@ -183,6 +210,7 @@ public class MatchCrawlService {
             if (row == null) {
                 continue;
             }
+            kept.add(MatchKeys.itemKey(date, row.getSourceId()));
             if (ListSection.DATA.equals(section) && pinned.contains(row.getSourceId())) {
                 continue;
             }
