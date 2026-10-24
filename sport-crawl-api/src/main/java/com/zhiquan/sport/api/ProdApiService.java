@@ -60,13 +60,15 @@ public class ProdApiService {
         Integer sportType = type == null || type <= 0 ? null : type;
         Integer leagueId = cid == null || cid == 0 ? null : cid;
         Integer hot = ishot == null || ishot < 0 ? null : ishot;
+        // 原站热门置顶段会带上 isHot=0 的场次，例如正在进行的置顶。
+        Integer topHot = ishot != null && ishot == 1 ? null : hot;
         long total = matches.count(date, ListSection.DATA, sportType, leagueId, hot);
         int totalPage = total == 0 ? 0 : (int) ((total + size - 1) / size);
         List<JsonNode> notop = page == 1
                 ? nodes(matches.listLimited(date, ListSection.NOTOP, sportType, leagueId, hot, PINNED_LIMIT))
                 : List.of();
         List<JsonNode> top = page == 1
-                ? nodes(matches.listLimited(date, ListSection.TOP, sportType, leagueId, hot, PINNED_LIMIT))
+                ? nodes(matches.listLimited(date, ListSection.TOP, sportType, leagueId, topHot, PINNED_LIMIT))
                 : List.of();
         List<JsonNode> data = nodes(matches.pageNumber(date, ListSection.DATA, sportType, leagueId, hot, page, size));
         String token = DigestUtils.md5DigestAsHex((date + "|" + page + "|" + size + "|" + type + "|" + cid + "|" + ishot)

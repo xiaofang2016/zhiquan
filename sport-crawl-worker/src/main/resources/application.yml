@@ -26,6 +26,7 @@ sport:
     backfill-on-start: true
     base-url: https://kzb001.net
     zone-id: Asia/Shanghai
+    zhubo-type: 1
     request-interval-ms: 200
     page-size: 200
     fallback-page-size: 20

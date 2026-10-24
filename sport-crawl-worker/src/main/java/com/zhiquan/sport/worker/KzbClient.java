@@ -70,7 +70,7 @@ public class KzbClient {
                 .queryParam("starttime", date.toString())
                 .queryParam("pid", 4)
                 .queryParam("zoneId", properties.getZoneId())
-                .queryParam("zhuboType", 0)
+                .queryParam("zhuboType", properties.getZhuboType())
                 .build()
                 .encode()
                 .toUri();

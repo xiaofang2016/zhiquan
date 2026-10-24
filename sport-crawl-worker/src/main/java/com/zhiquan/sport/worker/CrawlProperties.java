@@ -11,6 +11,7 @@ public class CrawlProperties {
     private boolean backfillOnStart = true;
     private String baseUrl = "https://kzb001.net";
     private String zoneId = "Asia/Shanghai";
+    private int zhuboType = 1;
     private int requestIntervalMs = 200;
     private int pageSize = 200;
     private int fallbackPageSize = 20;
