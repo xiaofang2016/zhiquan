@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { collect, overlay, pageCount, pageSizeIgnored, query } from "./board.mjs";
+import { changes, collect, overlay, pageCount, pageSizeIgnored, query, stamp } from "./board.mjs";
 
 test("finished matches stay on the first page only", () => {
   const board = collect([
@@ -52,6 +52,31 @@ test("postponed matches leave the upcoming list", () => {
   const view = query(board, { type: 1, cid: null, hot: null, date: null, page: 1, size: 20, liveType: 0 });
   assert.equal(view.total, 0);
   assert.equal(view.otherList[0].status_up_name, "推迟");
+});
+
+test("polling with since returns only the scores that changed", () => {
+  const first = stamp(collect([{
+    notopList: [{ id: 1, type: 1, score: "0-0", status_up_name: "上半场", time: "10" }],
+    dataList: [{ id: 2, type: 1, score: "0-0", status_up_name: "未开赛" }],
+    overList: [{ id: 3, type: 1, score: "2-1", status_up_name: "完场" }]
+  }]), null);
+  first.updatedAt = 1000;
+  const stamped = stamp(first, null);
+  assert.equal(changes(stamped, 1000).changed.length, 0);
+  assert.equal(changes(stamped, 1), null);
+  const next = collect([{
+    notopList: [{ id: 1, type: 1, score: "1-0", status_up_name: "上半场", time: "11" }],
+    dataList: [{ id: 2, type: 1, score: "0-0", status_up_name: "未开赛" }]
+  }]);
+  next.updatedAt = 2000;
+  const second = stamp(next, stamped);
+  const delta = changes(second, 1000);
+  assert.equal(delta.updatedAt, 2000);
+  assert.deepEqual(delta.changed.map((match) => match.id), [1]);
+  assert.equal(delta.changed[0].score, "1-0");
+  assert.equal(delta.changed[0].time, "11");
+  assert.deepEqual(delta.removed, [3]);
+  assert.equal(changes(second, 2000).changed.length, 0);
 });
 
 test("page count follows the upstream total", () => {

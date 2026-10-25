@@ -1,4 +1,17 @@
 export const TABS = ["live", "odds", "data", "tip"];
+const ROUTES = { live: "live", index: "odds", odds: "odds", data: "data", tip: "tip" };
+
+export function sectionOf(path, queryTab) {
+  const name = String(path || "").split("?")[0].split("/").filter(Boolean)[0] || "";
+  if (ROUTES[name]) return ROUTES[name];
+  const query = String(queryTab || "");
+  if (query === "index") return "odds";
+  return TABS.includes(query) ? query : "";
+}
+
+export function publicTab(tab) {
+  return tab === "odds" ? "index" : tab;
+}
 const REFRESH_MS = { live: 15000, odds: 15000 };
 
 export function empty(matchId) {

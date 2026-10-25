@@ -17,3 +17,13 @@ sport:
     chat-prefix: chat/
     db-prefix: database/
     db-table: sport_db_doc
+    user-table: sport_user
+  auth:
+    token-secret: ${SPORT_AUTH_TOKEN_SECRET:c4e8a1f07b2d9e6a5c3f81d0b7e4a2968d1c0b5e}
+    token-days: 30
+  sms:
+    url: ${SPORT_SMS_URL:https://nexsms.ai/api/v1/sms/send}
+    secret-name: ${SPORT_SMS_SECRET:prod/nexsms}
+    template: ${SPORT_SMS_TEMPLATE:CN_OTP}
+    resend-seconds: 60
+    expire-seconds: 300

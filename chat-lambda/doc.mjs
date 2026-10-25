@@ -1,7 +1,12 @@
 import { LEVELS } from "./levels.mjs";
 
 export function empty(matchId) {
-  return { matchId, roomId: null, version: null, exhausted: false, closed: false, messages: [] };
+  return { matchId, roomId: null, version: null, exhausted: false, closed: false, syncedAt: 0, syncingUntil: 0, messages: [] };
+}
+
+export function isFresh(document, now, windowMs) {
+  const syncedAt = Number(document && document.syncedAt) || 0;
+  return syncedAt > 0 && now - syncedAt < windowMs;
 }
 
 export function merge(current, roomId, incoming, mark) {
@@ -66,8 +71,27 @@ export function olderThan(messages, before, limit) {
   return list.length <= limit ? list : list.slice(list.length - limit);
 }
 
-export function newerThan(messages, after) {
-  return (messages || []).filter((message) => message.time > after);
+export function newerThan(messages, after, limit) {
+  const list = (messages || []).filter((message) => message.time > after);
+  if (!limit || list.length <= limit) return list;
+  return list.slice(0, limit);
+}
+
+export function pack(messages) {
+  const badges = {};
+  const packed = [];
+  for (const message of messages || []) {
+    const shown = present(message);
+    if (!shown.badge) {
+      packed.push(shown);
+      continue;
+    }
+    if (shown.level != null && badges[shown.level] == null) badges[shown.level] = shown.badge;
+    const rest = { ...shown };
+    delete rest.badge;
+    packed.push(rest);
+  }
+  return { messages: packed, badges };
 }
 
 const IMAGE_URL = /https?:\/\/[^\s<>"']+\.(?:png|jpe?g|gif|webp)(?:\?[^\s<>"']*)?/gi;

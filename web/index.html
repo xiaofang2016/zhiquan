@@ -758,7 +758,7 @@ function el(tag, cls, text) {
   return node;
 }
 async function get(path) {
-  const response = await fetch(API + path);
+  const response = await fetch(API + path, { cache: "no-store" });
   const body = await response.json();
   if (!response.ok || body.code !== "0") throw new Error(body.msg || "加载失败");
   return body.data;
@@ -767,23 +767,34 @@ const FOOT_STATUS = ["比赛异常", "未开赛", "上半场", "中场", "下半
 const BASKET_STATUS = ["比赛异常", "未开赛", "第一节", "第一节完", "第二节", "第二节完", "第三节", "第三节完", "第四节", "加时", "完场", "中断", "取消", "延期", "腰斩", "待定"];
 const OTHER_STATUS = { 1: "未开赛", 2: "比赛中", 3: "完场" };
 function phase(match) {
+  const type = sportType(match);
+  if (type === 3) {
+    const code = Number(match.status);
+    if (code === 2) return "live";
+    if (code >= 3) return "done";
+    return "wait";
+  }
   const name = String(match.status_up_name ?? "");
   if (/第[一二三四]节/.test(name)) return "live";
   if (/上半场|下半场|中场|进行|比赛中|加时|点球/.test(name)) return "live";
   if (/完|结束|取消|腰斩|推迟|中断|延期/.test(name)) return "done";
   const code = Number(match.status_up);
   if (!Number.isFinite(code) || (name && !/^\d+$/.test(name))) return "wait";
-  const type = sportType(match);
   if (type === 2) return code >= 2 && code <= 9 ? "live" : code >= 10 ? "done" : "wait";
-  if (type === 3) return code === 2 ? "live" : code >= 3 ? "done" : "wait";
   return code >= 2 && code <= 7 ? "live" : code >= 8 ? "done" : "wait";
 }
 function statusText(match) {
+  const type = sportType(match);
   const name = String(match.status_up_name ?? "");
+  if (type === 3) {
+    const code = Number(match.status);
+    if (code === 2) return "比赛中";
+    if (code === 3) return "完场";
+    if (name && !/^\d+$/.test(name)) return name;
+    return OTHER_STATUS[code] || "未开赛";
+  }
   if (name && !/^\d+$/.test(name)) return name;
   const code = Number(match.status_up);
-  const type = sportType(match);
-  if (type === 3) return OTHER_STATUS[code] || "未开赛";
   const table = type === 2 ? BASKET_STATUS : FOOT_STATUS;
   return table[code] || "未开赛";
 }
@@ -1048,7 +1059,7 @@ const DETAIL_API = {
   tip: "https://tip.kzbzcq.com/tip"
 };
 const SCORE_KEYS = ["score", "status", "status_up", "status_up_name", "time", "banchang", "jiaoqiu", "hteam_red", "hteam_yellow", "ateam_red", "ateam_yellow", "home_score_xiaojie", "away_score_xiaojie", "yazhi_jishi", "ouzhi_jishi", "daxiao_jishi"];
-const roomChat = { mid: "", type: 1, messages: [], exhausted: false, closed: false, loading: false, error: "", timer: null, stick: true };
+const roomChat = { mid: "", type: 1, messages: [], badges: {}, exhausted: false, closed: false, loading: false, error: "", timer: null, stick: true };
 function stopRoomChat() {
   if (roomChat.timer) clearInterval(roomChat.timer);
   roomChat.timer = null;
@@ -1079,9 +1090,10 @@ function paintRoomChat() {
   }
   for (const message of roomChat.messages) {
     const row = el("div", "chat-row");
-    if (message.badge) {
+    const badgeUrl = message.badge || roomChat.badges[message.level] || "";
+    if (badgeUrl) {
       const badge = el("img", "badge");
-      badge.src = message.badge;
+      badge.src = badgeUrl;
       badge.alt = "";
       badge.referrerPolicy = "no-referrer";
       row.append(badge);
@@ -1114,6 +1126,14 @@ async function fetchRoomChat(query) {
   if (!body || body.code !== "0") throw new Error((body && body.msg) || "聊天暂时没有拿到");
   return body;
 }
+function rememberBadges(body) {
+  for (const [level, url] of Object.entries((body && body.badges) || {})) {
+    if (url) roomChat.badges[level] = url;
+  }
+  for (const message of (body && body.messages) || []) {
+    if (message && message.badge && message.level != null) roomChat.badges[message.level] = message.badge;
+  }
+}
 function mergeRoomMessages(incoming) {
   const seen = new Set(roomChat.messages.map((message) => message.id));
   for (const message of incoming || []) {
@@ -1130,6 +1150,7 @@ async function loadRoomChat(match, before) {
     roomChat.mid = mid;
     roomChat.type = sportType(match);
     roomChat.messages = [];
+    roomChat.badges = {};
     roomChat.exhausted = false;
     roomChat.closed = false;
     roomChat.error = "";
@@ -1143,6 +1164,7 @@ async function loadRoomChat(match, before) {
     if (before) query.set("before", String(before));
     const body = await fetchRoomChat(query);
     if (roomChat.mid !== mid) return;
+    rememberBadges(body);
     const addedAbove = Boolean(before);
     if (addedAbove) roomChat.stick = false;
     mergeRoomMessages(body.messages);
@@ -1175,6 +1197,7 @@ function openRoomChat(match) {
     if (!newest || roomChat.loading) return;
     fetchRoomChat(new URLSearchParams({ mid, type: String(roomChat.type), after: String(newest.time) })).then((body) => {
       if (roomChat.mid !== mid) return;
+      rememberBadges(body);
       mergeRoomMessages(body.messages);
       roomChat.closed = Boolean(body.closed);
       paintRoomChat();
@@ -1703,6 +1726,38 @@ function drawDb() {
   main.append(grid);
 }
 
+let listEpoch = 0;
+let listRev = "";
+function matchQuery(page) {
+  return new URLSearchParams({
+    isfanye: "1",
+    type: String(state.type || 0),
+    cid: String(state.cid || 0),
+    ishot: state.hot ? "1" : "-1",
+    langtype: "zh",
+    pid: "4",
+    zoneId: browserZone(),
+    zhuboType: "1",
+    starttime: shanghaiDay(0),
+    pn: String(page),
+    ps: "30"
+  });
+}
+function pageBatch(data, page) {
+  return page === 1 ? [...(data.topList || []), ...(data.notopList || []), ...(data.dataList || [])] : (data.dataList || []);
+}
+function dedupeMatches(rows) {
+  const seen = new Set();
+  return rows.filter((match) => {
+    const id = String(match.id);
+    if (seen.has(id)) return false;
+    seen.add(id);
+    return true;
+  });
+}
+function listSignature(rows) {
+  return rows.map((match) => [match.id, match.status, match.status_up, match.status_up_name, match.score, match.time, match.is_zd, match.zd_level].join(":")).join("|");
+}
 async function resetMatches() {
   state.page = 1;
   state.rows = [];
@@ -1713,41 +1768,55 @@ async function resetMatches() {
 async function loadMatches(replace) {
   if (state.loading) return;
   state.loading = true;
+  const epoch = ++listEpoch;
   const onPlayer = () => state.detail && state.tab === "match";
   if (!onPlayer()) render();
   try {
     const page = replace ? 1 : state.page + 1;
-    const query = new URLSearchParams({
-      isfanye: "1",
-      type: String(state.type || 0),
-      cid: String(state.cid || 0),
-      ishot: state.hot ? "1" : "-1",
-      langtype: "zh",
-      pid: "4",
-      zoneId: browserZone(),
-      zhuboType: "1",
-      starttime: shanghaiDay(0),
-      pn: String(page),
-      ps: "30"
-    });
-    const data = await get("/prod-api/match/list/new?" + query.toString());
-    const batch = page === 1 ? [...(data.topList || []), ...(data.notopList || []), ...(data.dataList || [])] : (data.dataList || []);
-    const merged = replace ? batch : state.rows.concat(batch);
-    const seen = new Set();
-    state.rows = merged.filter((match) => {
-      const id = String(match.id);
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
+    const data = await get("/prod-api/match/list/new?" + matchQuery(page).toString());
+    if (epoch !== listEpoch) return;
+    const batch = pageBatch(data, page);
+    if (page === 1 && data.rev) listRev = data.rev;
+    state.rows = dedupeMatches(replace ? batch : state.rows.concat(batch));
     state.page = data.currentPage || page;
     state.totalPage = data.totalPage || 1;
   } catch (error) {
-    toast(error.message || "比赛加载失败");
+    if (epoch === listEpoch) toast(error.message || "比赛加载失败");
   } finally {
-    state.loading = false;
-    if (!(state.detail && state.tab === "match")) render();
+    if (epoch === listEpoch) {
+      state.loading = false;
+      if (!(state.detail && state.tab === "match")) render();
+    }
   }
+}
+async function pollList() {
+  if (document.visibilityState === "hidden") return;
+  if (state.tab !== "match" || state.detail || state.loading || !state.rows.length) return;
+  const epoch = listEpoch;
+  try {
+    const query = matchQuery(1);
+    if (listRev) query.set("since", listRev);
+    const data = await get("/prod-api/match/list/new?" + query.toString());
+    if (epoch !== listEpoch || state.loading || state.detail) return;
+    if (data.rev) listRev = data.rev;
+    if (Array.isArray(data.changed)) return;
+    const fresh = pageBatch(data, 1);
+    const seen = new Set(fresh.map((match) => String(match.id)));
+    const tail = [];
+    for (const match of state.rows) {
+      const id = String(match.id);
+      if (seen.has(id)) continue;
+      seen.add(id);
+      tail.push(match);
+    }
+    const next = fresh.concat(tail);
+    state.totalPage = data.totalPage || state.totalPage;
+    if (listSignature(next) === listSignature(state.rows)) return;
+    state.rows = next;
+    const y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
+  } catch (error) {}
 }
 function applyScore(match) {
   if (!match) return match;
@@ -1759,15 +1828,31 @@ function applyScore(match) {
   }
   return next;
 }
+let scoreCursor = 0;
 function rememberScores(rows) {
-  for (const match of rows) state.scoreById.set(Number(match.id), match);
+  for (const match of rows) {
+    const id = Number(match.id);
+    const prev = state.scoreById.get(id);
+    state.scoreById.set(id, prev ? { ...prev, ...match } : match);
+  }
 }
-async function fetchScorePage(page) {
+async function fetchScorePage(page, since) {
   const query = new URLSearchParams({ type: "0", cid: "0", ishot: "-1", pn: String(page), ps: "200" });
-  const response = await fetch(API + "/prod-api/match/list/new2?" + query);
+  if (since) query.set("since", String(since));
+  const response = await fetch(API + "/prod-api/match/list/new2?" + query, { cache: "no-store" });
   const body = await response.json();
   if (!response.ok || String(body.code) !== "0") throw new Error((body && body.msg) || "即时比分加载失败");
   return body.data || {};
+}
+function takeScores(data) {
+  if (data.updatedAt) scoreCursor = data.updatedAt;
+  if (!Array.isArray(data.changed)) {
+    rememberScores([...(data.notopList || []), ...(data.topList || []), ...(data.dataList || []), ...(data.overList || []), ...(data.otherList || [])]);
+    return false;
+  }
+  rememberScores(data.changed);
+  for (const id of data.removed || []) state.scoreById.delete(Number(id));
+  return true;
 }
 function paintScores() {
   for (const node of document.querySelectorAll(".match[data-id]")) {
@@ -1814,10 +1899,24 @@ function paintScores() {
   }
 }
 async function refreshScores() {
-  const data = await fetchScorePage(1);
-  rememberScores([...(data.notopList || []), ...(data.topList || []), ...(data.dataList || []), ...(data.overList || []), ...(data.otherList || [])]);
-  if (state.tab === "match" && !state.detail) render();
-  else paintScores();
+  if (document.visibilityState === "hidden") return;
+  const data = await fetchScorePage(1, scoreCursor);
+  const incremental = takeScores(data);
+  if (incremental && !(data.changed || []).length && !(data.removed || []).length) return;
+  if (state.tab === "live") return;
+  if (state.detail || state.tab !== "match") {
+    paintScores();
+    return;
+  }
+  const before = [...document.querySelectorAll(".match[data-id]")].map((node) => node.dataset.id).join(",");
+  const after = visibleMatches().map((match) => String(match.id)).join(",");
+  if (before && before !== after) {
+    const y = window.scrollY;
+    render();
+    window.scrollTo(0, y);
+  } else {
+    paintScores();
+  }
 }
 async function loadLive() {
   if (state.loading) return;
@@ -1829,6 +1928,7 @@ async function loadLive() {
     let total = 1;
     while (page <= total && page <= 3) {
       const data = await fetchScorePage(page);
+      if (data.updatedAt) scoreCursor = data.updatedAt;
       if (page === 1) rows.push(...(data.notopList || []), ...(data.topList || []), ...(data.overList || []), ...(data.otherList || []));
       rows.push(...(data.dataList || []));
       total = data.totalPage || 1;
@@ -2057,10 +2157,13 @@ render = function () {
   if (state.tab === "live" && !state.liveLoaded && !state.loading) loadLive();
 };
 setInterval(() => {
-  if (document.visibilityState === "hidden") return;
   refreshScores().catch(() => {});
+  pollList().catch(() => {});
+}, 2000);
+setInterval(() => {
+  if (document.visibilityState === "hidden") return;
   if (state.tab === "live" && !state.loading) loadLive();
-}, 30000);
+}, 15000);
 boot();
 refreshScores().catch(() => {});
 </script>

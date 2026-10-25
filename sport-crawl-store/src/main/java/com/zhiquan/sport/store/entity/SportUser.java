@@ -1,0 +1,18 @@
+package com.zhiquan.sport.store.entity;
+
+import lombok.Data;
+
+/**
+ * 说球帝账号。编号是这里生成的，不对应 IM 用户。
+ * 明文密码不放在这条资料上，仓库会另写一条记录。
+ */
+@Data
+public class SportUser {
+
+    private String phone;
+    private String userId;
+    private String nickname;
+    private String passwordHash;
+    private String passwordSalt;
+    private String createdAt;
+}

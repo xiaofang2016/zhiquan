@@ -52,7 +52,8 @@ public final class LiveLeagues {
         }
         try {
             JsonNode node = json.readTree(row.getPayload());
-            return MatchPhase.of(node.path("status_up_name").asText(""), node.path("status_up").asInt(0));
+            int type = row.getSportType() == null ? 1 : row.getSportType();
+            return MatchPhase.of(type, node.path("status_up_name").asText(""), node.path("status_up").asInt(0));
         } catch (Exception ex) {
             return "wait";
         }

@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { empty, fromNim, latest, merge, olderThan, present } from "./doc.mjs";
+import { empty, fromNim, isFresh, latest, merge, newerThan, olderThan, pack, present } from "./doc.mjs";
 
 test("init keeps the latest hundred and older history stays in front", () => {
   const seeded = [];
@@ -22,6 +22,14 @@ test("init keeps the latest hundred and older history stays in front", () => {
   ], {}).document;
   assert.equal(withPicture.messages.at(-1).images[0].url, "https://cdn.example.com/a.png");
   assert.equal(withPicture.messages.at(-1).images[0].w, 20);
+});
+
+test("a recent sync can be served again without another pull", () => {
+  const now = 1_000_000;
+  const document = { ...empty("4498761"), syncedAt: now - 3000 };
+  assert.equal(isFresh(document, now, 8000), true);
+  assert.equal(isFresh({ ...document, syncedAt: now - 9000 }, now, 8000), false);
+  assert.equal(isFresh(empty("4498761"), now, 8000), false);
 });
 
 test("image messages stay in the record without caption text", () => {
@@ -58,4 +66,14 @@ test("image messages stay in the record without caption text", () => {
   assert.equal(skinned.color, "rgb(130, 100, 169)");
   const shown = present(skinned);
   assert.ok(shown.badge.startsWith("https://") || shown.badge.startsWith("data:image/"));
+  const packed = pack([skinned, { ...skinned, id: "c2", time: 4, content: "再来" }, { id: "c3", time: 5, nick: "乙", content: "没有等级" }]);
+  assert.equal(Object.keys(packed.badges).length, 1);
+  assert.ok(packed.badges[50].startsWith("https://") || packed.badges[50].startsWith("data:image/"));
+  assert.equal(packed.messages[0].badge, undefined);
+  assert.equal(packed.messages[1].badge, undefined);
+  assert.equal(packed.messages[2].level, undefined);
+  const times = [1, 2, 3, 4, 5].map((time) => ({ id: String(time), time, nick: "n", content: "m" }));
+  assert.deepEqual(newerThan(times, 2).map((message) => message.time), [3, 4, 5]);
+  assert.deepEqual(newerThan(times, 2, 2).map((message) => message.time), [3, 4]);
+  assert.deepEqual(newerThan(times, 5).map((message) => message.time), []);
 });

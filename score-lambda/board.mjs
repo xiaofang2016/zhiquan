@@ -6,6 +6,7 @@ const FIRST_PAGE = [
   ["overList", "over"],
   ["otherList", "other"]
 ];
+const LIVE_FIELDS = ["score", "status", "status_up", "status_up_name", "time", "banchang", "jiaoqiu", "hteam_red", "hteam_yellow", "ateam_red", "ateam_yellow", "home_score_xiaojie", "away_score_xiaojie", "yazhi_jishi", "ouzhi_jishi", "daxiao_jishi"];
 
 export function emptyBoard() {
   return { updatedAt: 0, rows: [] };
@@ -74,8 +75,42 @@ export function query(board, { type, cid, hot, date, page, size, liveType }) {
     starttime: date || "",
     currentPage: page,
     otherList: bodies(first ? other : []),
-    token: createHash("md5").update(raw).digest("hex")
+    token: createHash("md5").update(raw).digest("hex"),
+    updatedAt: board.updatedAt || 0
   };
+}
+
+export function stamp(board, previous) {
+  const marks = {};
+  for (const row of board.rows) marks[String(row.id)] = markOf(row);
+  const previousMarks = previous && previous.marks;
+  const hasPrevious = Boolean(previousMarks && Object.keys(previousMarks).length);
+  return {
+    ...board,
+    updatedAt: board.updatedAt || Date.now(),
+    prevUpdatedAt: hasPrevious ? Number(previous.updatedAt) || 0 : 0,
+    prevMarks: hasPrevious ? previousMarks : {},
+    marks
+  };
+}
+
+export function changes(board, since) {
+  const now = Number(board.updatedAt) || 0;
+  if (!now || !since) return null;
+  if (since === now) return { updatedAt: now, changed: [], removed: [] };
+  const prevMarks = board.prevMarks || {};
+  if (since !== Number(board.prevUpdatedAt) || !Object.keys(prevMarks).length || !board.marks) return null;
+  const marks = board.marks;
+  const changed = [];
+  for (const row of board.rows) {
+    const id = String(row.id);
+    if (marks[id] !== prevMarks[id]) changed.push(patch(row));
+  }
+  const removed = [];
+  for (const id of Object.keys(prevMarks)) {
+    if (marks[id] == null) removed.push(Number(id));
+  }
+  return { updatedAt: now, changed, removed };
 }
 
 export function counts(board) {
@@ -131,4 +166,19 @@ function idOf(item) {
   if (!item || item.id == null || item.id === "") return 0;
   const id = Number(item.id);
   return Number.isSafeInteger(id) && id > 0 ? id : 0;
+}
+
+function markOf(row) {
+  const body = row.body || {};
+  const raw = row.section + "\n" + LIVE_FIELDS.map((key) => JSON.stringify(body[key] ?? null)).join("\n");
+  return createHash("sha1").update(raw).digest("hex").slice(0, 12);
+}
+
+function patch(row) {
+  const body = row.body || {};
+  const item = { id: row.id };
+  for (const key of LIVE_FIELDS) {
+    if (body[key] != null) item[key] = body[key];
+  }
+  return item;
 }

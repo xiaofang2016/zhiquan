@@ -1,0 +1,12 @@
+name: sport-crawl-chat
+
+services:
+  chat:
+    image: sport-crawl-chat:1.0.0
+    mem_limit: 512m
+    cpus: 0.25
+    restart: unless-stopped
+    environment:
+      AWS_REGION: ap-northeast-1
+    ports:
+      - "172.31.5.227:8893:8893"

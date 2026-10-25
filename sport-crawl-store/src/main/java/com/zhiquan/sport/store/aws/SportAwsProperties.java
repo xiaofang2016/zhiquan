@@ -19,4 +19,6 @@ public class SportAwsProperties {
     /** 资料库原文。单条可以超过 DynamoDB 400KB，正文放这里。 */
     private String dbPrefix = "database/";
     private String dbTable = "sport_db_doc";
+    /** 说球帝自己的账号。不放 IM 用户，也不和 im 的用户表关联。 */
+    private String userTable = "sport_user";
 }

@@ -72,6 +72,14 @@ class DatabasePlanTest {
         assertEquals("live", MatchPhase.of("下半场", 5));
         assertEquals("done", MatchPhase.of("完场", 8));
         assertEquals("wait", MatchPhase.of("未开赛", 1));
+        assertEquals("live", MatchPhase.of(1, "2", 2));
+        assertEquals("done", MatchPhase.of(1, "8", 8));
+        assertEquals("live", MatchPhase.of(2, "8", 8));
+        assertEquals("live", MatchPhase.of(2, "9", 9));
+        assertEquals("done", MatchPhase.of(2, "10", 10));
+        assertEquals("live", MatchPhase.of(2, "第一节完", 3));
+        assertEquals("live", MatchPhase.of(3, "2", 2));
+        assertEquals("done", MatchPhase.of(3, "3", 3));
     }
 
     private static SportMatch match(int cid, int type, LocalDateTime kickoff, String status, int code) {

@@ -16,6 +16,11 @@ phases:
       - cp Dockerfile docker-compose.yml docker-compose.db.yml appspec.yml output/
       - cp scripts/*.sh output/scripts/
       - chmod 755 output/scripts/*.sh
+      - mkdir -p output/site 
+      - find web -type f ! -name nginx.conf ! -name index.mjs -exec cp --parents {} output/site/ \;
+
+      - ( cd web && zip -qr /tmp/sport-crawl-web.zip . -x nginx.conf )
+      - aws lambda update-function-code --function-name sport-crawl-web --zip-file fileb:///tmp/sport-crawl-web.zip
 
 artifacts:
   base-directory: output
