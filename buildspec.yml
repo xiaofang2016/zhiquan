@@ -41,6 +41,10 @@ artifacts:
   files:
     - '**/*'
   secondary-artifacts:
+    build:
+      base-directory: output 
+      files:
+        - '**/*'
     lambda:
       base-directory: output/lambda-out
       files:
