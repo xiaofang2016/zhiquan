@@ -19,7 +19,7 @@ sport:
     db-table: sport_db_doc
     user-table: sport_user
   auth:
-    token-secret: ${SPORT_AUTH_TOKEN_SECRET:c4e8a1f07b2d9e6a5c3f81d0b7e4a2968d1c0b5e}
+    token-secret: ${SPORT_AUTH_TOKEN_SECRET}
     token-days: 30
   sms:
     url: ${SPORT_SMS_URL:https://nexsms.ai/api/v1/sms/send}

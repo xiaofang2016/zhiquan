@@ -20,9 +20,28 @@ phases:
       - find web -type f ! -name nginx.conf ! -name index.mjs -exec cp --parents {} output/site/ \;
 
       - ( cd web && zip -qr /tmp/sport-crawl-web.zip . -x nginx.conf )
-      - aws lambda update-function-code --function-name sport-crawl-web --zip-file fileb:///tmp/sport-crawl-web.zip
-
+      - aws lambda wait function-updated --function-name sport-crawl-web
+      - |
+        VER=$(aws lambda update-function-code --function-name sport-crawl-web --zip-file fileb:///tmp/sport-crawl-web.zip --publish --query Version --output text)
+        CUR=$(aws lambda get-alias --function-name sport-crawl-web --name live --query FunctionVersion --output text)
+        mkdir -p output/lambda-out
+        cat > output/lambda-out/appspec.yml << EOF
+        version: 0.0
+        Resources:
+          - sport-crawl-web:
+              Type: AWS::Lambda::Function
+              Properties:
+                Name: sport-crawl-web
+                Alias: live
+                CurrentVersion: "$CUR"
+                TargetVersion: "$VER"
+        EOF
 artifacts:
   base-directory: output
   files:
     - '**/*'
+  secondary-artifacts:
+    lambda:
+      base-directory: output/lambda-out
+      files:
+        - appspec.yml
