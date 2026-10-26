@@ -548,7 +548,44 @@
     font-size: 15px;
     font-weight: 600;
   }
-  .mine-avatar { width: 42px; height: 42px; border-radius: 50%; background: #f3d7c5; }
+  .mine-avatar { width: 42px; height: 42px; border-radius: 50%; background: #f3d7c5; overflow: hidden; display: inline-flex; }
+  .mine-avatar svg, .mine-avatar img { width: 42px; height: 42px; object-fit: cover; }
+  .avatar-mask, .avatar-pick {
+    position: fixed; inset: 0; z-index: 60;
+    display: flex; align-items: flex-end; justify-content: center;
+    background: rgba(0, 0, 0, .55);
+  }
+  .avatar-pick { z-index: 70; background: rgba(0, 0, 0, .35); }
+  .avatar-mask[hidden], .avatar-pick[hidden] { display: none; }
+  .avatar-sheet, .avatar-pick-sheet {
+    width: min(440px, 100%);
+    background: #fff;
+    border-radius: 16px 16px 0 0;
+    padding: 18px 18px 28px;
+  }
+  .avatar-head { display: flex; align-items: center; justify-content: space-between; }
+  .avatar-head button {
+    border: 0; background: transparent; color: #333; font-size: 14px; padding: 4px;
+  }
+  .avatar-head b { font-size: 16px; }
+  .avatar-save {
+    background: #27c5c3 !important; color: #fff !important;
+    border-radius: 17px; padding: 5px 12px !important; font-size: 13px;
+  }
+  .avatar-photo {
+    width: 121px; height: 121px; margin: 22px auto 0; border-radius: 50%;
+    border: 0; padding: 0; background: #f7f7f7; overflow: hidden; display: block;
+  }
+  .avatar-photo img { width: 100%; height: 100%; object-fit: cover; }
+  .avatar-caption { margin: 12px 0 0; text-align: center; color: #333; font-size: 13px; }
+  .avatar-caption.again { color: #27c5c3; text-decoration: underline; }
+  .avatar-note { margin: 8px 0 0; color: #969696; font-size: 12px; line-height: 1.7; text-align: center; }
+  .avatar-pick-sheet { padding: 8px 0 18px; }
+  .avatar-pick-sheet button {
+    display: block; width: 100%; border: 0; background: #fff;
+    padding: 14px 0; font-size: 17px; color: #0f0f0f;
+  }
+  .avatar-pick-sheet .avatar-gap { height: 5px; background: #f2f2f2; }
   .mine-user em { font-style: normal; }
   .mine-user i { color: #c8c8c8; font-style: normal; font-weight: 400; }
   .mine-user i[hidden] { display: none; }
@@ -725,7 +762,10 @@
       <b>个人中心</b>
     </div>
     <button class="mine-user" id="mine-user" type="button" data-mine="profile">
-      <svg class="mine-avatar" viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="21" fill="#f6d7c4"/><circle cx="21" cy="17" r="7" fill="#f3b183"/><path d="M8 36c2-7 8-10 13-10s11 3 13 10" fill="#3d4a5c"/><path d="M12 16c1-6 6-9 9-9s8 3 9 9c-2 1-5 2-9 2s-7-1-9-2z" fill="#4a3428"/></svg>
+      <span class="mine-avatar" id="mine-avatar">
+        <svg id="mine-avatar-svg" viewBox="0 0 42 42" aria-hidden="true"><circle cx="21" cy="21" r="21" fill="#f6d7c4"/><circle cx="21" cy="17" r="7" fill="#f3b183"/><path d="M8 36c2-7 8-10 13-10s11 3 13 10" fill="#3d4a5c"/><path d="M12 16c1-6 6-9 9-9s8 3 9 9c-2 1-5 2-9 2s-7-1-9-2z" fill="#4a3428"/></svg>
+        <img id="mine-avatar-img" alt="" hidden>
+      </span>
       <em id="mine-name">未登录</em>
       <i id="mine-arrow" hidden>›</i>
     </button>
@@ -775,6 +815,31 @@
     <div class="jxt-line"><em>验证码</em><input id="jxt-code" inputmode="numeric" maxlength="6" placeholder="请输入验证码"><button type="button" id="jxt-code-btn">获取验证码</button></div>
     <button class="jxt-submit" id="jxt-submit" type="button">一键登录</button>
     <button class="jxt-unbind" id="jxt-unbind" type="button" hidden>解除绑定</button>
+  </div>
+</div>
+<div class="avatar-mask" id="avatar-mask" hidden>
+  <div class="avatar-sheet" role="dialog" aria-label="头像特权">
+    <div class="avatar-head">
+      <button type="button" id="avatar-cancel">取消</button>
+      <b>头像特权</b>
+      <button class="avatar-save" id="avatar-save" type="button">设置</button>
+    </div>
+    <button class="avatar-photo" id="avatar-photo" type="button" aria-label="上传图片">
+      <img id="avatar-fallback" alt="" src="https://live.qiandongslim.com/static/img/UploadAvatarsUps.b48d3217.png">
+      <img id="avatar-preview" alt="" hidden>
+    </button>
+    <p class="avatar-caption" id="avatar-caption">设置您的专属头像</p>
+    <p class="avatar-note">·请选择清晰、非纯白色背景(容易与背景融合)<br>·不可以选用二维码等其他敏感图片，图片像素建议200X200<br>·大小小于2MB，可以用jpg，png等格式～</p>
+  </div>
+</div>
+<div class="avatar-pick" id="avatar-pick" hidden>
+  <div class="avatar-pick-sheet" role="dialog" aria-label="选择图片">
+    <button type="button" id="avatar-camera-btn">拍摄</button>
+    <button type="button" id="avatar-album-btn">相册</button>
+    <div class="avatar-gap"></div>
+    <button type="button" id="avatar-pick-cancel">取消</button>
+    <input id="avatar-camera" type="file" accept="image/*" capture="environment" hidden>
+    <input id="avatar-album" type="file" accept="image/*" hidden>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -829,7 +894,8 @@ const state = {
   returnMine: false,
   jxt: null,
   ued: null,
-  bindBrand: "jxt"
+  bindBrand: "jxt",
+  avatarPreview: ""
 };
 
 const $ = (id) => document.getElementById(id);
@@ -2056,6 +2122,7 @@ function paintAccount() {
   $("mine-name").textContent = user ? (user.nickname || user.phone || "已登录") : "未登录";
   $("mine-arrow").hidden = !user;
   $("mine-logout").hidden = !user;
+  paintAvatar();
   const register = state.authMode === "register";
   $("auth-code-row").hidden = !register;
   $("auth-confirm-row").hidden = !register;
@@ -2105,7 +2172,11 @@ function onMineClick(event) {
     if (!state.user) openAccount("login", true);
     return;
   }
-  if (action === "avatar" && !state.user) { toast("未登录，请登录后使用！"); return; }
+  if (action === "avatar") {
+    if (!state.user) { toast("未登录，请登录后使用！"); return; }
+    openAvatar();
+    return;
+  }
   if (action === "jxt-bind" || action === "jxt-withdraw" || action === "ued-bind" || action === "ued-withdraw") {
     if (!state.user) { openAccount("login", true); return; }
     const brand = action.startsWith("ued") ? "ued" : "jxt";
@@ -2252,6 +2323,88 @@ async function withdrawBrand(brand) {
 async function withdrawJxt() {
   withdrawBrand("jxt");
 }
+function paintAvatar() {
+  const saved = state.user && state.user.avatar;
+  const shown = state.avatarPreview || saved;
+  $("avatar-preview").hidden = !shown;
+  $("avatar-fallback").hidden = !!shown;
+  if (shown) $("avatar-preview").src = shown;
+  $("avatar-caption").textContent = state.avatarPreview ? "重新上传头像" : "设置您的专属头像";
+  $("avatar-caption").classList.toggle("again", !!state.avatarPreview);
+  $("mine-avatar-img").hidden = !saved;
+  $("mine-avatar-svg").hidden = !!saved;
+  if (saved) $("mine-avatar-img").src = saved;
+}
+function openAvatar() {
+  state.avatarPreview = "";
+  paintAvatar();
+  $("avatar-pick").hidden = true;
+  $("avatar-mask").hidden = false;
+}
+function closeAvatar() {
+  state.avatarPreview = "";
+  $("avatar-mask").hidden = true;
+  $("avatar-pick").hidden = true;
+  paintAvatar();
+}
+function openAvatarPicker() {
+  $("avatar-pick").hidden = false;
+}
+function closeAvatarPicker() {
+  $("avatar-pick").hidden = true;
+}
+function takeAvatar(input) {
+  const file = input.files && input.files[0];
+  input.value = "";
+  if (!file) return;
+  if (!file.type || !file.type.startsWith("image/")) { toast("请选择图片文件"); return; }
+  if (file.size > 2 * 1024 * 1024) { toast("大小小于2MB，可以用jpg，png等格式～"); return; }
+  const image = new Image();
+  const url = URL.createObjectURL(file);
+  image.onload = () => {
+    URL.revokeObjectURL(url);
+    const max = 800;
+    const scale = Math.min(1, max / image.width, max / image.height);
+    const width = Math.max(1, Math.round(image.width * scale));
+    const height = Math.max(1, Math.round(image.height * scale));
+    const canvas = document.createElement("canvas");
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) { toast("图片压缩失败"); return; }
+    ctx.drawImage(image, 0, 0, width, height);
+    canvas.toBlob((blob) => {
+      if (!blob) { toast("图片压缩失败"); return; }
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.avatarPreview = String(reader.result || "");
+        closeAvatarPicker();
+        paintAvatar();
+      };
+      reader.readAsDataURL(blob);
+    }, "image/jpeg", 0.82);
+  };
+  image.onerror = () => {
+    URL.revokeObjectURL(url);
+    toast("图片加载失败");
+  };
+  image.src = url;
+}
+async function saveAvatar() {
+  if (!state.user || !state.avatarPreview) return;
+  $("avatar-save").disabled = true;
+  try {
+    const user = await postAccount("/prod-api/user/avatar", { token: state.user.token, image: state.avatarPreview });
+    state.avatarPreview = "";
+    rememberAccount(user);
+    closeAvatar();
+    toast("修改成功");
+  } catch (error) {
+    toast(error.message || "修改失败");
+  } finally {
+    $("avatar-save").disabled = false;
+  }
+}
 let codeLeft = 0;
 async function sendCode() {
   const phone = $("auth-phone").value.trim();
@@ -2340,6 +2493,17 @@ async function boot() {
   $("jxt-code-btn").onclick = sendJxtCode;
   $("jxt-submit").onclick = submitJxt;
   $("jxt-unbind").onclick = unbindJxt;
+  $("avatar-cancel").onclick = closeAvatar;
+  $("avatar-mask").onclick = (event) => { if (event.target === $("avatar-mask")) closeAvatar(); };
+  $("avatar-photo").onclick = openAvatarPicker;
+  $("avatar-caption").onclick = () => { if (state.avatarPreview) openAvatarPicker(); };
+  $("avatar-save").onclick = saveAvatar;
+  $("avatar-camera-btn").onclick = () => $("avatar-camera").click();
+  $("avatar-album-btn").onclick = () => $("avatar-album").click();
+  $("avatar-pick-cancel").onclick = closeAvatarPicker;
+  $("avatar-pick").onclick = (event) => { if (event.target === $("avatar-pick")) closeAvatarPicker(); };
+  $("avatar-camera").onchange = (event) => takeAvatar(event.target);
+  $("avatar-album").onchange = (event) => takeAvatar(event.target);
   $("auth-switch").onclick = () => {
     state.authMode = state.authMode === "register" ? "login" : "register";
     paintAccount();

@@ -39,6 +39,11 @@ public class UserController {
         return KzbResult.ok(auth.session(body.token()));
     }
 
+    @PostMapping("/prod-api/user/avatar")
+    public KzbResult avatar(@RequestBody UserRequest body) {
+        return KzbResult.ok(auth.saveAvatar(body.token(), body.image()));
+    }
+
     @PostMapping("/prod-api/user/jxt/status")
     public KzbResult jxtStatus(@RequestBody UserRequest body) {
         return KzbResult.ok(jxt.status(body.token()));

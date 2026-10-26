@@ -99,6 +99,17 @@ public class UserAuthService {
         return view(user, token);
     }
 
+    public Map<String, String> saveAvatar(String token, String image) {
+        UserToken.Session session = UserToken.read(secret, token, Instant.now().getEpochSecond());
+        SportUser user = users.find(session.phone()).orElseThrow(() -> new IllegalArgumentException("请先登录"));
+        if (!session.userId().equals(user.getUserId())) {
+            throw new IllegalArgumentException("请先登录");
+        }
+        user.setAvatar(AvatarImage.dataUrl(image));
+        users.saveAvatar(user.getPhone(), user.getAvatar());
+        return view(user, token);
+    }
+
     private void acceptCode(String phone, String code) {
         SmsCode saved = users.findCode(phone).orElseThrow(() -> new IllegalArgumentException("请先获取验证码"));
         if (saved.expireAt() < Instant.now().getEpochSecond()) {
@@ -123,6 +134,7 @@ public class UserAuthService {
         data.put("userId", user.getUserId());
         data.put("phone", user.getPhone());
         data.put("nickname", user.getNickname());
+        data.put("avatar", user.getAvatar() == null ? "" : user.getAvatar());
         data.put("token", token);
         return data;
     }

@@ -3,6 +3,7 @@ package com.zhiquan.sport.api.user;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
+import java.util.Base64;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -73,6 +74,15 @@ class UserAccountTest {
         assertEquals("10012", UedClient.MERCHANT_NO);
         assertThrows(IllegalArgumentException.class, () -> JxtMoney.cents("9.99"));
         assertThrows(IllegalArgumentException.class, () -> JxtMoney.cents("10.555"));
+    }
+
+    @Test
+    void avatarAcceptsJpegDataUrl() {
+        byte[] jpeg = new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, (byte) 0xd9};
+        String encoded = Base64.getEncoder().encodeToString(jpeg);
+        assertEquals("data:image/jpeg;base64," + encoded, AvatarImage.dataUrl("data:image/jpeg;base64," + encoded));
+        assertThrows(IllegalArgumentException.class, () -> AvatarImage.dataUrl("data:image/png;base64," + encoded));
+        assertThrows(IllegalArgumentException.class, () -> AvatarImage.dataUrl(""));
     }
 
     @Test

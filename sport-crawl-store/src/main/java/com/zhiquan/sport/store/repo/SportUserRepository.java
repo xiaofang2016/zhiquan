@@ -96,6 +96,7 @@ public class SportUserRepository {
         user.setPhone(Attrs.str(item, "phone"));
         user.setUserId(Attrs.str(item, "user_id"));
         user.setNickname(Attrs.str(item, "nickname"));
+        user.setAvatar(Attrs.str(item, "avatar"));
         user.setPasswordHash(Attrs.str(item, "password_hash"));
         user.setPasswordSalt(Attrs.str(item, "password_salt"));
         user.setCreatedAt(Attrs.str(item, "created_at"));
@@ -114,6 +115,16 @@ public class SportUserRepository {
         Long balance = Attrs.lng(item, "balance_cent");
         user.setBalanceCent(balance == null ? 0 : balance);
         return Optional.of(user);
+    }
+
+    public void saveAvatar(String phone, String avatar) {
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET avatar = :avatar")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeValues(Map.of(":avatar", Attrs.s(avatar)))
+                .build());
     }
 
     public void saveJxt(String phone, String uid, String account, String token, long tokenExpire) {
