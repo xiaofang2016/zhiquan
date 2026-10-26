@@ -623,6 +623,66 @@
   }
   .sound-sheet button.on { color: #1989fa; }
   .sound-sheet .avatar-gap { height: 5px; background: #f2f2f2; }
+  .sub-page { position: fixed; inset: 0; z-index: 50; background: #f7f8fa; overflow: auto; }
+  .sub-page[hidden] { display: none; }
+  .match-page.sub-page { background: #fff; }
+  .match-bar.with-side b { margin-right: 0; }
+  .match-bar .side { width: auto; min-width: 72px; padding-right: 12px; color: #323233; font-size: 14px; font-weight: 400; }
+  .yin-card {
+    margin: 12px; padding: 14px 16px 18px; border-radius: 8px; color: #fff;
+    background: linear-gradient(90deg, #b7ece8, #7fd8cf);
+  }
+  .yin-card b { display: block; font-size: 22px; font-weight: 600; }
+  .yin-card span { font-size: 12px; opacity: .9; }
+  .yin-row { display: flex; align-items: center; justify-content: space-between; margin: 0 12px; padding: 14px 4px; background: #fff; border-bottom: 1px solid #f2f3f5; }
+  .yin-row p { margin: 4px 0 0; color: #969799; font-size: 12px; }
+  .yin-row em { color: #ee0a24; font-style: normal; }
+  .sub-empty { margin: 48px 0; color: #c8c9cc; text-align: center; font-size: 14px; }
+  .sub-empty svg { display: block; margin: 0 auto 12px; }
+  .level-head { display: flex; align-items: center; gap: 8px; padding: 14px 16px 0; background: #fff; font-size: 14px; }
+  .level-head i { width: 28px; height: 28px; border-radius: 50%; background: #f3d7c5; }
+  .level-badge { margin: 8px auto 0; width: 72px; text-align: center; color: #666; font-size: 12px; }
+  .level-badge svg { display: block; margin: 0 auto 6px; }
+  .level-track { margin: 16px 12px; padding: 12px; background: #fff; border-radius: 8px; font-size: 12px; color: #666; }
+  .level-track .cap { display: flex; justify-content: space-between; }
+  .level-bar { position: relative; height: 8px; margin: 10px 0; border-radius: 4px; background: #e8f7f6; }
+  .level-bar i { display: block; height: 100%; width: 0; border-radius: 4px; background: #27c5c3; }
+  .level-track .need { text-align: center; color: #27c5c3; }
+  .rule-table { margin: 12px; background: #fff; border-radius: 8px; overflow: hidden; }
+  .rule-row, .rule-head { display: grid; grid-template-columns: 1.1fr .9fr 1.4fr; gap: 8px; padding: 12px; font-size: 13px; color: #323233; border-top: 1px solid #f2f3f5; }
+  .rule-head { border-top: 0; color: #969799; }
+  .badge-hero {
+    margin: 12px; padding: 16px; border-radius: 12px; color: #1f6f6c;
+    background: linear-gradient(90deg, #d9f6f3, #b7ebe4);
+  }
+  .badge-hero b { font-size: 22px; }
+  .badge-hero p { margin: 6px 0; font-size: 12px; }
+  .badge-hero .bar { height: 6px; border-radius: 3px; background: rgba(255,255,255,.7); }
+  .badge-hero .bar i { display: block; width: 0; height: 100%; background: #27c5c3; }
+  .badge-card { margin: 0 12px 12px; padding: 12px 14px; background: #fff; border-radius: 10px; }
+  .badge-card h3 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+  .badge-card p { margin: 4px 0; color: #969799; font-size: 12px; }
+  .badge-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .badge-card button { border: 0; border-radius: 14px; background: #27c5c3; color: #fff; padding: 6px 12px; }
+  .forecast-banners { display: flex; gap: 8px; padding: 12px; }
+  .forecast-banners button { flex: 1; border: 0; border-radius: 8px; background: #fff; padding: 10px 8px; text-align: left; }
+  .forecast-banners b { display: block; font-size: 14px; }
+  .forecast-banners span { color: #969799; font-size: 12px; }
+  .forecast-tabs { display: flex; background: #fff; }
+  .forecast-tabs button { flex: 1; height: 44px; border: 0; background: #fff; color: #646566; font-size: 15px; }
+  .forecast-tabs button.on { color: #27c5c3; box-shadow: inset 0 -2px 0 #27c5c3; }
+  .feedback-box { margin: 12px; background: #f2f3f5; border-radius: 8px; padding: 12px; }
+  .feedback-box textarea { width: 100%; min-height: 160px; border: 0; resize: none; background: transparent; outline: none; font: inherit; font-size: 14px; }
+  .feedback-box .count { text-align: right; color: #969799; font-size: 12px; }
+  .feedback-submit {
+    position: sticky; bottom: 16px; display: block; width: calc(100% - 32px); margin: 24px auto;
+    height: 44px; border: 0; border-radius: 22px; color: #fff; font-size: 15px;
+    background: linear-gradient(90deg, #8fd0f5, #b6f0c4);
+  }
+  .share-card { margin: 28px 16px; padding: 24px 16px; background: #fff; border-radius: 12px; text-align: center; }
+  .share-card b { font-size: 20px; }
+  .share-card p { color: #646566; font-size: 14px; word-break: break-all; }
+  .share-card button { width: 100%; height: 40px; border: 0; border-radius: 20px; background: #27c5c3; color: #fff; }
   .mine-user em { font-style: normal; }
   .mine-user i { color: #c8c8c8; font-style: normal; font-weight: 400; }
   .mine-user i[hidden] { display: none; }
@@ -877,7 +937,7 @@
     <button type="button" id="avatar-pick-cancel">取消</button>
   </div>
 </div>
-<div class="match-page" id="match-page" hidden>
+<div class="match-page sub-page" id="match-page" hidden>
   <div class="match-bar">
     <button type="button" id="match-back" aria-label="返回">‹</button>
     <b>比赛设置</b>
@@ -892,6 +952,105 @@
     <div id="sound-options"></div>
     <div class="avatar-gap"></div>
     <button type="button" id="sound-cancel">取消</button>
+  </div>
+</div>
+<div class="sub-page" id="order-page" hidden>
+  <div class="match-bar"><button type="button" id="order-back" aria-label="返回">‹</button><b>音浪明细</b></div>
+  <div class="yin-card"><b id="yin-balance">0</b><span>我的音浪</span></div>
+  <p class="sub-empty" id="yin-empty">没有更多了</p>
+</div>
+<div class="sub-page" id="level-page" hidden>
+  <div class="match-bar with-side"><button type="button" id="level-back" aria-label="返回">‹</button><b>我的等级</b><button class="side" id="level-rule" type="button">等级规则</button></div>
+  <div class="level-head"><i></i><span id="level-name">未登录</span></div>
+  <div class="level-badge">
+    <svg width="54" height="54" viewBox="0 0 54 54" aria-hidden="true"><path d="M27 4l16 10v16L27 50 11 30V14z" fill="#d9dde3"/><path d="M27 14l8 5v8l-8 10-8-10v-8z" fill="#9aa3ad"/></svg>
+    球迷Lv.1
+  </div>
+  <div class="level-track">
+    <div class="cap"><span>用户等级<br>球迷Lv.1</span><span>注：1音浪=1球技</span></div>
+    <div class="level-bar"><i id="level-fill"></i></div>
+    <div class="cap"><span>0</span><span class="need">差 100球技 升至Lv.2</span><span>100</span></div>
+  </div>
+</div>
+<div class="sub-page" id="level-rule-page" hidden>
+  <div class="match-bar"><button type="button" id="level-rule-back" aria-label="返回">‹</button><b>等级规则</b></div>
+  <div class="rule-table" id="level-rules"></div>
+</div>
+<div class="sub-page" id="badge-page" hidden>
+  <div class="match-bar with-side"><button type="button" id="badge-back" aria-label="返回">‹</button><b>尊享徽章</b><button class="side" id="badge-rights" type="button">徽章权益</button></div>
+  <div class="badge-hero">
+    <b>Lv0</b>
+    <p>经验值 ¥0/¥1</p>
+    <div class="bar"><i></i></div>
+    <p>再充值1元即可升级Lv1，解锁更多权益！</p>
+  </div>
+  <div class="badge-card">
+    <div class="badge-line"><h3>三方游戏平台周累计充值</h3><span>¥0/¥1</span></div>
+    <p>UED 周累计充值 ¥0</p>
+    <p>吉祥 周累计充值 ¥0</p>
+  </div>
+  <div class="badge-card">
+    <h3>等级特权</h3>
+    <p>绑定账号后解锁更多特权</p>
+  </div>
+  <div class="badge-card badge-line">
+    <div><h3>平台账号绑定</h3><p>绑定UED/吉祥账号，解锁聊天权限等级与专属等级</p></div>
+    <button type="button" id="badge-bind">立即绑定</button>
+  </div>
+</div>
+<div class="sub-page" id="badge-rights-page" hidden>
+  <div class="match-bar"><button type="button" id="badge-rights-back" aria-label="返回">‹</button><b>徽章权益</b></div>
+  <div class="badge-card">
+    <h3>当前徽章等级 Lv0</h3>
+    <p>累计充值 ¥0</p>
+    <p>再充值 ¥1 可升级至 Lv1</p>
+    <p>Lv0当前享有5项权益</p>
+  </div>
+  <div class="badge-card"><h3>连续签到累计可得红包奖励 ¥22</h3><p>连续签到可得更高金额</p></div>
+  <div class="badge-card"><h3>专属徽章标识</h3><p>展示专属等级徽章</p></div>
+  <div class="badge-card"><h3>钱包提现次数提升</h3><p>每日可提现 1 次</p></div>
+  <div class="badge-card"><h3>钱包提现额度提升</h3><p>单月可提现 ¥50</p></div>
+  <div class="badge-card"><h3>周等级福利 0 元</h3><p>等级周福利每周仅限领取 1 次</p></div>
+  <div class="badge-card"><h3>其他等级权益预览</h3><p>Lv1 权益 未达成</p><p>Lv2 权益 未达成</p><p>* 升级后，新权益将在次周周一北京时间 0 点生效</p></div>
+</div>
+<div class="sub-page" id="forecast-page" hidden>
+  <div class="match-bar with-side"><button type="button" id="forecast-back" aria-label="返回">‹</button><b>我的预测</b><button class="side" id="forecast-yin" type="button">获取音浪</button></div>
+  <div class="forecast-banners">
+    <button type="button" id="forecast-task"><b>任务中心</b><span>领音浪 兑实物</span></button>
+    <button type="button" id="forecast-rank"><b>预测收益榜</b><span>预测大神就是你</span></button>
+  </div>
+  <div class="forecast-tabs">
+    <button type="button" id="forecast-tab-predict" class="on">预测</button>
+    <button type="button" id="forecast-tab-record">记录</button>
+  </div>
+  <div class="sub-empty" id="forecast-empty">
+    <svg width="120" height="90" viewBox="0 0 120 90" aria-hidden="true"><path d="M18 62h84v8H18zM30 38h60v24H30zM38 46h44v4H38zm0 8h28v4H38z" fill="#e5e6eb"/><path d="M24 28h18v10H24zM78 22h16v12H78z" fill="#f2f3f5"/></svg>
+    <span id="forecast-empty-text">暂无预测数据</span>
+  </div>
+</div>
+<div class="sub-page" id="task-page" hidden>
+  <div class="match-bar"><button type="button" id="task-back" aria-label="返回">‹</button><b>任务中心</b></div>
+  <p class="sub-empty">暂无任务</p>
+</div>
+<div class="sub-page" id="rank-page" hidden>
+  <div class="match-bar"><button type="button" id="rank-back" aria-label="返回">‹</button><b>预测收益榜</b></div>
+  <p class="sub-empty">暂无数据</p>
+</div>
+<div class="sub-page" id="feedback-page" hidden>
+  <div class="match-bar"><button type="button" id="feedback-back" aria-label="返回">‹</button><b>意见反馈</b></div>
+  <div class="feedback-box">
+    <textarea id="feedback-text" maxlength="300" placeholder="请输入你的反馈"></textarea>
+    <div class="count" id="feedback-count">0/300</div>
+  </div>
+  <button class="feedback-submit" id="feedback-submit" type="button">提交反馈</button>
+</div>
+<div class="sub-page" id="share-page" hidden>
+  <div class="match-bar"><button type="button" id="share-back" aria-label="返回">‹</button><b>分享应用</b></div>
+  <div class="share-card">
+    <b>说球帝</b>
+    <p>把网页版发给好友一起看比赛</p>
+    <p id="share-link">https://www.kzbzcq.com</p>
+    <button type="button" id="share-copy">复制链接</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -2221,7 +2380,7 @@ function openMine() {
   $("login-page").hidden = true;
   $("jxt-page").hidden = true;
   $("sound-mask").hidden = true;
-  $("match-page").hidden = true;
+  for (const page of document.querySelectorAll(".sub-page")) page.hidden = true;
   $("mine-page").hidden = false;
   paintAccount();
   loadJxt();
@@ -2264,6 +2423,12 @@ function onMineClick(event) {
     return;
   }
   if (item.dataset.login === "1" && !state.user) { openAccount("login", true); return; }
+  if (action === "order") { openOrder(); return; }
+  if (action === "level") { openLevel(); return; }
+  if (action === "badge") { openBadge(); return; }
+  if (action === "forecast") { openForecast(); return; }
+  if (action === "feedback") { openFeedback(); return; }
+  if (action === "share") { openShare(); return; }
   toast("暂未开放");
 }
 function paintJxt(info) {
@@ -2310,6 +2475,7 @@ async function loadJxt() {
 function openBrand(brand) {
   state.bindBrand = brand;
   $("mine-page").hidden = true;
+  for (const page of document.querySelectorAll(".sub-page")) page.hidden = true;
   $("jxt-page").hidden = false;
   paintBindPage(brand === "ued" ? state.ued : state.jxt);
 }
@@ -2600,10 +2766,107 @@ function paintMatch() {
   $("match-home-sound").textContent = soundLabel(soundChoice("home"));
   $("match-away-sound").textContent = soundLabel(soundChoice("away"));
 }
+function showSub(id) {
+  $("mine-page").hidden = true;
+  $("jxt-page").hidden = true;
+  $("sound-mask").hidden = true;
+  for (const page of document.querySelectorAll(".sub-page")) page.hidden = true;
+  $(id).hidden = false;
+}
+function openOrder() {
+  $("yin-balance").textContent = "0";
+  showSub("order-page");
+}
+function openLevel() {
+  $("level-name").textContent = state.user ? (state.user.nickname || state.user.phone || "已登录") : "未登录";
+  showSub("level-page");
+}
+function openLevelRule() {
+  const box = $("level-rules");
+  if (!box.childElementCount) {
+    const rules = [
+      ["用户等级", "用户特权", "专属头衔"],
+      ["Lv.1~Lv.3", "球技100~300", "身份标识"],
+      ["Lv.4~Lv.6", "球技450~750", "身份标识、投屏体验"],
+      ["Lv.7~Lv.9", "球技950~1350", "身份标识、投屏体验"],
+      ["Lv.10~Lv.12", "球技1600~2100", "身份标识、投屏体验、酷炫礼物"],
+      ["Lv.13~Lv.15", "球技2400~3000", "身份标识、投屏体验、酷炫礼物"],
+      ["Lv.16~Lv.18", "球技3350~4050", "身份标识、投屏体验、酷炫礼物"],
+      ["Lv.19~Lv.21", "球技4450~5250", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.22~Lv.24", "球技5700~6600", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.25~Lv.27", "球技7100~8100", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.28~Lv.30", "球技8650~9750", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.31~Lv.33", "球技10350~11550", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.34~Lv.36", "球技12200~13500", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.37~Lv.39", "球技14200~15600", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.40~Lv.42", "球技16350~17850", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.43~Lv.45", "球技18650~20250", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.46~Lv.48", "球技21100~22800", "身份标识、投屏体验、酷炫礼物、登场弹幕"],
+      ["Lv.49~Lv.50", "球技23700~24600", "身份标识、投屏体验、酷炫礼物、登场弹幕"]
+    ];
+    rules.forEach((row, index) => {
+      const line = document.createElement("div");
+      line.className = index === 0 ? "rule-head" : "rule-row";
+      row.forEach((text) => {
+        const cell = document.createElement("span");
+        cell.textContent = text;
+        line.append(cell);
+      });
+      box.append(line);
+    });
+  }
+  showSub("level-rule-page");
+}
+function openBadge() {
+  const jxtBound = state.jxt && state.jxt.isBind === "1";
+  const uedBound = state.ued && state.ued.isBind === "1";
+  $("badge-bind").textContent = jxtBound && uedBound ? "已绑定" : "立即绑定";
+  showSub("badge-page");
+}
+function bindFromBadge() {
+  if (state.jxt && state.jxt.isBind === "1" && state.ued && state.ued.isBind === "1") return;
+  openBrand(!(state.jxt && state.jxt.isBind === "1") ? "jxt" : "ued");
+}
+function openForecast() {
+  paintForecast("predict");
+  showSub("forecast-page");
+}
+function paintForecast(tab) {
+  $("forecast-tab-predict").classList.toggle("on", tab === "predict");
+  $("forecast-tab-record").classList.toggle("on", tab === "record");
+  $("forecast-empty-text").textContent = tab === "record" ? "暂无记录" : "暂无预测数据";
+}
+function openFeedback() {
+  $("feedback-count").textContent = $("feedback-text").value.length + "/300";
+  showSub("feedback-page");
+}
+function submitFeedback() {
+  const text = $("feedback-text").value.trim();
+  if (!text) { toast("请输入你的反馈"); return; }
+  let saved = [];
+  try { saved = JSON.parse(localStorage.getItem("sqd-feedback") || "[]"); }
+  catch (error) { saved = []; }
+  saved.push({ text, at: Date.now() });
+  localStorage.setItem("sqd-feedback", JSON.stringify(saved.slice(-20)));
+  $("feedback-text").value = "";
+  $("feedback-count").textContent = "0/300";
+  toast("提交成功");
+}
+function openShare() {
+  showSub("share-page");
+}
+async function copyShare() {
+  const link = $("share-link").textContent;
+  try {
+    await navigator.clipboard.writeText(link);
+    toast("复制成功");
+  } catch (error) {
+    toast("复制失败");
+  }
+}
 function openMatch() {
   paintMatch();
-  $("mine-page").hidden = true;
-  $("match-page").hidden = false;
+  showSub("match-page");
 }
 function closeMatch() {
   closeSound();
@@ -2725,6 +2988,27 @@ async function boot() {
   $("match-away").onclick = () => openSound("away");
   $("sound-cancel").onclick = closeSound;
   $("sound-mask").onclick = (event) => { if (event.target === $("sound-mask")) closeSound(); };
+  $("order-back").onclick = openMine;
+  $("level-back").onclick = openMine;
+  $("level-rule").onclick = openLevelRule;
+  $("level-rule-back").onclick = openLevel;
+  $("badge-back").onclick = openMine;
+  $("badge-rights").onclick = () => showSub("badge-rights-page");
+  $("badge-rights-back").onclick = openBadge;
+  $("badge-bind").onclick = bindFromBadge;
+  $("forecast-back").onclick = openMine;
+  $("forecast-yin").onclick = openOrder;
+  $("forecast-task").onclick = () => showSub("task-page");
+  $("forecast-rank").onclick = () => showSub("rank-page");
+  $("task-back").onclick = openForecast;
+  $("rank-back").onclick = openForecast;
+  $("forecast-tab-predict").onclick = () => paintForecast("predict");
+  $("forecast-tab-record").onclick = () => paintForecast("record");
+  $("feedback-back").onclick = openMine;
+  $("feedback-text").oninput = () => { $("feedback-count").textContent = $("feedback-text").value.length + "/300"; };
+  $("feedback-submit").onclick = submitFeedback;
+  $("share-back").onclick = openMine;
+  $("share-copy").onclick = copyShare;
   $("auth-switch").onclick = () => {
     state.authMode = state.authMode === "register" ? "login" : "register";
     paintAccount();
