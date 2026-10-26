@@ -21,6 +21,7 @@ import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
+import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -98,7 +99,67 @@ public class SportUserRepository {
         user.setPasswordHash(Attrs.str(item, "password_hash"));
         user.setPasswordSalt(Attrs.str(item, "password_salt"));
         user.setCreatedAt(Attrs.str(item, "created_at"));
+        user.setJxtBound("1".equals(Attrs.str(item, "jxt_bound")));
+        user.setJxtUid(Attrs.str(item, "jxt_uid"));
+        user.setJxtAccount(Attrs.str(item, "jxt_account"));
+        Long balance = Attrs.lng(item, "balance_cent");
+        user.setBalanceCent(balance == null ? 0 : balance);
         return Optional.of(user);
+    }
+
+    public void saveJxt(String phone, String uid, String account) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":bound", Attrs.s("1"));
+        values.put(":uid", Attrs.s(uid));
+        values.put(":account", Attrs.s(account));
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET jxt_bound = :bound, jxt_uid = :uid, jxt_account = :account")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeValues(values)
+                .build());
+    }
+
+    public void clearJxt(String phone) {
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET jxt_bound = :bound REMOVE jxt_uid, jxt_account")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeValues(Map.of(":bound", Attrs.s("0")))
+                .build());
+    }
+
+    public boolean deduct(String phone, long cents) {
+        try {
+            dynamo.updateItem(balanceUpdate(phone, cents, "-"));
+            return true;
+        } catch (ConditionalCheckFailedException ex) {
+            return false;
+        }
+    }
+
+    public void credit(String phone, long cents) {
+        dynamo.updateItem(balanceUpdate(phone, cents, "+"));
+    }
+
+    private UpdateItemRequest balanceUpdate(String phone, long cents, String op) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":zero", Attrs.n(0));
+        values.put(":amt", Attrs.n(cents));
+        String expression = "SET balance_cent = if_not_exists(balance_cent, :zero) " + op + " :amt";
+        UpdateItemRequest.Builder builder = UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression(expression)
+                .expressionAttributeValues(values);
+        if ("-".equals(op)) {
+            builder.conditionExpression("attribute_exists(pk) AND if_not_exists(balance_cent, :zero) >= :amt");
+        } else {
+            builder.conditionExpression("attribute_exists(pk)");
+        }
+        return builder.build();
     }
 
     public boolean insert(SportUser user, String passwordPlain) {

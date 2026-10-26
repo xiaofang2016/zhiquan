@@ -49,6 +49,24 @@ class UserAccountTest {
     }
 
     @Test
+    void jxtSignMatchesTheSharedVector() {
+        assertEquals("sms\n13800138000", JxtSign.payload("sms", "13800138000"));
+        assertEquals("aeba912f3fdd8dc73cc40d9a186e4c3c9514d2cb2afb1cc537516ff9b06c55da",
+                JxtSign.sign("test-secret", "sms", "13800138000"));
+    }
+
+    @Test
+    void jxtAmountUsesCentsAndTenYuanMinimum() {
+        assertEquals(1000, JxtMoney.cents("10"));
+        assertEquals(1050, JxtMoney.cents("10.5"));
+        assertEquals(1000, JxtMoney.cents("10.00"));
+        assertEquals("10.50", JxtMoney.yuan(1050));
+        assertEquals("a***z", JxtBindService.mask("abcz"));
+        assertThrows(IllegalArgumentException.class, () -> JxtMoney.cents("9.99"));
+        assertThrows(IllegalArgumentException.class, () -> JxtMoney.cents("10.555"));
+    }
+
+    @Test
     void tokenRoundTripRejectsTampering() {
         String token = UserToken.issue("test-secret", "13800138000", "abc", 4_000_000_000L);
         UserToken.Session session = UserToken.read("test-secret", token, 1_700_000_000L);

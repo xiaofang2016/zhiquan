@@ -27,3 +27,6 @@ sport:
     template: ${SPORT_SMS_TEMPLATE:CN_OTP}
     resend-seconds: 60
     expire-seconds: 300
+  jxt:
+    base-url: ${SPORT_JXT_BASE_URL:}
+    bind-secret: ${SPORT_JXT_BIND_SECRET:}

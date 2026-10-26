@@ -9,9 +9,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class UserController {
 
     private final UserAuthService auth;
+    private final JxtBindService jxt;
 
-    public UserController(UserAuthService auth) {
+    public UserController(UserAuthService auth, JxtBindService jxt) {
         this.auth = auth;
+        this.jxt = jxt;
     }
 
     @PostMapping("/prod-api/user/sms")
@@ -33,5 +35,31 @@ public class UserController {
     @PostMapping("/prod-api/user/session")
     public KzbResult session(@RequestBody UserRequest body) {
         return KzbResult.ok(auth.session(body.token()));
+    }
+
+    @PostMapping("/prod-api/user/jxt/status")
+    public KzbResult jxtStatus(@RequestBody UserRequest body) {
+        return KzbResult.ok(jxt.status(body.token()));
+    }
+
+    @PostMapping("/prod-api/user/jxt/sms")
+    public KzbResult jxtSms(@RequestBody UserRequest body) {
+        jxt.sms(body.token());
+        return KzbResult.ok(null);
+    }
+
+    @PostMapping("/prod-api/user/jxt/bind")
+    public KzbResult jxtBind(@RequestBody UserRequest body) {
+        return KzbResult.ok(jxt.confirm(body.token(), body.code()));
+    }
+
+    @PostMapping("/prod-api/user/jxt/unbind")
+    public KzbResult jxtUnbind(@RequestBody UserRequest body) {
+        return KzbResult.ok(jxt.unbind(body.token()));
+    }
+
+    @PostMapping("/prod-api/user/jxt/withdraw")
+    public KzbResult jxtWithdraw(@RequestBody UserRequest body) {
+        return KzbResult.ok(jxt.withdraw(body.token(), body.amount()));
     }
 }

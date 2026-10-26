@@ -15,4 +15,8 @@ public class SportUser {
     private String passwordHash;
     private String passwordSalt;
     private String createdAt;
+    private boolean jxtBound;
+    private String jxtUid;
+    private String jxtAccount;
+    private long balanceCent;
 }

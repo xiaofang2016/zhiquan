@@ -587,7 +587,68 @@
   }
   .mine-row span { margin-left: auto; color: #c8c8c8; }
   .mine-logout { justify-content: center; color: #666; }
-  .mine-logout[hidden] { display: none; }
+  .mine-row[hidden], .mine-logout[hidden], .mine-wallet[hidden] { display: none; }
+  .mine-wallet { padding: 4px 14px 14px; }
+  .mine-balance { margin: 8px 0 10px; color: #222; font-size: 28px; font-weight: 700; }
+  .mine-amount {
+    width: 100%;
+    height: 40px;
+    border: 0;
+    border-radius: 8px;
+    background: #f6f7f8;
+    padding: 0 12px;
+    font-size: 14px;
+    outline: none;
+  }
+  .mine-withdraw {
+    width: 100%;
+    height: 40px;
+    margin-top: 10px;
+    border: 0;
+    border-radius: 8px;
+    background: #e23b3b;
+    color: #fff;
+    font-size: 14px;
+  }
+  .mine-tip { margin: 8px 0 0; color: #9aa0a8; font-size: 12px; }
+  .jxt-page {
+    position: fixed;
+    inset: 0;
+    z-index: 45;
+    overflow: auto;
+    background: #f7f7f7;
+  }
+  .jxt-page[hidden] { display: none; }
+  .jxt-bar {
+    display: flex;
+    align-items: center;
+    height: 48px;
+    background: #fff;
+  }
+  .jxt-bar button { width: 48px; border: 0; background: transparent; font-size: 28px; color: #333; }
+  .jxt-bar b { flex: 1; text-align: center; margin-right: 48px; font-size: 16px; }
+  .jxt-card { margin: 24px 16px; padding: 28px 16px 20px; background: #fff; border-radius: 12px; text-align: center; }
+  .jxt-card h2 { margin: 0 0 18px; font-size: 18px; }
+  .jxt-brands { display: flex; justify-content: center; align-items: center; gap: 16px; margin-bottom: 12px; }
+  .jxt-brands span { width: 64px; height: 64px; border-radius: 16px; background: #e23b3b; color: #fff; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 700; }
+  .jxt-note { margin: 0 0 22px; color: #888; font-size: 13px; }
+  .jxt-line { display: flex; align-items: center; height: 52px; border-bottom: 1px solid #eee; text-align: left; font-size: 15px; }
+  .jxt-line em { width: 72px; font-style: normal; color: #333; }
+  .jxt-line input { flex: 1; border: 0; outline: none; font-size: 15px; }
+  .jxt-line button { border: 0; background: transparent; color: #e23b3b; font-size: 14px; }
+  .jxt-submit {
+    width: 100%;
+    height: 46px;
+    margin-top: 28px;
+    border: 0;
+    border-radius: 8px;
+    background: #e23b3b;
+    color: #fff;
+    font-size: 16px;
+  }
+  .jxt-submit:disabled { background: #ddd; }
+  .jxt-unbind { margin-top: 16px; border: 0; background: transparent; color: #888; font-size: 14px; }
+  .jxt-unbind[hidden] { display: none; }
 </style>
 </head>
 <body>
@@ -678,7 +739,15 @@
         <button type="button" data-mine="agent"><img alt="" src="https://live.qiandongslim.com/static/img/welfare_agent_recruit.8881610d.png">代理招募</button>
       </div>
     </section>
+    <section class="mine-card mine-wallet" id="mine-wallet" hidden>
+      <h3>我的钱包余额（元）</h3>
+      <div class="mine-balance" id="jxt-balance">0.00</div>
+      <input class="mine-amount" id="jxt-amount" inputmode="decimal" placeholder="请输入提现金额">
+      <button class="mine-withdraw" id="jxt-withdraw" type="button" data-mine="jxt-withdraw">提现到吉祥｜未绑定</button>
+      <p class="mine-tip">单笔最低10元。提现到已绑定的吉祥体育主账户。</p>
+    </section>
     <section class="mine-card" id="mine-menu">
+      <button class="mine-row" id="jxt-bind-row" type="button" data-mine="jxt-bind" hidden>绑定设置<span>›</span></button>
       <button class="mine-row" type="button" data-mine="avatar">头像设置<span>›</span></button>
       <button class="mine-row" type="button" data-mine="match">比赛设置<span>›</span></button>
       <button class="mine-row" type="button" data-mine="order" data-login="1">我的订单<span>›</span></button>
@@ -689,6 +758,21 @@
       <button class="mine-row" type="button" data-mine="share">分享应用<span>›</span></button>
       <button class="mine-row mine-logout" id="mine-logout" type="button" data-mine="logout" hidden>退出登录</button>
     </section>
+  </div>
+</div>
+<div class="jxt-page" id="jxt-page" hidden>
+  <div class="jxt-bar">
+    <button type="button" id="jxt-back" aria-label="返回">‹</button>
+    <b>账号验证</b>
+  </div>
+  <div class="jxt-card">
+    <h2>账号验证</h2>
+    <div class="jxt-brands"><span>说球帝</span><b>⇒</b><span>吉祥体育</span></div>
+    <p class="jxt-note">首次使用需验证，未注册的手机号将自动创建为吉祥账号</p>
+    <div class="jxt-line"><em>手机号</em><b id="jxt-phone"></b></div>
+    <div class="jxt-line"><em>验证码</em><input id="jxt-code" inputmode="numeric" maxlength="6" placeholder="请输入验证码"><button type="button" id="jxt-code-btn">获取验证码</button></div>
+    <button class="jxt-submit" id="jxt-submit" type="button">一键登录</button>
+    <button class="jxt-unbind" id="jxt-unbind" type="button" hidden>解除绑定</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -740,7 +824,8 @@ const state = {
   detailTab: "live",
   user: null,
   authMode: "login",
-  returnMine: false
+  returnMine: false,
+  jxt: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -1991,8 +2076,10 @@ function closeAccount() {
 function openMine() {
   $("account-card").classList.remove("show");
   $("login-page").hidden = true;
+  $("jxt-page").hidden = true;
   $("mine-page").hidden = false;
   paintAccount();
+  loadJxt();
 }
 function closeMine() {
   $("mine-page").hidden = true;
@@ -2005,6 +2092,7 @@ function onMineClick(event) {
   if (action === "back") { closeMine(); return; }
   if (action === "logout") {
     rememberAccount(null);
+    paintJxt(null);
     toast("已退出");
     return;
   }
@@ -2013,8 +2101,107 @@ function onMineClick(event) {
     return;
   }
   if (action === "avatar" && !state.user) { toast("未登录，请登录后使用！"); return; }
+  if (action === "jxt-bind" || action === "jxt-withdraw") {
+    if (!state.user) { openAccount("login", true); return; }
+    if (action === "jxt-withdraw" && state.jxt && state.jxt.isBind === "1") { withdrawJxt(); return; }
+    openJxt();
+    return;
+  }
   if (item.dataset.login === "1" && !state.user) { openAccount("login", true); return; }
   toast("暂未开放");
+}
+function paintJxt(info) {
+  state.jxt = info || { isBind: "0", account: "", balance: "0.00" };
+  const bound = state.jxt.isBind === "1";
+  $("mine-wallet").hidden = !state.user;
+  $("jxt-bind-row").hidden = !state.user;
+  $("jxt-balance").textContent = state.jxt.balance || "0.00";
+  $("jxt-withdraw").textContent = "提现到吉祥｜" + (bound ? (state.jxt.account || "已绑定") : "未绑定");
+  $("jxt-phone").textContent = state.user ? (state.user.phone || "") : "";
+  $("jxt-unbind").hidden = !bound;
+}
+async function loadJxt() {
+  if (!state.user || !state.user.token) { paintJxt(null); return; }
+  try {
+    paintJxt(await postAccount("/prod-api/user/jxt/status", { token: state.user.token }));
+  } catch (error) {
+    paintJxt(null);
+  }
+}
+function openJxt() {
+  $("mine-page").hidden = true;
+  $("jxt-page").hidden = false;
+  paintJxt(state.jxt);
+}
+function closeJxt() {
+  $("jxt-page").hidden = true;
+  openMine();
+}
+let jxtCodeLeft = 0;
+async function sendJxtCode() {
+  if (!state.user) { openAccount("login", true); return; }
+  if (jxtCodeLeft > 0) return;
+  const button = $("jxt-code-btn");
+  button.disabled = true;
+  try {
+    await postAccount("/prod-api/user/jxt/sms", { token: state.user.token });
+    toast("验证码已发送");
+    jxtCodeLeft = 60;
+    const tick = () => {
+      if (jxtCodeLeft <= 0) {
+        button.disabled = false;
+        button.textContent = "获取验证码";
+        return;
+      }
+      button.textContent = "重新获取 " + jxtCodeLeft + "s";
+      jxtCodeLeft -= 1;
+      setTimeout(tick, 1000);
+    };
+    tick();
+  } catch (error) {
+    button.disabled = false;
+    toast(error.message || "验证码发送失败");
+  }
+}
+async function submitJxt() {
+  if (!state.user) return;
+  const code = $("jxt-code").value.trim();
+  if (!/^\d{4,6}$/.test(code)) { toast("请输入验证码"); return; }
+  $("jxt-submit").disabled = true;
+  try {
+    paintJxt(await postAccount("/prod-api/user/jxt/bind", { token: state.user.token, code }));
+    $("jxt-code").value = "";
+    closeJxt();
+    toast("绑定成功");
+  } catch (error) {
+    toast(error.message || "绑定失败");
+  } finally {
+    $("jxt-submit").disabled = false;
+  }
+}
+async function unbindJxt() {
+  if (!state.user) return;
+  if (!window.confirm("是否确认解除绑定吉祥账号？解绑后将无法进行提现操作")) return;
+  try {
+    paintJxt(await postAccount("/prod-api/user/jxt/unbind", { token: state.user.token }));
+    toast("已解除绑定");
+  } catch (error) {
+    toast(error.message || "解除绑定失败");
+  }
+}
+async function withdrawJxt() {
+  if (!state.user) return;
+  const amount = $("jxt-amount").value.trim();
+  $("jxt-withdraw").disabled = true;
+  try {
+    paintJxt(await postAccount("/prod-api/user/jxt/withdraw", { token: state.user.token, amount }));
+    $("jxt-amount").value = "";
+    toast("提现成功");
+  } catch (error) {
+    toast(error.message || "提现失败");
+  } finally {
+    $("jxt-withdraw").disabled = false;
+  }
 }
 let codeLeft = 0;
 async function sendCode() {
@@ -2100,6 +2287,10 @@ async function boot() {
     else closeMine();
   };
   $("mine-page").onclick = onMineClick;
+  $("jxt-back").onclick = closeJxt;
+  $("jxt-code-btn").onclick = sendJxtCode;
+  $("jxt-submit").onclick = submitJxt;
+  $("jxt-unbind").onclick = unbindJxt;
   $("auth-switch").onclick = () => {
     state.authMode = state.authMode === "register" ? "login" : "register";
     paintAccount();
