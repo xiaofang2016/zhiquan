@@ -2,7 +2,7 @@
 
 说球帝在 AWS 上自己跑的部分：请求怎么被拆开、抓取怎么自己续上、一次发布怎么换上 Java 服务。区域 `ap-northeast-1`。接口字段见 [api.md](api.md)。
 
-页面、聊天、直播、指数、数据、预测、动画不在下面这条 Java 发布里。那些是各自的函数或本机进程，改完要单独发。
+聊天、直播、指数、数据、预测、动画不在下面这条发布里。那些是各自的函数或本机进程，改完要单独发。页面 `web/` 和三个 Java 包在同一次推送里换上。
 
 ## 一条请求怎么走
 
@@ -114,7 +114,7 @@ CodeDeploy 按 `appspec.yml` 盖到 `/var/local/sport-crawl`，钩子以 root �
 
 | 改了什么 | 怎么上 |
 |---|---|
-| `web/index.html` | Lambda `sport-crawl-web` 的压缩包要带上 `index.mjs`。同时把页面放到 `3.112.56.84` 的站点目录 |
+| `web/` 页面和三个 Java 包 | 推 `main`。CodeBuild 更新 Lambda `sport-crawl-web`，`scripts/start.sh` 把 `site/web/` 拷进站点目录 |
 | `score-lambda`、`chat-lambda`、`detail-lambda` | 各自打 zip，更新对应函数。比分循环在新代码起来之后的下一轮自我调用里换上 |
 | 动画桥 | 改 `3.112.56.84` 上的 `anim-bridge`，CloudFront 仍指这台机器的 80 端口 |
 

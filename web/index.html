@@ -231,6 +231,16 @@
     color: #555;
     font-size: 12px;
   }
+  .dbbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+  .dbbar button { width: 32px; height: 32px; border: 0; border-radius: 8px; background: #fff; font-size: 20px; }
+  .dbbar b { font-size: 16px; }
+  .dbseasons { display: flex; gap: 8px; overflow: auto; margin-bottom: 12px; }
+  .dbseasons button { border: 0; border-radius: 14px; background: #fff; padding: 4px 10px; color: #889; white-space: nowrap; }
+  .dbseasons button.on { background: #e9fbf6; color: #14a37a; }
+  .dbtable { width: 100%; border-collapse: collapse; background: #fff; border-radius: 12px; overflow: hidden; }
+  .dbtable th, .dbtable td { padding: 8px 10px; border-bottom: 1px solid #f2f3f5; font-size: 13px; text-align: left; }
+  .dbtable th { color: #98a0aa; font-weight: 500; }
+  .dbteam { display: flex; align-items: center; gap: 8px; }
   .toast {
     position: fixed;
     left: 50%;
@@ -1254,6 +1264,8 @@
 <div id="player"></div>
 <script>
 const API = "https://dgtplaoir00la.cloudfront.net";
+const SPORTS_API = "https://sports-api.ued2sport.com";
+const DB_FOOTBALL = "sp749a61051d6ed1";
 const WEEK = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
 const state = {
   tab: "match",
@@ -1274,6 +1286,13 @@ const state = {
   liveLoaded: false,
   scoreById: new Map(),
   dbType: 1,
+  dbCatalog: null,
+  dbLoading: false,
+  dbError: "",
+  dbLeague: null,
+  dbSeasons: [],
+  dbEdition: "",
+  dbRows: null,
   detail: null,
   detailTab: "live",
   user: null,
@@ -2229,45 +2248,198 @@ function liveRow(match) {
   return tr;
 }
 
-function drawDb() {
-  const main = $("main");
-  main.textContent = "";
+async function sportsGet(path) {
+  const response = await fetch(SPORTS_API + path);
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(body.message || "资料库没有拿到");
+  return body.data;
+}
+function dbLabel(league) {
+  return league.short || String(league.name || "").replace(/^英格兰足球/, "").replace(/^英格兰/, "");
+}
+function dbLeagues() {
+  const rows = state.dbCatalog || [];
+  if (state.dbType === 2) return rows.filter((league) => league.sport === "篮球");
+  return rows.filter((league) => league.sport !== "篮球");
+}
+async function loadDb() {
+  if (state.dbLoading || state.dbCatalog) return;
+  state.dbLoading = true;
+  state.dbError = "";
+  try {
+    const query = (fame) => "/v1/competitions?lang=zh-hans&page_size=20&competition_sport_id=" + DB_FOOTBALL + "&competition_fame_level=" + fame;
+    const [famous, home] = await Promise.all([sportsGet(query(1)), sportsGet(query(3))]);
+    const comps = [...(famous || []), ...(home || [])];
+    const shorts = await Promise.all(comps.map(async (comp) => {
+      try {
+        const editions = await sportsGet("/v1/competition-editions?lang=zh-hans&page_size=1&competition_id=" + encodeURIComponent(comp.competition_id) + "&edition_sort=" + encodeURIComponent("-edition_sort_order"));
+        const edition = (editions || [])[0];
+        return edition && (edition.competition_short_name_zh || "");
+      } catch (error) {
+        return "";
+      }
+    }));
+    state.dbCatalog = comps.map((comp, index) => ({
+      id: comp.competition_id,
+      name: comp.competition_name_zh || comp.competition_name_en || "",
+      short: shorts[index] || "",
+      logo: comp.competition_logo_url || "",
+      sport: comp.competition_sport_name_zh || "足球",
+      kind: comp.competition_kind_name || "",
+      gender: comp.competition_gender_name || "",
+      fame: comp.competition_fame_level_code || 9,
+      tier: comp.competition_league_tier || 99
+    })).sort((a, b) => a.fame - b.fame || a.tier - b.tier || a.name.localeCompare(b.name, "zh"));
+  } catch (error) {
+    state.dbError = error.message || "资料库没有拿到";
+  } finally {
+    state.dbLoading = false;
+    if (state.tab === "db") drawDb();
+  }
+}
+async function openDbLeague(league) {
+  state.dbLeague = league;
+  state.dbSeasons = [];
+  state.dbEdition = "";
+  state.dbRows = null;
+  drawDb();
+  try {
+    const editions = await sportsGet("/v1/competition-editions?lang=zh-hans&page_size=100&competition_id=" + encodeURIComponent(league.id) + "&edition_sort=" + encodeURIComponent("-edition_sort_order"));
+    const seasons = (editions || []).filter((edition) => (edition.edition_standing_count || 0) > 0);
+    state.dbSeasons = seasons;
+    const current = seasons.find((edition) => edition.edition_status_name === "进行中") || seasons[0];
+    if (!current) {
+      state.dbRows = [];
+      drawDb();
+      return;
+    }
+    await openDbSeason(current.competition_edition_id);
+  } catch (error) {
+    state.dbRows = [];
+    state.dbError = error.message || "积分榜没有拿到";
+    drawDb();
+  }
+}
+async function openDbSeason(editionId) {
+  state.dbEdition = editionId;
+  state.dbRows = null;
+  drawDb();
+  try {
+    const edition = await sportsGet("/v1/competition-editions/" + encodeURIComponent(editionId) + "?lang=zh-hans&with_ranking=true");
+    const rows = (edition && edition.edition_rankings) || [];
+    rows.sort((a, b) => (a.rank || 999) - (b.rank || 999));
+    state.dbRows = rows;
+  } catch (error) {
+    state.dbRows = [];
+    state.dbError = error.message || "积分榜没有拿到";
+  }
+  if (state.tab === "db") drawDb();
+}
+function drawDbLeagueButton(league, className) {
+  const button = el("button", className);
+  button.append(logo(league.logo, dbLabel(league)), el("div", "", dbLabel(league)));
+  button.onclick = () => openDbLeague(league);
+  return button;
+}
+function drawDbHome(main) {
+  const hotLeagues = (state.dbCatalog || []).filter((league) => league.kind === "联赛" && league.gender === "男");
   main.append(el("div", "dbhead", "热门赛事"));
   const hot = el("div", "hotrow");
-  for (const league of state.leagues.slice(0, 14)) {
-    const button = el("button", "hot");
-    button.append(logo(league.logo, league.name_zh || league.name), el("div", "", league.name_zh || league.name));
-    button.onclick = () => selectLeague(league);
-    hot.append(button);
-  }
+  for (const league of hotLeagues) hot.append(drawDbLeagueButton(league, "hot"));
+  if (!hotLeagues.length) hot.append(el("div", "empty", "暂无热门赛事"));
   main.append(hot);
   main.append(el("div", "dbhead", "积分排名"));
   const ranks = el("div", "rankrow");
-  for (const label of ["FIFA排名", "热门足球", "热门篮球"]) {
+  const rankButtons = [
+    ["FIFA排名", () => { state.dbType = 1; state.dbLeague = { name: "FIFA排名", empty: "暂无 FIFA 排名" }; state.dbRows = []; state.dbSeasons = []; drawDb(); }],
+    ["热门足球", () => { state.dbLeague = null; state.dbType = 1; drawDb(); }],
+    ["热门篮球", () => { state.dbLeague = null; state.dbType = 2; drawDb(); }]
+  ];
+  for (const [label, action] of rankButtons) {
     const button = el("button", "rank", label);
-    button.onclick = () => toast("排名数据还没接入");
+    button.onclick = action;
     ranks.append(button);
   }
   main.append(ranks);
   const switcher = el("div", "switch");
   for (const [type, label] of [[1, "足球"], [2, "篮球"]]) {
     const button = el("button", state.dbType === type ? "on" : "", label);
-    button.onclick = () => { state.dbType = type; drawDb(); };
+    button.onclick = () => { state.dbType = type; state.dbLeague = null; drawDb(); };
     switcher.append(button);
   }
   main.append(switcher);
   const zones = el("div", "zones");
-  const current = el("button", "on", "全部");
-  zones.append(current);
+  zones.append(el("button", "on", "全部"));
   main.append(zones);
   const grid = el("div", "leaguegrid");
-  for (const league of state.leagues.filter((item) => item.type === state.dbType)) {
-    const button = document.createElement("button");
-    button.append(logo(league.logo, league.name_zh || league.name), el("div", "", league.name_zh || league.name));
-    button.onclick = () => selectLeague(league);
-    grid.append(button);
-  }
+  const leagues = dbLeagues();
+  if (!leagues.length) grid.append(el("div", "empty", state.dbType === 2 ? "暂无篮球赛事" : "暂无赛事"));
+  for (const league of leagues) grid.append(drawDbLeagueButton(league, ""));
   main.append(grid);
+}
+function drawDbTable(main) {
+  const league = state.dbLeague;
+  const bar = el("div", "dbbar");
+  const back = el("button", "", "‹");
+  back.onclick = () => { state.dbLeague = null; state.dbError = ""; drawDb(); };
+  bar.append(back, el("b", "", league.name || dbLabel(league)));
+  main.append(bar);
+  if (state.dbSeasons.length) {
+    const seasons = el("div", "dbseasons");
+    for (const season of state.dbSeasons) {
+      const button = el("button", season.competition_edition_id === state.dbEdition ? "on" : "", season.edition_season_label || season.competition_edition_name_zh || "");
+      button.onclick = () => openDbSeason(season.competition_edition_id);
+      seasons.append(button);
+    }
+    main.append(seasons);
+  }
+  if (state.dbRows == null) {
+    main.append(el("div", "empty", "正在读取积分榜"));
+    return;
+  }
+  if (!state.dbRows.length) {
+    main.append(el("div", "empty", league.empty || state.dbError || "暂无积分榜"));
+    return;
+  }
+  const table = document.createElement("table");
+  table.className = "dbtable";
+  const head = document.createElement("tr");
+  for (const label of ["排名", "球队", "赛", "胜/平/负", "进/失", "积分"]) {
+    head.append(el("th", "", label));
+  }
+  table.append(head);
+  for (const row of state.dbRows) {
+    const line = document.createElement("tr");
+    const team = el("td");
+    const face = el("div", "dbteam");
+    face.append(logo(row.team_logo_url, row.team_name_zh || row.team_name), document.createTextNode(row.team_name_zh || row.team_name || ""));
+    team.append(face);
+    line.append(
+      el("td", "", String(row.rank || "")),
+      team,
+      el("td", "", String(row.played ?? "")),
+      el("td", "", [row.won, row.drawn, row.lost].map((value) => value ?? 0).join("/")),
+      el("td", "", (row.score_for ?? "-") + "/" + (row.score_against ?? "-")),
+      el("td", "", String(row.points ?? ""))
+    );
+    table.append(line);
+  }
+  main.append(table);
+}
+function drawDb() {
+  const main = $("main");
+  main.textContent = "";
+  if (!state.dbCatalog && !state.dbError) {
+    main.append(el("div", "empty", "正在读取资料库"));
+    loadDb();
+    return;
+  }
+  if (state.dbError && !state.dbCatalog) {
+    main.append(el("div", "empty", state.dbError));
+    return;
+  }
+  if (state.dbLeague) drawDbTable(main);
+  else drawDbHome(main);
 }
 
 let listEpoch = 0;
