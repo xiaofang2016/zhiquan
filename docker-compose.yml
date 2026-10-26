@@ -20,6 +20,7 @@ services:
     environment:
       AWS_REGION: ap-northeast-1
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
+      SPORT_AUTH_TOKEN_SECRET: ${SPORT_AUTH_TOKEN_SECRET}
     mem_limit: 1g
     cpus: 0.5
     restart: unless-stopped
