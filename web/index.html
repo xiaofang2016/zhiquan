@@ -605,6 +605,24 @@
   .match-switch.small { width: 36px; height: 22px; }
   .match-switch.small i { width: 18px; height: 18px; }
   .match-switch.small.on i { left: 16px; }
+  button.match-row { font: inherit; color: inherit; background: transparent; cursor: pointer; }
+  .match-row em { margin-left: auto; color: #969799; font-style: normal; font-weight: 400; }
+  .sound-mask {
+    position: fixed; inset: 0; z-index: 80;
+    display: flex; align-items: flex-end; justify-content: center;
+    background: rgba(0, 0, 0, .35);
+  }
+  .sound-mask[hidden] { display: none; }
+  .sound-sheet {
+    width: min(440px, 100%); background: #fff;
+    border-radius: 16px 16px 0 0; padding: 8px 0 18px;
+  }
+  .sound-sheet button {
+    display: block; width: 100%; border: 0; background: #fff;
+    padding: 14px 0; font-size: 17px; color: #0f0f0f;
+  }
+  .sound-sheet button.on { color: #1989fa; }
+  .sound-sheet .avatar-gap { height: 5px; background: #f2f2f2; }
   .mine-user em { font-style: normal; }
   .mine-user i { color: #c8c8c8; font-style: normal; font-weight: 400; }
   .mine-user i[hidden] { display: none; }
@@ -865,9 +883,16 @@
     <b>比赛设置</b>
   </div>
   <div class="match-row strong"><span>进球提示</span><button class="match-switch" id="match-goal" type="button" role="switch" aria-checked="true"><i></i></button></div>
-  <div class="match-row"><span>主队声音</span></div>
-  <div class="match-row"><span>客队声音</span></div>
+  <button class="match-row" id="match-home" type="button"><span>主队声音</span><em id="match-home-sound">默认</em></button>
+  <button class="match-row" id="match-away" type="button"><span>客队声音</span><em id="match-away-sound">默认</em></button>
   <div class="match-row"><span>红牌声音</span><button class="match-switch small" id="match-red" type="button" role="switch" aria-checked="false"><i></i></button></div>
+</div>
+<div class="sound-mask" id="sound-mask" hidden>
+  <div class="sound-sheet" role="dialog" aria-label="选择声音">
+    <div id="sound-options"></div>
+    <div class="avatar-gap"></div>
+    <button type="button" id="sound-cancel">取消</button>
+  </div>
 </div>
 <div class="toast" id="toast"></div>
 <div class="dock" id="dock">
@@ -2012,10 +2037,29 @@ function applyScore(match) {
   return next;
 }
 let scoreCursor = 0;
+function scorePair(value) {
+  const matched = String(value == null ? "" : value).match(/(\d+)\s*[-:]\s*(\d+)/);
+  return matched ? [Number(matched[1]), Number(matched[2])] : null;
+}
+function hearScore(prev, match) {
+  if (!prev) return;
+  const before = scorePair(prev.score);
+  const after = scorePair(match.score != null && match.score !== "" ? match.score : prev.score);
+  if (before && after && matchFlag("SetUpCom-checked", true)) {
+    if (after[0] > before[0]) playMatchSound(soundChoice("home"));
+    if (after[1] > before[1]) playMatchSound(soundChoice("away"));
+  }
+  if (!matchFlag("SetUpCom-checkedRed", false)) return;
+  const homeRed = Number(match.hteam_red != null && match.hteam_red !== "" ? match.hteam_red : prev.hteam_red) || 0;
+  const awayRed = Number(match.ateam_red != null && match.ateam_red !== "" ? match.ateam_red : prev.ateam_red) || 0;
+  if (homeRed > (Number(prev.hteam_red) || 0)) playMatchSound(soundChoice("home"));
+  if (awayRed > (Number(prev.ateam_red) || 0)) playMatchSound(soundChoice("away"));
+}
 function rememberScores(rows) {
   for (const match of rows) {
     const id = Number(match.id);
     const prev = state.scoreById.get(id);
+    hearScore(prev, match);
     state.scoreById.set(id, prev ? { ...prev, ...match } : match);
   }
 }
@@ -2176,6 +2220,7 @@ function openMine() {
   $("account-card").classList.remove("show");
   $("login-page").hidden = true;
   $("jxt-page").hidden = true;
+  $("sound-mask").hidden = true;
   $("match-page").hidden = true;
   $("mine-page").hidden = false;
   paintAccount();
@@ -2472,6 +2517,79 @@ function matchFlag(key, fallback) {
   try { return JSON.parse(raw) === true; }
   catch (error) { return fallback; }
 }
+const MATCH_SOUNDS = [
+  ["mute", "静音"],
+  ["default", "默认"],
+  ["whistle", "哨子"],
+  ["drum", "鼓声"],
+  ["broadcast", "广播"],
+  ["horn", "号角"],
+  ["victory", "胜利"]
+];
+function soundChoice(side) {
+  const raw = localStorage.getItem(side === "away" ? "SetUpCom-awaySound" : "SetUpCom-homeSound");
+  return MATCH_SOUNDS.some((item) => item[0] === raw) ? raw : "default";
+}
+function soundLabel(key) {
+  const found = MATCH_SOUNDS.find((item) => item[0] === key);
+  return found ? found[1] : "默认";
+}
+let matchAudio = null;
+let soundBusy = false;
+let soundBlocked = false;
+const soundQueue = [];
+function playMatchSound(key) {
+  if (!key || key === "mute") return;
+  soundQueue.push(key);
+  drainSounds();
+}
+function drainSounds() {
+  if (soundBusy || soundBlocked || !soundQueue.length) return;
+  const key = soundQueue.shift();
+  const audio = matchAudio || (matchAudio = new Audio());
+  const next = () => { soundBusy = false; drainSounds(); };
+  audio.onended = next;
+  audio.onerror = next;
+  audio.src = API + "/prod-api/match/sound/" + key;
+  soundBusy = true;
+  audio.currentTime = 0;
+  const played = audio.play();
+  if (played && played.catch) played.catch(() => {
+    soundBusy = false;
+    soundQueue.unshift(key);
+    soundBlocked = true;
+  });
+}
+document.addEventListener("pointerdown", () => {
+  if (!soundBlocked) return;
+  soundBlocked = false;
+  drainSounds();
+}, true);
+let soundSide = "home";
+function openSound(side) {
+  soundSide = side;
+  const current = soundChoice(side);
+  const box = $("sound-options");
+  box.replaceChildren();
+  for (const [key, label] of MATCH_SOUNDS) {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.textContent = label;
+    if (key === current) button.className = "on";
+    button.onclick = () => chooseSound(key);
+    box.append(button);
+  }
+  $("sound-mask").hidden = false;
+}
+function closeSound() {
+  $("sound-mask").hidden = true;
+}
+function chooseSound(key) {
+  localStorage.setItem(soundSide === "away" ? "SetUpCom-awaySound" : "SetUpCom-homeSound", key);
+  closeSound();
+  paintMatch();
+  playMatchSound(key);
+}
 function paintMatch() {
   const goal = matchFlag("SetUpCom-checked", true);
   const red = matchFlag("SetUpCom-checkedRed", false);
@@ -2479,6 +2597,8 @@ function paintMatch() {
   $("match-goal").setAttribute("aria-checked", goal ? "true" : "false");
   $("match-red").classList.toggle("on", red);
   $("match-red").setAttribute("aria-checked", red ? "true" : "false");
+  $("match-home-sound").textContent = soundLabel(soundChoice("home"));
+  $("match-away-sound").textContent = soundLabel(soundChoice("away"));
 }
 function openMatch() {
   paintMatch();
@@ -2486,6 +2606,7 @@ function openMatch() {
   $("match-page").hidden = false;
 }
 function closeMatch() {
+  closeSound();
   $("match-page").hidden = true;
   openMine();
 }
@@ -2600,6 +2721,10 @@ async function boot() {
   $("match-back").onclick = closeMatch;
   $("match-goal").onclick = () => toggleMatch("SetUpCom-checked", true);
   $("match-red").onclick = () => toggleMatch("SetUpCom-checkedRed", false);
+  $("match-home").onclick = () => openSound("home");
+  $("match-away").onclick = () => openSound("away");
+  $("sound-cancel").onclick = closeSound;
+  $("sound-mask").onclick = (event) => { if (event.target === $("sound-mask")) closeSound(); };
   $("auth-switch").onclick = () => {
     state.authMode = state.authMode === "register" ? "login" : "register";
     paintAccount();
