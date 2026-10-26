@@ -586,6 +586,20 @@
     padding: 14px 0; font-size: 17px; color: #0f0f0f;
   }
   .avatar-pick-sheet .avatar-gap { height: 5px; background: #f2f2f2; }
+  .match-page { position: fixed; inset: 0; z-index: 50; background: #fff; overflow: auto; }
+  .match-page[hidden] { display: none; }
+  .match-bar { display: flex; align-items: center; height: 46px; border-bottom: 1px solid #f2f3f5; }
+  .match-bar button { width: 46px; height: 46px; border: 0; background: transparent; color: #333; font-size: 22px; }
+  .match-bar b { flex: 1; margin-right: 46px; text-align: center; font-size: 16px; font-weight: 600; }
+  .match-row { display: flex; align-items: center; justify-content: space-between; min-height: 52px; margin: 0 16px; border-bottom: 1px solid #ebedf0; font-size: 15px; color: #323233; }
+  .match-row.strong { font-weight: 600; }
+  .match-switch { position: relative; width: 44px; height: 26px; border: 0; border-radius: 13px; background: #dcdee0; padding: 0; }
+  .match-switch i { position: absolute; top: 2px; left: 2px; width: 22px; height: 22px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.16); }
+  .match-switch.on { background: #1989fa; }
+  .match-switch.on i { left: 20px; }
+  .match-switch.small { width: 36px; height: 22px; }
+  .match-switch.small i { width: 18px; height: 18px; }
+  .match-switch.small.on i { left: 16px; }
   .mine-user em { font-style: normal; }
   .mine-user i { color: #c8c8c8; font-style: normal; font-weight: 400; }
   .mine-user i[hidden] { display: none; }
@@ -841,6 +855,16 @@
     <input id="avatar-camera" type="file" accept="image/*" capture="environment" hidden>
     <input id="avatar-album" type="file" accept="image/*" hidden>
   </div>
+</div>
+<div class="match-page" id="match-page" hidden>
+  <div class="match-bar">
+    <button type="button" id="match-back" aria-label="返回">‹</button>
+    <b>比赛设置</b>
+  </div>
+  <div class="match-row strong"><span>进球提示</span><button class="match-switch" id="match-goal" type="button" role="switch" aria-checked="true"><i></i></button></div>
+  <div class="match-row"><span>主队声音</span></div>
+  <div class="match-row"><span>客队声音</span></div>
+  <div class="match-row"><span>红牌声音</span><button class="match-switch small" id="match-red" type="button" role="switch" aria-checked="false"><i></i></button></div>
 </div>
 <div class="toast" id="toast"></div>
 <div class="dock" id="dock">
@@ -2148,6 +2172,7 @@ function openMine() {
   $("account-card").classList.remove("show");
   $("login-page").hidden = true;
   $("jxt-page").hidden = true;
+  $("match-page").hidden = true;
   $("mine-page").hidden = false;
   paintAccount();
   loadJxt();
@@ -2175,6 +2200,10 @@ function onMineClick(event) {
   if (action === "avatar") {
     if (!state.user) { toast("未登录，请登录后使用！"); return; }
     openAvatar();
+    return;
+  }
+  if (action === "match") {
+    openMatch();
     return;
   }
   if (action === "jxt-bind" || action === "jxt-withdraw" || action === "ued-bind" || action === "ued-withdraw") {
@@ -2390,6 +2419,33 @@ function takeAvatar(input) {
   };
   image.src = url;
 }
+function matchFlag(key, fallback) {
+  const raw = localStorage.getItem(key);
+  if (raw === null) return fallback;
+  try { return JSON.parse(raw) === true; }
+  catch (error) { return fallback; }
+}
+function paintMatch() {
+  const goal = matchFlag("SetUpCom-checked", true);
+  const red = matchFlag("SetUpCom-checkedRed", false);
+  $("match-goal").classList.toggle("on", goal);
+  $("match-goal").setAttribute("aria-checked", goal ? "true" : "false");
+  $("match-red").classList.toggle("on", red);
+  $("match-red").setAttribute("aria-checked", red ? "true" : "false");
+}
+function openMatch() {
+  paintMatch();
+  $("mine-page").hidden = true;
+  $("match-page").hidden = false;
+}
+function closeMatch() {
+  $("match-page").hidden = true;
+  openMine();
+}
+function toggleMatch(key, fallback) {
+  localStorage.setItem(key, JSON.stringify(!matchFlag(key, fallback)));
+  paintMatch();
+}
 async function saveAvatar() {
   if (!state.user || !state.avatarPreview) return;
   $("avatar-save").disabled = true;
@@ -2504,6 +2560,9 @@ async function boot() {
   $("avatar-pick").onclick = (event) => { if (event.target === $("avatar-pick")) closeAvatarPicker(); };
   $("avatar-camera").onchange = (event) => takeAvatar(event.target);
   $("avatar-album").onchange = (event) => takeAvatar(event.target);
+  $("match-back").onclick = closeMatch;
+  $("match-goal").onclick = () => toggleMatch("SetUpCom-checked", true);
+  $("match-red").onclick = () => toggleMatch("SetUpCom-checkedRed", false);
   $("auth-switch").onclick = () => {
     state.authMode = state.authMode === "register" ? "login" : "register";
     paintAccount();
