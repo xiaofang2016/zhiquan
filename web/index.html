@@ -231,6 +231,9 @@
     color: #555;
     font-size: 12px;
   }
+  .dbpager { display: flex; justify-content: center; align-items: center; gap: 12px; margin: 8px 0 16px; color: #667; }
+  .dbpager button { border: 0; background: #fff; border-radius: 14px; padding: 4px 12px; color: #667; }
+  .dbpager button:disabled { opacity: .4; }
   .dbbar { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
   .dbbar button { width: 32px; height: 32px; border: 0; border-radius: 8px; background: #fff; font-size: 20px; }
   .dbbar b { font-size: 16px; }
@@ -1272,7 +1275,7 @@
 <script>
 const API = "https://dgtplaoir00la.cloudfront.net";
 const SPORTS_API = "https://sports-api.ued2sport.com";
-const DB_FOOTBALL = "sp749a61051d6ed1";
+const DB_PAGE_SIZE = 20;
 const WEEK = ["星期日","星期一","星期二","星期三","星期四","星期五","星期六"];
 const state = {
   tab: "match",
@@ -1293,6 +1296,7 @@ const state = {
   liveLoaded: false,
   scoreById: new Map(),
   dbType: 1,
+  dbPage: 1,
   dbCatalog: null,
   dbLoading: false,
   dbError: "",
@@ -2318,6 +2322,41 @@ async function sportsGet(path) {
   if (!response.ok) throw new Error(body.message || "资料库没有拿到");
   return body.data;
 }
+async function sportsList(path) {
+  const rows = [];
+  let page = 1;
+  let total = Infinity;
+  while (rows.length < total && page <= 30) {
+    const query = new URLSearchParams({ lang: "zh-hans", page: String(page), page_size: "1000" });
+    const response = await fetch(SPORTS_API + path + "?" + query);
+    const body = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error(body.message || "资料库没有拿到");
+    const batch = body.data || [];
+    if (body.meta && body.meta.total != null) total = body.meta.total;
+    rows.push(...batch);
+    if (batch.length < 1000) break;
+    page += 1;
+  }
+  return rows;
+}
+function editionScores(editions) {
+  const scores = new Map();
+  for (const edition of editions) {
+    const id = edition.competition_id;
+    if (!id) continue;
+    const row = scores.get(id) || { standings: 0, editions: 0, short: "", best: -1 };
+    const standings = edition.edition_standing_count || 0;
+    row.standings += standings;
+    row.editions += 1;
+    const short = edition.competition_short_name_zh || "";
+    if (short && standings >= row.best) {
+      row.short = short;
+      row.best = standings;
+    }
+    scores.set(id, row);
+  }
+  return scores;
+}
 function dbLabel(league) {
   return league.short || String(league.name || "").replace(/^英格兰足球/, "").replace(/^英格兰/, "");
 }
@@ -2326,32 +2365,40 @@ function dbLeagues() {
   if (state.dbType === 2) return rows.filter((league) => league.sport === "篮球");
   return rows.filter((league) => league.sport !== "篮球");
 }
+function dbPageWindow() {
+  const leagues = dbLeagues();
+  const pages = Math.max(1, Math.ceil(leagues.length / DB_PAGE_SIZE));
+  const page = Math.min(Math.max(state.dbPage || 1, 1), pages);
+  const start = (page - 1) * DB_PAGE_SIZE;
+  return { leagues: leagues.slice(start, start + DB_PAGE_SIZE), page, pages, total: leagues.length };
+}
 async function loadDb() {
   if (state.dbLoading || state.dbCatalog) return;
   state.dbLoading = true;
   state.dbError = "";
   try {
-    const comps = await sportsGet("/v1/competitions?lang=zh-hans&page_size=20&competition_sport_id=" + DB_FOOTBALL + "&competition_fame_level=1") || [];
-    const shorts = await Promise.all(comps.map(async (comp) => {
-      try {
-        const editions = await sportsGet("/v1/competition-editions?lang=zh-hans&page_size=1&competition_id=" + encodeURIComponent(comp.competition_id) + "&edition_sort=" + encodeURIComponent("-edition_sort_order"));
-        const edition = (editions || [])[0];
-        return edition && (edition.competition_short_name_zh || "");
-      } catch (error) {
-        return "";
-      }
-    }));
-    state.dbCatalog = comps.map((comp, index) => ({
-      id: comp.competition_id,
-      name: comp.competition_name_zh || comp.competition_name_en || "",
-      short: shorts[index] || "",
-      logo: comp.competition_logo_url || "",
-      sport: comp.competition_sport_name_zh || "足球",
-      kind: comp.competition_kind_name || "",
-      gender: comp.competition_gender_name || "",
-      fame: comp.competition_fame_level_code || 9,
-      tier: comp.competition_league_tier || 99
-    })).sort((a, b) => a.fame - b.fame || a.tier - b.tier || a.name.localeCompare(b.name, "zh"));
+    const [comps, editions] = await Promise.all([
+      sportsList("/v1/competitions"),
+      sportsList("/v1/competition-editions")
+    ]);
+    const scores = editionScores(editions);
+    state.dbPage = 1;
+    state.dbCatalog = comps.map((comp) => {
+      const score = scores.get(comp.competition_id) || { standings: 0, editions: 0, short: "" };
+      return {
+        id: comp.competition_id,
+        name: comp.competition_name_zh || comp.competition_name_en || "",
+        short: score.short || "",
+        logo: comp.competition_logo_url || "",
+        sport: comp.competition_sport_name_zh || "足球",
+        kind: comp.competition_kind_name || "",
+        gender: comp.competition_gender_name || "",
+        fame: comp.competition_fame_level_code || 9,
+        tier: comp.competition_league_tier || 99,
+        standings: score.standings,
+        editions: score.editions
+      };
+    }).sort((a, b) => b.standings - a.standings || b.editions - a.editions || a.fame - b.fame || a.name.localeCompare(b.name, "zh"));
   } catch (error) {
     state.dbError = error.message || "资料库没有拿到";
   } finally {
@@ -2404,7 +2451,7 @@ function drawDbLeagueButton(league, className) {
   return button;
 }
 function drawDbHome(main) {
-  const hotLeagues = (state.dbCatalog || []).filter((league) => league.kind === "联赛" && league.gender === "男");
+  const hotLeagues = dbLeagues().filter((league) => league.kind === "联赛" && league.gender === "男" && league.editions > 0).slice(0, DB_PAGE_SIZE);
   main.append(el("div", "dbhead", "热门赛事"));
   const hot = el("div", "hotrow");
   for (const league of hotLeagues) hot.append(drawDbLeagueButton(league, "hot"));
@@ -2414,8 +2461,8 @@ function drawDbHome(main) {
   const ranks = el("div", "rankrow");
   const rankButtons = [
     ["FIFA排名", () => { state.dbType = 1; state.dbLeague = { name: "FIFA排名", empty: "暂无 FIFA 排名" }; state.dbRows = []; state.dbSeasons = []; drawDb(); }],
-    ["热门足球", () => { state.dbLeague = null; state.dbType = 1; drawDb(); }],
-    ["热门篮球", () => { state.dbLeague = null; state.dbType = 2; drawDb(); }]
+    ["热门足球", () => { state.dbLeague = null; state.dbType = 1; state.dbPage = 1; drawDb(); }],
+    ["热门篮球", () => { state.dbLeague = null; state.dbType = 2; state.dbPage = 1; drawDb(); }]
   ];
   for (const [label, action] of rankButtons) {
     const button = el("button", "rank", label);
@@ -2426,7 +2473,7 @@ function drawDbHome(main) {
   const switcher = el("div", "switch");
   for (const [type, label] of [[1, "足球"], [2, "篮球"]]) {
     const button = el("button", state.dbType === type ? "on" : "", label);
-    button.onclick = () => { state.dbType = type; state.dbLeague = null; drawDb(); };
+    button.onclick = () => { state.dbType = type; state.dbLeague = null; state.dbPage = 1; drawDb(); };
     switcher.append(button);
   }
   main.append(switcher);
@@ -2434,10 +2481,21 @@ function drawDbHome(main) {
   zones.append(el("button", "on", "全部"));
   main.append(zones);
   const grid = el("div", "leaguegrid");
-  const leagues = dbLeagues();
-  if (!leagues.length) grid.append(el("div", "empty", state.dbType === 2 ? "暂无篮球赛事" : "暂无赛事"));
-  for (const league of leagues) grid.append(drawDbLeagueButton(league, ""));
+  const windowed = dbPageWindow();
+  if (!windowed.total) grid.append(el("div", "empty", state.dbType === 2 ? "暂无篮球赛事" : "暂无赛事"));
+  for (const league of windowed.leagues) grid.append(drawDbLeagueButton(league, ""));
   main.append(grid);
+  if (windowed.pages > 1) {
+    const pager = el("div", "dbpager");
+    const prev = el("button", "", "上一页");
+    prev.disabled = windowed.page <= 1;
+    prev.onclick = () => { state.dbPage = windowed.page - 1; drawDb(); };
+    const next = el("button", "", "下一页");
+    next.disabled = windowed.page >= windowed.pages;
+    next.onclick = () => { state.dbPage = windowed.page + 1; drawDb(); };
+    pager.append(prev, el("span", "", windowed.page + " / " + windowed.pages), next);
+    main.append(pager);
+  }
 }
 function drawDbTable(main) {
   const league = state.dbLeague;
