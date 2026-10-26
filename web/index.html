@@ -241,7 +241,7 @@
     border-radius: 8px;
     padding: 8px 14px;
     display: none;
-    z-index: 50;
+    z-index: 90;
   }
   .dock {
     position: fixed;
@@ -623,7 +623,12 @@
   }
   .sound-sheet button.on { color: #1989fa; }
   .sound-sheet .avatar-gap { height: 5px; background: #f2f2f2; }
-  .sub-page { position: fixed; inset: 0; z-index: 50; background: #f7f8fa; overflow: auto; }
+  .sub-page {
+    position: fixed; top: 0; bottom: 0; left: 50%;
+    width: min(440px, 100%);
+    transform: translateX(-50%);
+    z-index: 50; background: #f7f8fa; overflow: auto;
+  }
   .sub-page[hidden] { display: none; }
   .match-page.sub-page { background: #fff; }
   .match-bar.with-side b { margin-right: 0; }
@@ -683,6 +688,69 @@
   .share-card b { font-size: 20px; }
   .share-card p { color: #646566; font-size: 14px; word-break: break-all; }
   .share-card button { width: 100%; height: 40px; border: 0; border-radius: 20px; background: #27c5c3; color: #fff; }
+  .task-bar { border: 0; color: #fff; background: linear-gradient(100deg, #19abf5, #72fa8e); }
+  .task-bar button, .task-bar b { color: #fff; }
+  .task-user { display: flex; align-items: center; gap: 10px; margin: 12px; padding: 14px 12px; background: #fff; border-radius: 12px; }
+  .task-user .mine-avatar { flex: none; }
+  .task-user p { margin: 0; color: #323233; font-size: 14px; }
+  .task-user .sub { margin-top: 4px; color: #969799; font-size: 12px; }
+  .task-pill { margin-left: auto; padding: 4px 10px; border-radius: 12px; color: #fff; font-size: 13px; background: linear-gradient(90deg, #7fd8cf, #3ecfc6); }
+  .task-block { margin: 0 12px 12px; padding: 12px; background: #fff; border-radius: 12px; }
+  .task-block h3 { margin: 0 0 10px; color: #323233; font-size: 15px; font-weight: 600; }
+  .sign-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
+  .sign-item { border: 0; border-radius: 8px; background: #f7f8fa; padding: 8px 2px; color: #969799; font-size: 12px; }
+  .sign-item.on { background: #e8f8f6; color: #27c5c3; }
+  .sign-item .coin { width: 18px; height: 18px; margin: 4px auto; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #b8fff8, #2ec8c4); }
+  .sign-item.wide { grid-column: span 2; display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; text-align: left; }
+  .sign-item.wide .coin { width: 28px; height: 28px; margin: 0; }
+  .task-invite { display: block; width: calc(100% - 24px); margin: 0 12px 12px; padding: 0; border: 0; background: transparent; }
+  .task-invite img { display: block; width: 100%; border-radius: 12px; }
+  .watch-head, .mission-row { display: flex; align-items: center; gap: 8px; }
+  .watch-head h3, .mission-row dl { flex: 1; margin: 0; }
+  .watch-claim { border: 0; background: transparent; color: #ee0a24; font-size: 13px; }
+  .watch-track { position: relative; display: grid; grid-template-columns: repeat(3, 1fr); margin-top: 14px; text-align: center; font-size: 12px; color: #646566; }
+  .watch-track b { display: block; font-weight: 500; }
+  .watch-track i { position: relative; z-index: 1; display: block; width: 8px; height: 8px; margin: 8px auto; border-radius: 50%; background: #dcdfe6; }
+  .watch-track::before { content: ""; position: absolute; left: 16%; right: 16%; top: 30px; height: 2px; background: #eee; }
+  .mission-row { padding: 10px 0; }
+  .mission-row dt { font-size: 14px; }
+  .mission-row dd { margin: 3px 0 0; color: #969799; font-size: 12px; }
+  .mission-ico { width: 28px; height: 28px; border-radius: 8px; background: #e8f8f6 center / 16px no-repeat; flex: none; }
+  .mission-btn { border: 0; border-radius: 14px; background: #27c5c3; color: #fff; padding: 6px 12px; font-size: 12px; }
+  .mission-btn.off { background: #f2f3f5; color: #c8c9cc; }
+  .invite-page { background: #e7f8f4; }
+  .invite-tip { margin: 18px 0 8px; text-align: center; color: #e6a23c; font-size: 16px; font-weight: 600; }
+  .invite-card { width: 210px; margin: 0 auto; padding: 10px 10px 14px; border-radius: 16px; background: linear-gradient(180deg, #7ee0d6, #3ec6be); }
+  .invite-face { border-radius: 12px 12px 18px 18px; background: #fff8ee; text-align: center; padding: 16px 8px 12px; color: #e6a23c; }
+  .invite-face span { display: block; font-size: 12px; }
+  .invite-face b { display: block; font-size: 42px; line-height: 1.1; font-weight: 500; }
+  .invite-card button { display: block; width: 78%; margin: -12px auto 0; height: 32px; border: 0; border-radius: 16px; color: #fff; background: linear-gradient(90deg, #ffc56a, #ff9a3c); }
+  .invite-stats { display: flex; width: 250px; margin: 16px auto; padding: 12px 0; background: #fff; border-radius: 12px; text-align: center; }
+  .invite-stats div { flex: 1; }
+  .invite-stats b { display: block; color: #3ec6be; font-size: 16px; }
+  .invite-stats span { color: #969799; font-size: 12px; }
+  .poster-page { background: #fff; }
+  .poster-page .match-bar { position: sticky; top: 0; z-index: 1; background: #fff; }
+  .poster { position: relative; }
+  .poster > img { display: block; width: 100%; }
+  .poster-copy { position: absolute; inset: 0; text-align: center; }
+  .promo-copy .poster-title { position: absolute; top: 7%; left: 0; right: 0; color: #fff; font-size: 32px; letter-spacing: 2px; text-shadow: 0 2px 0 rgba(0,0,0,.08); }
+  .promo-copy .poster-logo { position: absolute; top: 31%; left: 50%; width: 46%; transform: translateX(-50%); }
+  .promo-copy .poster-flow { position: absolute; top: 45.5%; left: 0; right: 0; color: #fff; font-size: 26px; font-weight: 700; }
+  .promo-copy .poster-ad { position: absolute; top: 53.5%; left: 0; right: 0; color: #4eb7ff; font-size: 22px; font-weight: 700; }
+  .promo-copy .poster-note { position: absolute; top: 59%; left: 8%; right: 8%; margin: 0; color: #999; font-size: 13px; }
+  .promo-copy .poster-link { position: absolute; top: 63%; left: 0; right: 0; color: #4eb7ff; font-size: 16px; font-weight: 600; }
+  .promo-copy .poster-qr { position: absolute; top: 68%; left: 50%; width: 28%; transform: translateX(-50%); background: #fff; }
+  .promo-copy .poster-foot, .promo-copy .poster-id { position: absolute; left: 0; right: 0; margin: 0; color: #333; font-size: 14px; font-weight: 600; }
+  .promo-copy .poster-foot { top: 89%; }
+  .promo-copy .poster-id { top: 93%; }
+  .agent-copy b { position: absolute; left: 0; right: 0; color: #fff; font-size: 32px; font-weight: 900; font-style: italic; }
+  .agent-copy .a1 { top: 52%; }
+  .agent-copy .a2 { top: 59%; }
+  .agent-copy .poster-note { position: absolute; top: 68%; left: 8%; right: 8%; margin: 0; color: #c8c9cc; font-size: 13px; }
+  .agent-copy .poster-link { position: absolute; top: 72%; left: 0; right: 0; color: #4eb7ff; font-size: 16px; font-weight: 600; }
+  .agent-copy .poster-qr { position: absolute; top: 77%; left: 50%; width: 28%; transform: translateX(-50%); background: #fff; }
+  .share-sheet b { display: block; padding: 12px 0 4px; text-align: center; font-size: 16px; }
   .mine-user em { font-style: normal; }
   .mine-user i { color: #c8c8c8; font-style: normal; font-weight: 400; }
   .mine-user i[hidden] { display: none; }
@@ -871,7 +939,7 @@
       <div class="mine-welfare">
         <button type="button" data-mine="mission" data-login="1"><img alt="" src="https://live.qiandongslim.com/static/img/welfare_task_center.9ed4a01f.png">任务中心</button>
         <button type="button" data-mine="invite" data-login="1"><img alt="" src="https://live.qiandongslim.com/static/img/welfare_invite_yinlang.f1221949.png">邀新领音浪</button>
-        <button type="button" data-mine="yinlang" data-login="1"><img alt="" src="https://live.qiandongslim.com/static/img/welfare_yinlang.44f44f50.png">0音浪</button>
+        <button type="button" data-mine="yinlang" data-login="1"><img alt="" src="https://live.qiandongslim.com/static/img/welfare_yinlang.44f44f50.png"><span id="yinlang-count">0音浪</span></button>
         <button type="button" data-mine="promo"><img alt="" src="https://live.qiandongslim.com/static/img/welfare_cooperation.2d9d7bb8.png">推广合作</button>
         <button type="button" data-mine="agent"><img alt="" src="https://live.qiandongslim.com/static/img/welfare_agent_recruit.8881610d.png">代理招募</button>
       </div>
@@ -957,6 +1025,7 @@
 <div class="sub-page" id="order-page" hidden>
   <div class="match-bar"><button type="button" id="order-back" aria-label="返回">‹</button><b>音浪明细</b></div>
   <div class="yin-card"><b id="yin-balance">0</b><span>我的音浪</span></div>
+  <div id="yin-list"></div>
   <p class="sub-empty" id="yin-empty">没有更多了</p>
 </div>
 <div class="sub-page" id="level-page" hidden>
@@ -964,12 +1033,12 @@
   <div class="level-head"><i></i><span id="level-name">未登录</span></div>
   <div class="level-badge">
     <svg width="54" height="54" viewBox="0 0 54 54" aria-hidden="true"><path d="M27 4l16 10v16L27 50 11 30V14z" fill="#d9dde3"/><path d="M27 14l8 5v8l-8 10-8-10v-8z" fill="#9aa3ad"/></svg>
-    球迷Lv.1
+    <span id="level-title">球迷Lv.1</span>
   </div>
   <div class="level-track">
-    <div class="cap"><span>用户等级<br>球迷Lv.1</span><span>注：1音浪=1球技</span></div>
+    <div class="cap"><span>用户等级<br><span id="level-rank">球迷Lv.1</span></span><span>注：1音浪=1球技</span></div>
     <div class="level-bar"><i id="level-fill"></i></div>
-    <div class="cap"><span>0</span><span class="need">差 100球技 升至Lv.2</span><span>100</span></div>
+    <div class="cap"><span id="level-left">0</span><span class="need" id="level-need">差 100球技 升至Lv.2</span><span id="level-right">100</span></div>
   </div>
 </div>
 <div class="sub-page" id="level-rule-page" hidden>
@@ -1029,8 +1098,77 @@
   </div>
 </div>
 <div class="sub-page" id="task-page" hidden>
-  <div class="match-bar"><button type="button" id="task-back" aria-label="返回">‹</button><b>任务中心</b></div>
-  <p class="sub-empty">暂无任务</p>
+  <div class="match-bar task-bar with-side"><button type="button" id="task-back" aria-label="返回">‹</button><b>任务中心</b><button class="side" id="task-detail" type="button">音浪明细</button></div>
+  <div class="task-user">
+    <span class="mine-avatar" id="task-avatar"></span>
+    <div>
+      <p>已连续签到 <span id="task-days">0</span>天</p>
+      <p class="sub" id="task-today">今日签到可获得音浪</p>
+    </div>
+    <span class="task-pill" id="task-balance">0</span>
+  </div>
+  <section class="task-block">
+    <h3>连续签到领好礼</h3>
+    <div class="sign-grid" id="sign-grid"></div>
+  </section>
+  <button class="task-invite" id="task-invite" type="button"><img alt="邀好友 赚音浪" src="https://live.qiandongslim.com/static/img/invite_img.cefe6526.png"></button>
+  <section class="task-block">
+    <div class="watch-head"><h3>每日观看直播时长</h3><button class="watch-claim" id="task-watch" type="button">一键领取</button></div>
+    <div class="watch-track">
+      <div><b>10音浪</b><i></i><span>5分钟</span></div>
+      <div><b>50音浪</b><i></i><span>30分钟</span></div>
+      <div><b>100音浪</b><i></i><span>60分钟</span></div>
+    </div>
+  </section>
+  <section class="task-block">
+    <h3>新手任务</h3>
+    <div class="mission-row"><i class="mission-ico"></i><dl><dt>首次注册成功</dt><dd>音浪+200</dd></dl><button class="mission-btn" id="task-reg" type="button">立即领取</button></div>
+    <div class="mission-row"><i class="mission-ico"></i><dl><dt>连续登录( <span id="task-login-count">0</span>/3)</dt><dd>音浪+300</dd></dl><button class="mission-btn" id="task-login" type="button">立即领取</button></div>
+  </section>
+  <section class="task-block">
+    <h3>日常任务</h3>
+    <div class="mission-row"><i class="mission-ico"></i><dl><dt>分享直播间一次( 0/3)</dt><dd>音浪+50</dd></dl><button class="mission-btn" id="task-share" type="button">去分享</button></div>
+    <div class="mission-row"><i class="mission-ico"></i><dl><dt>邀请好友一起看球( 0/3)</dt><dd>音浪+500</dd></dl><button class="mission-btn" id="task-go-invite" type="button">去分享</button></div>
+  </section>
+</div>
+<div class="sub-page invite-page" id="invite-page" hidden>
+  <div class="match-bar"><button type="button" id="invite-back" aria-label="返回">‹</button><b>我的邀请</b></div>
+  <p class="invite-tip">邀好友观看直播 领音浪</p>
+  <div class="invite-card">
+    <div class="invite-face"><span>音浪</span><b id="invite-balance">0</b></div>
+    <button type="button" id="invite-now">立即邀请</button>
+  </div>
+  <div class="invite-stats"><div><b>0人</b><span>累计邀请</span></div><div><b>500音浪</b><span>邀请奖励</span></div></div>
+</div>
+<div class="sub-page poster-page" id="promo-page" hidden>
+  <div class="match-bar"><button type="button" id="promo-back" aria-label="返回">‹</button><b>推广合作</b></div>
+  <div class="poster">
+    <img src="promo-poster.jpg" alt="">
+    <div class="poster-copy promo-copy">
+      <b class="poster-title">尽在说球帝</b>
+      <img class="poster-logo" alt="说球帝" src="https://live.qiandongslim.com/static/img/logo.12360f74.png">
+      <div class="poster-flow">大量收流量</div>
+      <div class="poster-ad">广告勿扰</div>
+      <p class="poster-note">安全加密聊天，和重要的人畅聊重要的事</p>
+      <div class="poster-link">https://ya.cn</div>
+      <img class="poster-qr" alt="" src="recruit-qr.jpg">
+      <p class="poster-foot">扫码下载丝瓜添加账号dty888加我好友</p>
+      <p class="poster-id">Bat ID:dty888</p>
+    </div>
+  </div>
+</div>
+<div class="sub-page poster-page" id="agent-page" hidden>
+  <div class="match-bar"><button type="button" id="agent-back" aria-label="返回">‹</button><b>代理招募</b></div>
+  <div class="poster">
+    <img src="agent-poster.jpg" alt="">
+    <div class="poster-copy agent-copy">
+      <b class="a1">平台实力代理</b>
+      <b class="a2">合作加盟中</b>
+      <p class="poster-note">安全加密聊天，和重要的人畅聊重要的事</p>
+      <div class="poster-link">https://ya.cn</div>
+      <img class="poster-qr" alt="" src="recruit-qr.jpg">
+    </div>
+  </div>
 </div>
 <div class="sub-page" id="rank-page" hidden>
   <div class="match-bar"><button type="button" id="rank-back" aria-label="返回">‹</button><b>预测收益榜</b></div>
@@ -1051,6 +1189,14 @@
     <p>把网页版发给好友一起看比赛</p>
     <p id="share-link">https://www.kzbzcq.com</p>
     <button type="button" id="share-copy">复制链接</button>
+  </div>
+</div>
+<div class="sound-mask" id="share-mask" hidden>
+  <div class="sound-sheet share-sheet" role="dialog" aria-label="分享">
+    <b>分享</b>
+    <div id="share-options"></div>
+    <div class="avatar-gap"></div>
+    <button type="button" id="share-cancel">取消</button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -1107,7 +1253,8 @@ const state = {
   ued: null,
   bindBrand: "jxt",
   avatarPreview: "",
-  avatarReady: false
+  avatarReady: false,
+  mission: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -2354,6 +2501,7 @@ function paintAccount() {
   $("mine-arrow").hidden = !user;
   $("mine-logout").hidden = !user;
   paintAvatar();
+  refreshMission();
   const register = state.authMode === "register";
   $("auth-code-row").hidden = !register;
   $("auth-confirm-row").hidden = !register;
@@ -2380,6 +2528,7 @@ function openMine() {
   $("login-page").hidden = true;
   $("jxt-page").hidden = true;
   $("sound-mask").hidden = true;
+  $("share-mask").hidden = true;
   for (const page of document.querySelectorAll(".sub-page")) page.hidden = true;
   $("mine-page").hidden = false;
   paintAccount();
@@ -2429,6 +2578,10 @@ function onMineClick(event) {
   if (action === "forecast") { openForecast(); return; }
   if (action === "feedback") { openFeedback(); return; }
   if (action === "share") { openShare(); return; }
+  if (action === "mission" || action === "yinlang") { openTask("mine"); return; }
+  if (action === "invite") { openInvite("mine"); return; }
+  if (action === "promo") { showSub("promo-page"); return; }
+  if (action === "agent") { showSub("agent-page"); return; }
   toast("暂未开放");
 }
 function paintJxt(info) {
@@ -2770,16 +2923,207 @@ function showSub(id) {
   $("mine-page").hidden = true;
   $("jxt-page").hidden = true;
   $("sound-mask").hidden = true;
+  $("share-mask").hidden = true;
   for (const page of document.querySelectorAll(".sub-page")) page.hidden = true;
   $(id).hidden = false;
 }
-function openOrder() {
-  $("yin-balance").textContent = "0";
-  showSub("order-page");
+const SIGN_REWARDS = [30, 50, 70, 90, 110, 130, 150];
+const SIGN_NAMES = ["第一天", "第二天", "第三天", "第四天", "第五天", "第六天", "第七天"];
+const SHARE_CHANNELS = ["微信", "朋友圈", "QQ", "QQ空间", "微博", "复制链接"];
+let taskFrom = "mine";
+let orderFrom = "mine";
+let inviteFrom = "mine";
+function blankMission() {
+  return { balance: 0, signDay: 0, signed: false, gotReg: false, gotLogin: false, records: [] };
 }
-function openLevel() {
+function normalizeMission(data) {
+  const blank = blankMission();
+  if (!data || typeof data !== "object") return blank;
+  return {
+    balance: Number(data.balance) || 0,
+    signDay: Number(data.signDay) || 0,
+    signed: !!data.signed,
+    gotReg: !!data.gotReg,
+    gotLogin: !!data.gotLogin,
+    records: Array.isArray(data.records) ? data.records : []
+  };
+}
+async function refreshMission() {
+  if (!state.user || !state.user.token) {
+    state.mission = blankMission();
+    paintYinlang();
+    return state.mission;
+  }
+  try {
+    state.mission = normalizeMission(await postAccount("/prod-api/user/mission", { token: state.user.token }));
+  } catch (error) {
+    state.mission = state.mission || blankMission();
+  }
+  paintYinlang();
+  return state.mission;
+}
+function paintYinlang() {
+  const balance = state.user && state.mission ? state.mission.balance : 0;
+  $("yinlang-count").textContent = balance + "音浪";
+}
+function missionData() {
+  return state.mission || blankMission();
+}
+function paintOrder() {
+  const data = missionData();
+  $("yin-balance").textContent = String(data.balance);
+  const list = $("yin-list");
+  list.replaceChildren();
+  data.records.forEach((row) => {
+    const line = el("div", "yin-row");
+    const left = el("div");
+    left.append(el("b", "", row.title), el("p", "", row.time));
+    line.append(left, el("em", "", "+" + row.amount));
+    list.append(line);
+  });
+}
+async function openOrder(from) {
+  orderFrom = from || "mine";
+  showSub("order-page");
+  await refreshMission();
+  paintOrder();
+}
+function closeOrder() {
+  if (orderFrom === "task") openTask(taskFrom);
+  else if (orderFrom === "forecast") openForecast();
+  else openMine();
+}
+function paintLevel() {
+  const skill = state.user ? missionData().balance : 0;
+  const left = skill < 100 ? 0 : Math.floor(skill / 100) * 100;
+  const right = left + 100;
+  const level = skill < 100 ? 1 : Math.floor(skill / 100);
+  const title = "球迷Lv." + level;
+  $("level-title").textContent = title;
+  $("level-rank").textContent = title;
+  $("level-left").textContent = String(left);
+  $("level-right").textContent = String(right);
+  $("level-need").textContent = "差 " + (right - skill) + "球技 升至Lv." + (level + 1);
+  $("level-fill").style.width = ((skill - left) / (right - left) * 100) + "%";
+}
+async function openLevel() {
   $("level-name").textContent = state.user ? (state.user.nickname || state.user.phone || "已登录") : "未登录";
   showSub("level-page");
+  await refreshMission();
+  paintLevel();
+}
+function paintTaskAvatar() {
+  const box = $("task-avatar");
+  box.replaceChildren();
+  const saved = state.user && state.user.avatar;
+  if (saved) {
+    const img = document.createElement("img");
+    img.alt = "";
+    img.src = avatarSrc(saved);
+    box.append(img);
+    return;
+  }
+  const face = $("mine-avatar-svg");
+  if (face) box.append(face.cloneNode(true));
+}
+function paintTask() {
+  const data = missionData();
+  const shown = data.signDay > 0 ? SIGN_REWARDS[Math.min(data.signDay, SIGN_REWARDS.length) - 1] : "";
+  $("task-days").textContent = String(data.signDay);
+  $("task-today").textContent = "今日签到" + (data.signed ? "已" : "可") + "获得" + shown + "音浪";
+  $("task-balance").textContent = String(data.balance);
+  $("task-login-count").textContent = String(Math.min(data.signDay, 3));
+  paintTaskAvatar();
+  const grid = $("sign-grid");
+  grid.replaceChildren();
+  SIGN_REWARDS.forEach((amount, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sign-item" + (index === 6 ? " wide" : "") + (index < data.signDay ? " on" : "");
+    const name = el("div", "", SIGN_NAMES[index]);
+    const coin = el("i", "coin");
+    const reward = el("div", "", index === 6 ? amount + "音浪" : amount + " 已连续签到");
+    if (index === 6) {
+      const text = el("div");
+      text.append(name, reward);
+      button.append(text, coin);
+    } else {
+      button.append(name, coin, reward);
+    }
+    button.onclick = () => handleSign(index + 1);
+    grid.append(button);
+  });
+  const reg = $("task-reg");
+  reg.textContent = data.gotReg ? "已领取" : "立即领取";
+  reg.classList.toggle("off", data.gotReg);
+  const login = $("task-login");
+  login.textContent = data.gotLogin ? "已领取" : "立即领取";
+  login.classList.toggle("off", data.gotLogin);
+}
+async function openTask(from) {
+  taskFrom = from || "mine";
+  showSub("task-page");
+  await refreshMission();
+  paintTask();
+}
+function closeTask() {
+  if (taskFrom === "forecast") openForecast();
+  else openMine();
+}
+async function handleSign(day) {
+  if (!state.user) return;
+  try {
+    state.mission = normalizeMission(await postAccount("/prod-api/user/mission/sign", { token: state.user.token, day }));
+    paintTask();
+    paintYinlang();
+    toast("^-^ 签到成功");
+  } catch (error) {
+    const message = error.message || "签到失败";
+    toast(message === "未到签到时间" || message === "今日已签到" ? "^-^ " + message : message);
+  }
+}
+async function claimMission(type) {
+  if (!state.user) return;
+  try {
+    state.mission = normalizeMission(await postAccount("/prod-api/user/mission/claim", { token: state.user.token, type }));
+    paintTask();
+    paintYinlang();
+    toast("领取成功");
+  } catch (error) {
+    if (error.message === "已领取") return;
+    toast(error.message || "领取失败");
+  }
+}
+async function openInvite(from) {
+  inviteFrom = from || "mine";
+  showSub("invite-page");
+  await refreshMission();
+  $("invite-balance").textContent = String(missionData().balance);
+}
+function closeInvite() {
+  if (inviteFrom === "task") openTask(taskFrom);
+  else openMine();
+}
+function openShareSheet() {
+  const box = $("share-options");
+  if (!box.childElementCount) {
+    SHARE_CHANNELS.forEach((name) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = name;
+      button.onclick = () => chooseShare(name);
+      box.append(button);
+    });
+  }
+  $("share-mask").hidden = false;
+}
+function closeShareSheet() {
+  $("share-mask").hidden = true;
+}
+async function chooseShare(name) {
+  closeShareSheet();
+  if (name === "复制链接") { await copyText("https://www.kzbzcq.com"); return; }
+  toast("可在浏览器工具栏选择分享");
 }
 function openLevelRule() {
   const box = $("level-rules");
@@ -2855,14 +3199,16 @@ function submitFeedback() {
 function openShare() {
   showSub("share-page");
 }
-async function copyShare() {
-  const link = $("share-link").textContent;
+async function copyText(text) {
   try {
-    await navigator.clipboard.writeText(link);
+    await navigator.clipboard.writeText(text);
     toast("复制成功");
   } catch (error) {
     toast("复制失败");
   }
+}
+function copyShare() {
+  copyText($("share-link").textContent);
 }
 function openMatch() {
   paintMatch();
@@ -2988,7 +3334,7 @@ async function boot() {
   $("match-away").onclick = () => openSound("away");
   $("sound-cancel").onclick = closeSound;
   $("sound-mask").onclick = (event) => { if (event.target === $("sound-mask")) closeSound(); };
-  $("order-back").onclick = openMine;
+  $("order-back").onclick = closeOrder;
   $("level-back").onclick = openMine;
   $("level-rule").onclick = openLevelRule;
   $("level-rule-back").onclick = openLevel;
@@ -2997,10 +3343,23 @@ async function boot() {
   $("badge-rights-back").onclick = openBadge;
   $("badge-bind").onclick = bindFromBadge;
   $("forecast-back").onclick = openMine;
-  $("forecast-yin").onclick = openOrder;
-  $("forecast-task").onclick = () => showSub("task-page");
+  $("forecast-yin").onclick = () => openOrder("forecast");
+  $("forecast-task").onclick = () => openTask("forecast");
   $("forecast-rank").onclick = () => showSub("rank-page");
-  $("task-back").onclick = openForecast;
+  $("task-back").onclick = closeTask;
+  $("task-detail").onclick = () => openOrder("task");
+  $("task-invite").onclick = () => openInvite("task");
+  $("task-watch").onclick = () => claimMission(4);
+  $("task-reg").onclick = () => claimMission(1);
+  $("task-login").onclick = () => claimMission(3);
+  $("task-share").onclick = openShareSheet;
+  $("task-go-invite").onclick = () => openInvite("task");
+  $("invite-back").onclick = closeInvite;
+  $("invite-now").onclick = openShareSheet;
+  $("promo-back").onclick = openMine;
+  $("agent-back").onclick = openMine;
+  $("share-cancel").onclick = closeShareSheet;
+  $("share-mask").onclick = (event) => { if (event.target === $("share-mask")) closeShareSheet(); };
   $("rank-back").onclick = openForecast;
   $("forecast-tab-predict").onclick = () => paintForecast("predict");
   $("forecast-tab-record").onclick = () => paintForecast("record");

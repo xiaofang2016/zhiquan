@@ -1,8 +1,10 @@
 package com.zhiquan.sport.api.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import org.junit.jupiter.api.Test;
 
+import java.time.LocalDateTime;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -84,6 +86,39 @@ class UserAccountTest {
         assertEquals("/prod-api/user/avatar/abc?v=3", AvatarImage.path("abc", 3));
         assertThrows(IllegalArgumentException.class, () -> AvatarImage.jpeg("data:image/png;base64," + encoded));
         assertThrows(IllegalArgumentException.class, () -> AvatarImage.jpeg(""));
+    }
+
+    @Test
+    void missionSignAndClaimFollowTheOriginalRules() throws Exception {
+        LocalDateTime monday = LocalDateTime.of(2026, 10, 26, 8, 1, 2);
+        MissionRules.State first = MissionRules.sign(MissionRules.fresh(), 1, monday);
+        assertEquals(30, first.balance());
+        assertEquals(1, first.signDay());
+        assertEquals("2026-10-26", first.signedOn());
+        assertEquals("每日签到", first.records().get(0).title());
+        assertEquals("2026-10-26 08:01:02", first.records().get(0).time());
+        assertThrows(IllegalArgumentException.class, () -> MissionRules.sign(first, 1, monday));
+        assertThrows(IllegalArgumentException.class, () -> MissionRules.sign(first, 5, monday));
+        MissionRules.State second = MissionRules.sign(first, 2, monday.plusDays(1));
+        assertEquals(80, second.balance());
+        assertEquals(2, second.signDay());
+        MissionRules.State reset = MissionRules.sign(first, 1, monday.plusDays(2));
+        assertEquals(1, reset.signDay());
+        assertEquals(60, reset.balance());
+        assertThrows(IllegalArgumentException.class, () -> MissionRules.claim(second, 3, monday.plusDays(1)));
+        MissionRules.State third = MissionRules.sign(second, 3, monday.plusDays(2));
+        MissionRules.State login = MissionRules.claim(third, 3, monday.plusDays(2));
+        assertEquals(450, login.balance());
+        assertTrue(login.gotLogin());
+        assertThrows(IllegalArgumentException.class, () -> MissionRules.claim(login, 3, monday.plusDays(2)));
+        MissionRules.State registered = MissionRules.claim(login, 1, monday.plusDays(2));
+        assertEquals(650, registered.balance());
+        assertThrows(IllegalArgumentException.class, () -> MissionRules.claim(registered, 1, monday.plusDays(2)));
+        assertThrows(IllegalArgumentException.class, () -> MissionRules.claim(registered, 4, monday.plusDays(2)));
+        ObjectMapper json = new ObjectMapper().registerModule(new ParameterNamesModule());
+        MissionRules.State restored = json.readValue(json.writeValueAsString(registered), MissionRules.State.class);
+        assertEquals(650, restored.balance());
+        assertEquals("连续登录", restored.records().get(1).title());
     }
 
     @Test

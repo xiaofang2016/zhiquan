@@ -117,6 +117,38 @@ public class SportUserRepository {
         return Optional.of(user);
     }
 
+    public String mission(String phone) {
+        Map<String, AttributeValue> item = dynamo.getItem(GetItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .projectionExpression("mission")
+                .build()).item();
+        if (item == null || item.isEmpty()) {
+            return "";
+        }
+        String saved = Attrs.str(item, "mission");
+        return saved == null ? "" : saved;
+    }
+
+    public void saveMission(String phone, String expected, String next) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":next", Attrs.s(next));
+        String condition = "attribute_exists(pk)";
+        if (expected == null || expected.isEmpty()) {
+            condition += " AND attribute_not_exists(mission)";
+        } else {
+            condition += " AND mission = :expected";
+            values.put(":expected", Attrs.s(expected));
+        }
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET mission = :next")
+                .conditionExpression(condition)
+                .expressionAttributeValues(values)
+                .build());
+    }
+
     public void saveAvatar(String phone, String avatar) {
         dynamo.updateItem(UpdateItemRequest.builder()
                 .tableName(aws.getUserTable())

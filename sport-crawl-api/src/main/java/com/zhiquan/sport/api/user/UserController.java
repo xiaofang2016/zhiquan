@@ -20,12 +20,14 @@ public class UserController {
     private final S3ImageStore images;
     private final JxtBindService jxt;
     private final UedBindService ued;
+    private final MissionService mission;
 
-    public UserController(UserAuthService auth, S3ImageStore images, JxtBindService jxt, UedBindService ued) {
+    public UserController(UserAuthService auth, S3ImageStore images, JxtBindService jxt, UedBindService ued, MissionService mission) {
         this.auth = auth;
         this.images = images;
         this.jxt = jxt;
         this.ued = ued;
+        this.mission = mission;
     }
 
     @PostMapping("/prod-api/user/sms")
@@ -47,6 +49,21 @@ public class UserController {
     @PostMapping("/prod-api/user/session")
     public KzbResult session(@RequestBody UserRequest body) {
         return KzbResult.ok(auth.session(body.token()));
+    }
+
+    @PostMapping("/prod-api/user/mission")
+    public KzbResult mission(@RequestBody UserRequest body) {
+        return KzbResult.ok(mission.state(body.token()));
+    }
+
+    @PostMapping("/prod-api/user/mission/sign")
+    public KzbResult missionSign(@RequestBody UserRequest body) {
+        return KzbResult.ok(mission.sign(body.token(), body.day() == null ? 0 : body.day()));
+    }
+
+    @PostMapping("/prod-api/user/mission/claim")
+    public KzbResult missionClaim(@RequestBody UserRequest body) {
+        return KzbResult.ok(mission.claim(body.token(), body.type() == null ? 0 : body.type()));
     }
 
     @PostMapping("/prod-api/user/avatar")

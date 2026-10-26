@@ -95,12 +95,16 @@ public class UserAuthService {
     }
 
     public Map<String, String> session(String token) {
+        return view(account(token), token);
+    }
+
+    public SportUser account(String token) {
         UserToken.Session session = UserToken.read(secret, token, Instant.now().getEpochSecond());
         SportUser user = users.find(session.phone()).orElseThrow(() -> new IllegalArgumentException("请先登录"));
         if (!session.userId().equals(user.getUserId())) {
             throw new IllegalArgumentException("请先登录");
         }
-        return view(user, token);
+        return user;
     }
 
     public Map<String, String> saveAvatar(String token, String image) {

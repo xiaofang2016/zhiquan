@@ -1,0 +1,97 @@
+package com.zhiquan.sport.api.user;
+
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * 任务中心的签到和领取。日期按北京时间，和原站一致。
+ * 观看时长、分享次数、邀请人数没有来源，对应领取直接拒绝。
+ */
+public final class MissionRules {
+
+    public static final ZoneId ZONE = ZoneId.of("Asia/Shanghai");
+    private static final int[] SIGN_REWARDS = {30, 50, 70, 90, 110, 130, 150};
+    private static final DateTimeFormatter STAMP = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+    private MissionRules() {
+    }
+
+    public record Entry(String title, String time, int amount) {
+    }
+
+    public record State(int balance, int signDay, String signedOn, boolean gotReg, boolean gotLogin, List<Entry> records) {
+    }
+
+    public static State fresh() {
+        return new State(0, 0, "", false, false, List.of());
+    }
+
+    public static State normalize(State state, LocalDate today) {
+        String signedOn = state.signedOn() == null ? "" : state.signedOn();
+        List<Entry> records = state.records() == null ? List.of() : state.records();
+        if (signedOn.isBlank() || signedOn.equals(today.toString()) || signedOn.equals(today.minusDays(1).toString())) {
+            return new State(state.balance(), state.signDay(), signedOn, state.gotReg(), state.gotLogin(), records);
+        }
+        return new State(state.balance(), 0, "", state.gotReg(), state.gotLogin(), records);
+    }
+
+    public static State sign(State raw, int day, LocalDateTime now) {
+        LocalDate today = now.toLocalDate();
+        State state = normalize(raw, today);
+        boolean signed = today.toString().equals(state.signedOn());
+        if (day > state.signDay() + 1 && !signed) {
+            throw new IllegalArgumentException("未到签到时间");
+        }
+        if (signed) {
+            throw new IllegalArgumentException("今日已签到");
+        }
+        if (day < 1) {
+            throw new IllegalArgumentException("未到签到时间");
+        }
+        int amount = SIGN_REWARDS[Math.min(state.signDay(), SIGN_REWARDS.length - 1)];
+        return new State(state.balance() + amount, state.signDay() + 1, today.toString(),
+                state.gotReg(), state.gotLogin(), prepend(state.records(), "每日签到", now, amount));
+    }
+
+    public static State claim(State raw, int type, LocalDateTime now) {
+        LocalDate today = now.toLocalDate();
+        State state = normalize(raw, today);
+        if (type == 4) {
+            throw new IllegalArgumentException("观看时长不足");
+        }
+        if (type == 1) {
+            if (state.gotReg()) {
+                throw new IllegalArgumentException("已领取");
+            }
+            return new State(state.balance() + 200, state.signDay(), state.signedOn(),
+                    true, state.gotLogin(), prepend(state.records(), "首次注册成功", now, 200));
+        }
+        if (type == 3) {
+            if (state.signDay() < 3) {
+                throw new IllegalArgumentException("连续登录未满3天,请先完成签到");
+            }
+            if (state.gotLogin()) {
+                throw new IllegalArgumentException("已领取");
+            }
+            return new State(state.balance() + 300, state.signDay(), state.signedOn(),
+                    state.gotReg(), true, prepend(state.records(), "连续登录", now, 300));
+        }
+        throw new IllegalArgumentException("领取失败");
+    }
+
+    private static List<Entry> prepend(List<Entry> records, String title, LocalDateTime now, int amount) {
+        List<Entry> next = new ArrayList<>();
+        next.add(new Entry(title, now.format(STAMP), amount));
+        if (records != null) {
+            next.addAll(records);
+        }
+        if (next.size() > 50) {
+            return List.copyOf(next.subList(0, 50));
+        }
+        return List.copyOf(next);
+    }
+}
