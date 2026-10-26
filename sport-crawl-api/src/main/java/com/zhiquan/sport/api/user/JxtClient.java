@@ -175,7 +175,7 @@ public class JxtClient {
             if ((raw == null || raw.isBlank()) && response.secretBinary() != null) {
                 raw = response.secretBinary().asUtf8String();
             }
-            String value = plainSecret(raw);
+            String value = plainSecret(raw, json);
             if (value.isBlank()) {
                 throw new IllegalArgumentException("吉祥接口未配置");
             }
@@ -192,14 +192,14 @@ public class JxtClient {
         }
     }
 
-    private String plainSecret(String secret) {
+    static String plainSecret(String secret, ObjectMapper json) {
         String text = secret == null ? "" : secret.trim();
         if (!text.startsWith("{")) {
             return text;
         }
         try {
             JsonNode root = json.readTree(text);
-            for (String field : new String[]{"secret", "token", "boxim_outbound_secret"}) {
+            for (String field : new String[]{"BOXIM_OUTBOUND_SECRET", "secret", "token"}) {
                 String value = root.path(field).asText("").trim();
                 if (!value.isEmpty()) {
                     return value;

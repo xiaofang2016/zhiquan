@@ -49,6 +49,13 @@ class UserAccountTest {
     }
 
     @Test
+    void jxtSecretReadsBoximOutboundKey() {
+        ObjectMapper json = new ObjectMapper();
+        assertEquals("boxim-secret", JxtClient.plainSecret("{\"BOXIM_OUTBOUND_SECRET\":\"boxim-secret\"}", json));
+        assertEquals("plain-secret", JxtClient.plainSecret(" plain-secret ", json));
+    }
+
+    @Test
     void jxtTransferUsesTheRedpacketSign() {
         assertEquals("1700000000000\nabc\nPOST\n/external/transfer/cross-platform\n{}",
                 JxtBoximSign.payload("1700000000000", "abc", "POST", "/external/transfer/cross-platform", "{}"));
