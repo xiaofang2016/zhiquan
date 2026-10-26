@@ -49,13 +49,6 @@ class UserAccountTest {
     }
 
     @Test
-    void jxtSignMatchesTheSharedVector() {
-        assertEquals("sms\n13800138000", JxtSign.payload("sms", "13800138000"));
-        assertEquals("aeba912f3fdd8dc73cc40d9a186e4c3c9514d2cb2afb1cc537516ff9b06c55da",
-                JxtSign.sign("test-secret", "sms", "13800138000"));
-    }
-
-    @Test
     void jxtAmountUsesCentsAndTenYuanMinimum() {
         assertEquals(1000, JxtMoney.cents("10"));
         assertEquals(1050, JxtMoney.cents("10.5"));

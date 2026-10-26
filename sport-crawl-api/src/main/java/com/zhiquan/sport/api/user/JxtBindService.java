@@ -6,7 +6,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.UUID;
 
 @Service
 public class JxtBindService {
@@ -36,7 +35,7 @@ public class JxtBindService {
         if (!code.matches("\\d{4,6}")) {
             throw new IllegalArgumentException("请输入验证码");
         }
-        JxtClient.JxtAccount account = jxt.confirm(user.getPhone(), code, user.getUserId());
+        JxtClient.JxtAccount account = jxt.confirm(user.getPhone(), code);
         String shown = account.username().isBlank() ? user.getPhone() : account.username();
         users.saveJxt(user.getPhone(), account.uid(), shown);
         user.setJxtBound(true);
@@ -50,7 +49,6 @@ public class JxtBindService {
         if (!user.isJxtBound()) {
             throw new IllegalArgumentException("还没有绑定吉祥账号");
         }
-        jxt.unbind(user.getUserId());
         users.clearJxt(user.getPhone());
         user.setJxtBound(false);
         user.setJxtUid(null);
@@ -63,23 +61,8 @@ public class JxtBindService {
         if (!user.isJxtBound() || user.getJxtUid() == null || user.getJxtUid().isBlank()) {
             throw new IllegalArgumentException("请先绑定吉祥账号");
         }
-        long cents = JxtMoney.cents(amountRaw);
-        if (!users.deduct(user.getPhone(), cents)) {
-            throw new IllegalArgumentException("余额不足");
-        }
-        String orderNo = UUID.randomUUID().toString().replace("-", "");
-        try {
-            jxt.transfer(user.getUserId(), cents, orderNo);
-        } catch (RuntimeException first) {
-            try {
-                jxt.transfer(user.getUserId(), cents, orderNo);
-            } catch (RuntimeException second) {
-                users.credit(user.getPhone(), cents);
-                throw second;
-            }
-        }
-        user.setBalanceCent(Math.max(0, user.getBalanceCent() - cents));
-        return view(user);
+        JxtMoney.cents(amountRaw);
+        throw new IllegalArgumentException("转入吉祥还没接上");
     }
 
     private SportUser user(String token) {

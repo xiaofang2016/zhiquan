@@ -11,35 +11,30 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.Map;
 
 @Component
 public class JxtClient {
 
     private final String baseUrl;
-    private final String secret;
     private final ObjectMapper json;
     private final HttpClient http;
 
-    public JxtClient(@Value("${sport.jxt.base-url:}") String baseUrl,
-                     @Value("${sport.jxt.bind-secret:}") String secret,
-                     ObjectMapper json) {
+    public JxtClient(@Value("${sport.jxt.base-url:}") String baseUrl, ObjectMapper json) {
         this.baseUrl = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");
-        this.secret = secret == null ? "" : secret;
         this.json = json;
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
     }
 
     public void sms(String phone) {
-        postPublic("/smscode", Map.of(
+        post("/smscode", Map.of(
                 "mobile", phone,
                 "phone_area_code", "86"
         ));
     }
 
-    public JxtAccount confirm(String phone, String code, String sportUserId) {
-        JsonNode data = postPublic("/mobilelogin", Map.of(
+    public JxtAccount confirm(String phone, String code) {
+        JsonNode data = post("/mobilelogin", Map.of(
                 "mobile", phone,
                 "code", code,
                 "phone_area_code", "86"
@@ -55,46 +50,13 @@ public class JxtClient {
         return new JxtAccount(uid, username);
     }
 
-    public void unbind(String sportUserId) {
-        post("/api/liveBindUnbind", "unbind", Map.of("sportUserId", sportUserId), sportUserId);
-    }
-
-    public void transfer(String sportUserId, long cents, String orderNo) {
-        Map<String, Object> fields = new LinkedHashMap<>();
-        fields.put("sportUserId", sportUserId);
-        fields.put("amountCent", cents);
-        fields.put("orderNo", orderNo);
-        post("/api/liveTransfer", "transfer", fields, sportUserId, Long.toString(cents), orderNo);
-    }
-
-    private JsonNode postPublic(String path, Map<String, ?> fields) {
+    private JsonNode post(String path, Map<String, ?> fields) {
         if (baseUrl.isBlank()) {
             throw new IllegalArgumentException("吉祥接口未配置");
         }
         ObjectNode body = json.createObjectNode();
         body.put("merchant_no", "10011");
         fields.forEach((key, value) -> body.put(key, String.valueOf(value)));
-        return send(path, body);
-    }
-
-    private JsonNode post(String path, String action, Map<String, ?> fields, String... parts) {
-        if (baseUrl.isBlank() || secret.isBlank()) {
-            throw new IllegalArgumentException("吉祥接口未配置");
-        }
-        ObjectNode body = json.createObjectNode();
-        body.put("merchant_no", "10011");
-        body.put("sign", JxtSign.sign(secret, action, parts));
-        fields.forEach((key, value) -> {
-            if (value instanceof Long number) {
-                body.put(key, number);
-            } else {
-                body.put(key, String.valueOf(value));
-            }
-        });
-        return send(path, body);
-    }
-
-    private JsonNode send(String path, ObjectNode body) {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + path))
                 .timeout(Duration.ofSeconds(15))
                 .header("content-type", "application/json")
