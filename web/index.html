@@ -624,12 +624,14 @@
   .sound-sheet button.on { color: #1989fa; }
   .sound-sheet .avatar-gap { height: 5px; background: #f2f2f2; }
   .sub-page {
-    position: fixed; top: 0; bottom: 0; left: 50%;
-    width: min(440px, 100%);
-    transform: translateX(-50%);
-    z-index: 50; background: #f7f8fa; overflow: auto;
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    overflow: auto;
+    background: #f6f7f9;
   }
   .sub-page[hidden] { display: none; }
+  .sub-col { width: min(440px, 100%); min-height: 100%; margin: 0 auto; }
   .match-page.sub-page { background: #fff; }
   .match-bar.with-side b { margin-right: 0; }
   .match-bar .side { width: auto; min-width: 72px; padding-right: 12px; color: #323233; font-size: 14px; font-weight: 400; }
@@ -1006,6 +1008,7 @@
   </div>
 </div>
 <div class="match-page sub-page" id="match-page" hidden>
+  <div class="sub-col">
   <div class="match-bar">
     <button type="button" id="match-back" aria-label="返回">‹</button>
     <b>比赛设置</b>
@@ -1014,6 +1017,7 @@
   <button class="match-row" id="match-home" type="button"><span>主队声音</span><em id="match-home-sound">默认</em></button>
   <button class="match-row" id="match-away" type="button"><span>客队声音</span><em id="match-away-sound">默认</em></button>
   <div class="match-row"><span>红牌声音</span><button class="match-switch small" id="match-red" type="button" role="switch" aria-checked="false"><i></i></button></div>
+  </div>
 </div>
 <div class="sound-mask" id="sound-mask" hidden>
   <div class="sound-sheet" role="dialog" aria-label="选择声音">
@@ -1023,12 +1027,15 @@
   </div>
 </div>
 <div class="sub-page" id="order-page" hidden>
+  <div class="sub-col">
   <div class="match-bar"><button type="button" id="order-back" aria-label="返回">‹</button><b>音浪明细</b></div>
   <div class="yin-card"><b id="yin-balance">0</b><span>我的音浪</span></div>
   <div id="yin-list"></div>
   <p class="sub-empty" id="yin-empty">没有更多了</p>
+  </div>
 </div>
 <div class="sub-page" id="level-page" hidden>
+  <div class="sub-col">
   <div class="match-bar with-side"><button type="button" id="level-back" aria-label="返回">‹</button><b>我的等级</b><button class="side" id="level-rule" type="button">等级规则</button></div>
   <div class="level-head"><i></i><span id="level-name">未登录</span></div>
   <div class="level-badge">
@@ -1040,12 +1047,16 @@
     <div class="level-bar"><i id="level-fill"></i></div>
     <div class="cap"><span id="level-left">0</span><span class="need" id="level-need">差 100球技 升至Lv.2</span><span id="level-right">100</span></div>
   </div>
+  </div>
 </div>
 <div class="sub-page" id="level-rule-page" hidden>
+  <div class="sub-col">
   <div class="match-bar"><button type="button" id="level-rule-back" aria-label="返回">‹</button><b>等级规则</b></div>
   <div class="rule-table" id="level-rules"></div>
+  </div>
 </div>
 <div class="sub-page" id="badge-page" hidden>
+  <div class="sub-col">
   <div class="match-bar with-side"><button type="button" id="badge-back" aria-label="返回">‹</button><b>尊享徽章</b><button class="side" id="badge-rights" type="button">徽章权益</button></div>
   <div class="badge-hero">
     <b>Lv0</b>
@@ -1066,8 +1077,10 @@
     <div><h3>平台账号绑定</h3><p>绑定UED/吉祥账号，解锁聊天权限等级与专属等级</p></div>
     <button type="button" id="badge-bind">立即绑定</button>
   </div>
+  </div>
 </div>
 <div class="sub-page" id="badge-rights-page" hidden>
+  <div class="sub-col">
   <div class="match-bar"><button type="button" id="badge-rights-back" aria-label="返回">‹</button><b>徽章权益</b></div>
   <div class="badge-card">
     <h3>当前徽章等级 Lv0</h3>
@@ -1081,8 +1094,10 @@
   <div class="badge-card"><h3>钱包提现额度提升</h3><p>单月可提现 ¥50</p></div>
   <div class="badge-card"><h3>周等级福利 0 元</h3><p>等级周福利每周仅限领取 1 次</p></div>
   <div class="badge-card"><h3>其他等级权益预览</h3><p>Lv1 权益 未达成</p><p>Lv2 权益 未达成</p><p>* 升级后，新权益将在次周周一北京时间 0 点生效</p></div>
+  </div>
 </div>
 <div class="sub-page" id="forecast-page" hidden>
+  <div class="sub-col">
   <div class="match-bar with-side"><button type="button" id="forecast-back" aria-label="返回">‹</button><b>我的预测</b><button class="side" id="forecast-yin" type="button">获取音浪</button></div>
   <div class="forecast-banners">
     <button type="button" id="forecast-task"><b>任务中心</b><span>领音浪 兑实物</span></button>
@@ -1096,8 +1111,10 @@
     <svg width="120" height="90" viewBox="0 0 120 90" aria-hidden="true"><path d="M18 62h84v8H18zM30 38h60v24H30zM38 46h44v4H38zm0 8h28v4H38z" fill="#e5e6eb"/><path d="M24 28h18v10H24zM78 22h16v12H78z" fill="#f2f3f5"/></svg>
     <span id="forecast-empty-text">暂无预测数据</span>
   </div>
+  </div>
 </div>
 <div class="sub-page" id="task-page" hidden>
+  <div class="sub-col">
   <div class="match-bar task-bar with-side"><button type="button" id="task-back" aria-label="返回">‹</button><b>任务中心</b><button class="side" id="task-detail" type="button">音浪明细</button></div>
   <div class="task-user">
     <span class="mine-avatar" id="task-avatar"></span>
@@ -1130,8 +1147,10 @@
     <div class="mission-row"><i class="mission-ico"></i><dl><dt>分享直播间一次( 0/3)</dt><dd>音浪+50</dd></dl><button class="mission-btn" id="task-share" type="button">去分享</button></div>
     <div class="mission-row"><i class="mission-ico"></i><dl><dt>邀请好友一起看球( 0/3)</dt><dd>音浪+500</dd></dl><button class="mission-btn" id="task-go-invite" type="button">去分享</button></div>
   </section>
+  </div>
 </div>
 <div class="sub-page invite-page" id="invite-page" hidden>
+  <div class="sub-col">
   <div class="match-bar"><button type="button" id="invite-back" aria-label="返回">‹</button><b>我的邀请</b></div>
   <p class="invite-tip">邀好友观看直播 领音浪</p>
   <div class="invite-card">
@@ -1139,8 +1158,10 @@
     <button type="button" id="invite-now">立即邀请</button>
   </div>
   <div class="invite-stats"><div><b>0人</b><span>累计邀请</span></div><div><b>500音浪</b><span>邀请奖励</span></div></div>
+  </div>
 </div>
 <div class="sub-page poster-page" id="promo-page" hidden>
+  <div class="sub-col">
   <div class="match-bar"><button type="button" id="promo-back" aria-label="返回">‹</button><b>推广合作</b></div>
   <div class="poster">
     <img src="promo-poster.jpg" alt="">
@@ -1156,8 +1177,10 @@
       <p class="poster-id">Bat ID:dty888</p>
     </div>
   </div>
+  </div>
 </div>
 <div class="sub-page poster-page" id="agent-page" hidden>
+  <div class="sub-col">
   <div class="match-bar"><button type="button" id="agent-back" aria-label="返回">‹</button><b>代理招募</b></div>
   <div class="poster">
     <img src="agent-poster.jpg" alt="">
@@ -1169,26 +1192,33 @@
       <img class="poster-qr" alt="" src="recruit-qr.jpg">
     </div>
   </div>
+  </div>
 </div>
 <div class="sub-page" id="rank-page" hidden>
+  <div class="sub-col">
   <div class="match-bar"><button type="button" id="rank-back" aria-label="返回">‹</button><b>预测收益榜</b></div>
   <p class="sub-empty">暂无数据</p>
+  </div>
 </div>
 <div class="sub-page" id="feedback-page" hidden>
+  <div class="sub-col">
   <div class="match-bar"><button type="button" id="feedback-back" aria-label="返回">‹</button><b>意见反馈</b></div>
   <div class="feedback-box">
     <textarea id="feedback-text" maxlength="300" placeholder="请输入你的反馈"></textarea>
     <div class="count" id="feedback-count">0/300</div>
   </div>
   <button class="feedback-submit" id="feedback-submit" type="button">提交反馈</button>
+  </div>
 </div>
 <div class="sub-page" id="share-page" hidden>
+  <div class="sub-col">
   <div class="match-bar"><button type="button" id="share-back" aria-label="返回">‹</button><b>分享应用</b></div>
   <div class="share-card">
     <b>说球帝</b>
     <p>把网页版发给好友一起看比赛</p>
     <p id="share-link">https://www.kzbzcq.com</p>
     <button type="button" id="share-copy">复制链接</button>
+  </div>
   </div>
 </div>
 <div class="sound-mask" id="share-mask" hidden>
