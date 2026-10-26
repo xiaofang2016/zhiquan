@@ -2331,9 +2331,7 @@ async function loadDb() {
   state.dbLoading = true;
   state.dbError = "";
   try {
-    const query = (fame) => "/v1/competitions?lang=zh-hans&page_size=20&competition_sport_id=" + DB_FOOTBALL + "&competition_fame_level=" + fame;
-    const [famous, home] = await Promise.all([sportsGet(query(1)), sportsGet(query(3))]);
-    const comps = [...(famous || []), ...(home || [])];
+    const comps = await sportsGet("/v1/competitions?lang=zh-hans&page_size=20&competition_sport_id=" + DB_FOOTBALL + "&competition_fame_level=1") || [];
     const shorts = await Promise.all(comps.map(async (comp) => {
       try {
         const editions = await sportsGet("/v1/competition-editions?lang=zh-hans&page_size=1&competition_id=" + encodeURIComponent(comp.competition_id) + "&edition_sort=" + encodeURIComponent("-edition_sort_order"));
