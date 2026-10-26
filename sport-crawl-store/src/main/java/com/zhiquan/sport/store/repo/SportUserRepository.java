@@ -160,7 +160,7 @@ public class SportUserRepository {
                 .updateExpression(expression)
                 .expressionAttributeValues(values);
         if ("-".equals(op)) {
-            builder.conditionExpression("attribute_exists(pk) AND if_not_exists(balance_cent, :zero) >= :amt");
+            builder.conditionExpression("attribute_exists(pk) AND balance_cent >= :amt");
         } else {
             builder.conditionExpression("attribute_exists(pk)");
         }
