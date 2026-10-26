@@ -29,4 +29,4 @@ sport:
     expire-seconds: 300
   jxt:
     base-url: ${SPORT_JXT_BASE_URL:https://api.jixsports.com}
-    boxim-secret: ${SPORT_JXT_BOXIM_SECRET:}
+    boxim-secret-name: ${SPORT_JXT_BOXIM_SECRET_NAME:prod/jxt-boxim}

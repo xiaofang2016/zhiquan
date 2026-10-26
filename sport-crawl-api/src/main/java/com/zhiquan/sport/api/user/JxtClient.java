@@ -3,8 +3,15 @@ package com.zhiquan.sport.api.user;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
+import software.amazon.awssdk.regions.Region;
+import software.amazon.awssdk.services.secretsmanager.SecretsManagerClient;
+import software.amazon.awssdk.services.secretsmanager.model.GetSecretValueRequest;
+import software.amazon.awssdk.services.secretsmanager.model.SecretsManagerException;
 
 import java.net.URI;
 import java.net.http.HttpClient;
@@ -17,20 +24,28 @@ import java.util.UUID;
 @Component
 public class JxtClient {
 
+    private static final Logger log = LoggerFactory.getLogger(JxtClient.class);
     private static final String TRANSFER_PATH = "/external/transfer/cross-platform";
 
     private final String baseUrl;
-    private final String secret;
+    private final String secretName;
     private final ObjectMapper json;
     private final HttpClient http;
+    private final SecretsManagerClient secrets;
+    private volatile String signingSecret;
 
     public JxtClient(@Value("${sport.jxt.base-url:}") String baseUrl,
-                     @Value("${sport.jxt.boxim-secret:}") String secret,
+                     @Value("${sport.jxt.boxim-secret-name:prod/jxt-boxim}") String secretName,
+                     @Value("${sport.aws.region}") String region,
                      ObjectMapper json) {
         this.baseUrl = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");
-        this.secret = secret == null ? "" : secret;
+        this.secretName = secretName == null ? "" : secretName;
         this.json = json;
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
+        this.secrets = SecretsManagerClient.builder()
+                .region(Region.of(region))
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
     }
 
     public void sms(String phone) {
@@ -68,13 +83,13 @@ public class JxtClient {
     }
 
     public void requireTransfer() {
-        if (baseUrl.isBlank() || secret.isBlank()) {
+        if (baseUrl.isBlank() || signingSecret().isBlank()) {
             throw new IllegalArgumentException("吉祥接口未配置");
         }
     }
 
     public void transfer(String jxtUserId, String accessToken, long cents, String orderNo) {
-        requireTransfer();
+        String secret = signingSecret();
         ObjectNode body = json.createObjectNode();
         body.put("accessToken", accessToken);
         body.put("userId", jxtUserId);
@@ -134,6 +149,66 @@ public class JxtClient {
             throw new IllegalArgumentException(message);
         }
         return root.path("data");
+    }
+
+    private String signingSecret() {
+        String cached = signingSecret;
+        if (cached != null && !cached.isBlank()) {
+            return cached;
+        }
+        synchronized (this) {
+            if (signingSecret != null && !signingSecret.isBlank()) {
+                return signingSecret;
+            }
+            signingSecret = readSecret();
+            return signingSecret;
+        }
+    }
+
+    private String readSecret() {
+        if (secretName.isBlank()) {
+            throw new IllegalArgumentException("吉祥接口未配置");
+        }
+        try {
+            var response = secrets.getSecretValue(GetSecretValueRequest.builder().secretId(secretName).build());
+            String raw = response.secretString();
+            if ((raw == null || raw.isBlank()) && response.secretBinary() != null) {
+                raw = response.secretBinary().asUtf8String();
+            }
+            String value = plainSecret(raw);
+            if (value.isBlank()) {
+                throw new IllegalArgumentException("吉祥接口未配置");
+            }
+            return value;
+        } catch (IllegalArgumentException ex) {
+            throw ex;
+        } catch (SecretsManagerException ex) {
+            String code = ex.awsErrorDetails() == null ? "" : ex.awsErrorDetails().errorCode();
+            log.warn("jxt boxim secret unreadable: {}", code);
+            throw new IllegalArgumentException("吉祥接口未配置");
+        } catch (Exception ex) {
+            log.warn("jxt boxim secret unreadable: {}", ex.getClass().getSimpleName());
+            throw new IllegalArgumentException("吉祥接口未配置");
+        }
+    }
+
+    private String plainSecret(String secret) {
+        String text = secret == null ? "" : secret.trim();
+        if (!text.startsWith("{")) {
+            return text;
+        }
+        try {
+            JsonNode root = json.readTree(text);
+            for (String field : new String[]{"secret", "token", "boxim_outbound_secret"}) {
+                String value = root.path(field).asText("").trim();
+                if (!value.isEmpty()) {
+                    return value;
+                }
+            }
+        } catch (Exception ex) {
+            return "";
+        }
+        return "";
     }
 
     private static String text(JsonNode data, String name) {
