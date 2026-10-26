@@ -4,6 +4,7 @@ import java.util.Base64;
 
 /**
  * 头像只收前端压好的 JPEG。原站说明是小于 2MB 的 jpg、png，页面会先压成 JPEG 再提交。
+ * 文件放在图片桶的 avatar/ 下，账号里只留读取地址。
  */
 public final class AvatarImage {
 
@@ -12,12 +13,15 @@ public final class AvatarImage {
     private AvatarImage() {
     }
 
-    public static String dataUrl(String raw) {
-        byte[] jpeg = jpeg(raw);
-        return "data:image/jpeg;base64," + Base64.getEncoder().encodeToString(jpeg);
+    public static String objectKey(String userId) {
+        return "avatar/" + userId + ".jpg";
     }
 
-    static byte[] jpeg(String raw) {
+    public static String path(String userId, long version) {
+        return "/prod-api/user/avatar/" + userId + "?v=" + version;
+    }
+
+    public static byte[] jpeg(String raw) {
         if (raw == null || raw.isBlank()) {
             throw new IllegalArgumentException("请选择图片文件");
         }

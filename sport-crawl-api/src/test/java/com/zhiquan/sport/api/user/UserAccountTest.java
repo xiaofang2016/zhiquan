@@ -3,7 +3,6 @@ package com.zhiquan.sport.api.user;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
 
-import java.util.Base64;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -77,12 +76,14 @@ class UserAccountTest {
     }
 
     @Test
-    void avatarAcceptsJpegDataUrl() {
+    void avatarAcceptsJpegAndStoresUnderAvatarPrefix() {
         byte[] jpeg = new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, (byte) 0xd9};
-        String encoded = Base64.getEncoder().encodeToString(jpeg);
-        assertEquals("data:image/jpeg;base64," + encoded, AvatarImage.dataUrl("data:image/jpeg;base64," + encoded));
-        assertThrows(IllegalArgumentException.class, () -> AvatarImage.dataUrl("data:image/png;base64," + encoded));
-        assertThrows(IllegalArgumentException.class, () -> AvatarImage.dataUrl(""));
+        String encoded = java.util.Base64.getEncoder().encodeToString(jpeg);
+        assertEquals(4, AvatarImage.jpeg("data:image/jpeg;base64," + encoded).length);
+        assertEquals("avatar/abc.jpg", AvatarImage.objectKey("abc"));
+        assertEquals("/prod-api/user/avatar/abc?v=3", AvatarImage.path("abc", 3));
+        assertThrows(IllegalArgumentException.class, () -> AvatarImage.jpeg("data:image/png;base64," + encoded));
+        assertThrows(IllegalArgumentException.class, () -> AvatarImage.jpeg(""));
     }
 
     @Test

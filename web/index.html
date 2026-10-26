@@ -2352,9 +2352,14 @@ async function withdrawBrand(brand) {
 async function withdrawJxt() {
   withdrawBrand("jxt");
 }
+function avatarSrc(value) {
+  if (!value) return "";
+  if (value.startsWith("data:") || value.startsWith("http://") || value.startsWith("https://")) return value;
+  return API + value;
+}
 function paintAvatar() {
   const saved = state.user && state.user.avatar;
-  const shown = state.avatarPreview || saved;
+  const shown = state.avatarPreview || avatarSrc(saved);
   $("avatar-preview").hidden = !shown;
   $("avatar-fallback").hidden = !!shown;
   if (shown) $("avatar-preview").src = shown;
@@ -2362,7 +2367,7 @@ function paintAvatar() {
   $("avatar-caption").classList.toggle("again", !!state.avatarPreview);
   $("mine-avatar-img").hidden = !saved;
   $("mine-avatar-svg").hidden = !!saved;
-  if (saved) $("mine-avatar-img").src = saved;
+  if (saved) $("mine-avatar-img").src = avatarSrc(saved);
 }
 function openAvatar() {
   state.avatarPreview = "";

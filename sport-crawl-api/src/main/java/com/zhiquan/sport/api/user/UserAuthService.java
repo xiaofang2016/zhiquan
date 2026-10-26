@@ -2,6 +2,7 @@ package com.zhiquan.sport.api.user;
 
 import com.zhiquan.sport.store.entity.SmsCode;
 import com.zhiquan.sport.store.entity.SportUser;
+import com.zhiquan.sport.store.repo.S3ImageStore;
 import com.zhiquan.sport.store.repo.SportUserRepository;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -21,6 +22,7 @@ public class UserAuthService {
     private static final SecureRandom RANDOM = new SecureRandom();
 
     private final SportUserRepository users;
+    private final S3ImageStore images;
     private final NexsmsClient sms;
     private final String secret;
     private final int days;
@@ -28,12 +30,14 @@ public class UserAuthService {
     private final int expireSeconds;
 
     public UserAuthService(SportUserRepository users,
+                           S3ImageStore images,
                            NexsmsClient sms,
                            @Value("${sport.auth.token-secret}") String secret,
                            @Value("${sport.auth.token-days:30}") int days,
                            @Value("${sport.sms.resend-seconds:60}") int resendSeconds,
                            @Value("${sport.sms.expire-seconds:300}") int expireSeconds) {
         this.users = users;
+        this.images = images;
         this.sms = sms;
         this.secret = secret;
         this.days = days;
@@ -105,7 +109,9 @@ public class UserAuthService {
         if (!session.userId().equals(user.getUserId())) {
             throw new IllegalArgumentException("请先登录");
         }
-        user.setAvatar(AvatarImage.dataUrl(image));
+        byte[] jpeg = AvatarImage.jpeg(image);
+        images.put(AvatarImage.objectKey(user.getUserId()), jpeg, "image/jpeg");
+        user.setAvatar(AvatarImage.path(user.getUserId(), Instant.now().getEpochSecond()));
         users.saveAvatar(user.getPhone(), user.getAvatar());
         return view(user, token);
     }

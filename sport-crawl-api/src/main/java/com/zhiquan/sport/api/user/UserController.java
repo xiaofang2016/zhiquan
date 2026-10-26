@@ -1,19 +1,29 @@
 package com.zhiquan.sport.api.user;
 
 import com.zhiquan.sport.api.KzbResult;
+import com.zhiquan.sport.store.repo.S3ImageStore;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RestController;
+
+import java.time.Duration;
 
 @RestController
 public class UserController {
 
     private final UserAuthService auth;
+    private final S3ImageStore images;
     private final JxtBindService jxt;
     private final UedBindService ued;
 
-    public UserController(UserAuthService auth, JxtBindService jxt, UedBindService ued) {
+    public UserController(UserAuthService auth, S3ImageStore images, JxtBindService jxt, UedBindService ued) {
         this.auth = auth;
+        this.images = images;
         this.jxt = jxt;
         this.ued = ued;
     }
@@ -42,6 +52,23 @@ public class UserController {
     @PostMapping("/prod-api/user/avatar")
     public KzbResult avatar(@RequestBody UserRequest body) {
         return KzbResult.ok(auth.saveAvatar(body.token(), body.image()));
+    }
+
+    @GetMapping("/prod-api/user/avatar/{userId:[a-f0-9]{32}}")
+    public ResponseEntity<byte[]> avatarFile(@PathVariable String userId) {
+        byte[] body;
+        try {
+            body = images.get(AvatarImage.objectKey(userId));
+        } catch (RuntimeException ex) {
+            return ResponseEntity.notFound().build();
+        }
+        if (body == null || body.length == 0) {
+            return ResponseEntity.notFound().build();
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .cacheControl(CacheControl.maxAge(Duration.ofDays(1)).cachePublic())
+                .body(body);
     }
 
     @PostMapping("/prod-api/user/jxt/status")
