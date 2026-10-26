@@ -49,6 +49,14 @@ class UserAccountTest {
     }
 
     @Test
+    void jxtTransferUsesTheRedpacketSign() {
+        assertEquals("1700000000000\nabc\nPOST\n/external/transfer/cross-platform\n{}",
+                JxtBoximSign.payload("1700000000000", "abc", "POST", "/external/transfer/cross-platform", "{}"));
+        assertEquals("ab1eb9e70f1d04248a586e3d56793c21d8512ec9786d1a21d425ee3879119a5d",
+                JxtBoximSign.sign("test-secret", "1700000000000", "abc", "POST", "/external/transfer/cross-platform", "{}"));
+    }
+
+    @Test
     void jxtAmountUsesCentsAndTenYuanMinimum() {
         assertEquals(1000, JxtMoney.cents("10"));
         assertEquals(1050, JxtMoney.cents("10.5"));

@@ -4,8 +4,10 @@ import com.zhiquan.sport.store.entity.SportUser;
 import com.zhiquan.sport.store.repo.SportUserRepository;
 import org.springframework.stereotype.Service;
 
+import java.time.Instant;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.UUID;
 
 @Service
 public class JxtBindService {
@@ -37,10 +39,12 @@ public class JxtBindService {
         }
         JxtClient.JxtAccount account = jxt.confirm(user.getPhone(), code);
         String shown = account.username().isBlank() ? user.getPhone() : account.username();
-        users.saveJxt(user.getPhone(), account.uid(), shown);
+        users.saveJxt(user.getPhone(), account.uid(), shown, account.accessToken(), account.expireAt());
         user.setJxtBound(true);
         user.setJxtUid(account.uid());
         user.setJxtAccount(shown);
+        user.setJxtAccessToken(account.accessToken());
+        user.setJxtTokenExpire(account.expireAt());
         return view(user);
     }
 
@@ -53,6 +57,8 @@ public class JxtBindService {
         user.setJxtBound(false);
         user.setJxtUid(null);
         user.setJxtAccount(null);
+        user.setJxtAccessToken(null);
+        user.setJxtTokenExpire(0);
         return view(user);
     }
 
@@ -61,8 +67,28 @@ public class JxtBindService {
         if (!user.isJxtBound() || user.getJxtUid() == null || user.getJxtUid().isBlank()) {
             throw new IllegalArgumentException("请先绑定吉祥账号");
         }
-        JxtMoney.cents(amountRaw);
-        throw new IllegalArgumentException("转入吉祥还没接上");
+        String access = user.getJxtAccessToken();
+        if (access == null || access.isBlank() || user.getJxtTokenExpire() <= Instant.now().getEpochSecond()) {
+            throw new IllegalArgumentException("请重新验证吉祥账号");
+        }
+        long cents = JxtMoney.cents(amountRaw);
+        jxt.requireTransfer();
+        if (!users.deduct(user.getPhone(), cents)) {
+            throw new IllegalArgumentException("余额不足");
+        }
+        String orderNo = UUID.randomUUID().toString().replace("-", "");
+        try {
+            jxt.transfer(user.getJxtUid(), access, cents, orderNo);
+        } catch (RuntimeException first) {
+            try {
+                jxt.transfer(user.getJxtUid(), access, cents, orderNo);
+            } catch (RuntimeException second) {
+                users.credit(user.getPhone(), cents);
+                throw second;
+            }
+        }
+        user.setBalanceCent(Math.max(0, user.getBalanceCent() - cents));
+        return view(user);
     }
 
     private SportUser user(String token) {

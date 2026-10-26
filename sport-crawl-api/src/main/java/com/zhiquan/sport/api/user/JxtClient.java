@@ -12,29 +12,36 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
+import java.util.UUID;
 
 @Component
 public class JxtClient {
 
+    private static final String TRANSFER_PATH = "/external/transfer/cross-platform";
+
     private final String baseUrl;
+    private final String secret;
     private final ObjectMapper json;
     private final HttpClient http;
 
-    public JxtClient(@Value("${sport.jxt.base-url:}") String baseUrl, ObjectMapper json) {
+    public JxtClient(@Value("${sport.jxt.base-url:}") String baseUrl,
+                     @Value("${sport.jxt.boxim-secret:}") String secret,
+                     ObjectMapper json) {
         this.baseUrl = baseUrl == null ? "" : baseUrl.replaceAll("/+$", "");
+        this.secret = secret == null ? "" : secret;
         this.json = json;
         this.http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(8)).build();
     }
 
     public void sms(String phone) {
-        post("/smscode", Map.of(
+        postPublic("/smscode", Map.of(
                 "mobile", phone,
                 "phone_area_code", "86"
         ));
     }
 
     public JxtAccount confirm(String phone, String code) {
-        JsonNode data = post("/mobilelogin", Map.of(
+        JsonNode data = postPublic("/mobilelogin", Map.of(
                 "mobile", phone,
                 "code", code,
                 "phone_area_code", "86"
@@ -47,10 +54,49 @@ public class JxtClient {
         if (username.isBlank()) {
             username = phone;
         }
-        return new JxtAccount(uid, username);
+        String accessToken = data.path("access_token").asText("");
+        if (accessToken.isBlank()) {
+            throw new IllegalArgumentException("吉祥接口失败");
+        }
+        long expireAt;
+        try {
+            expireAt = Long.parseLong(data.path("expire_time").asText(""));
+        } catch (NumberFormatException ex) {
+            throw new IllegalArgumentException("吉祥接口失败");
+        }
+        return new JxtAccount(uid, username, accessToken, expireAt);
     }
 
-    private JsonNode post(String path, Map<String, ?> fields) {
+    public void requireTransfer() {
+        if (baseUrl.isBlank() || secret.isBlank()) {
+            throw new IllegalArgumentException("吉祥接口未配置");
+        }
+    }
+
+    public void transfer(String jxtUserId, String accessToken, long cents, String orderNo) {
+        requireTransfer();
+        ObjectNode body = json.createObjectNode();
+        body.put("accessToken", accessToken);
+        body.put("userId", jxtUserId);
+        body.put("amount", JxtMoney.yuan(cents));
+        body.put("tradeNo", orderNo);
+        String raw = body.toString();
+        String timestamp = Long.toString(System.currentTimeMillis());
+        String nonce = UUID.randomUUID().toString().replace("-", "");
+        String signature = JxtBoximSign.sign(secret, timestamp, nonce, "POST", TRANSFER_PATH, raw);
+        HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + TRANSFER_PATH))
+                .timeout(Duration.ofSeconds(15))
+                .header("content-type", "application/json")
+                .header("user-agent", "sport-crawl")
+                .header(JxtBoximSign.HEADER_TIMESTAMP, timestamp)
+                .header(JxtBoximSign.HEADER_NONCE, nonce)
+                .header(JxtBoximSign.HEADER_SIGNATURE, signature)
+                .POST(HttpRequest.BodyPublishers.ofString(raw))
+                .build();
+        send(request);
+    }
+
+    private JsonNode postPublic(String path, Map<String, ?> fields) {
         if (baseUrl.isBlank()) {
             throw new IllegalArgumentException("吉祥接口未配置");
         }
@@ -60,8 +106,13 @@ public class JxtClient {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + path))
                 .timeout(Duration.ofSeconds(15))
                 .header("content-type", "application/json")
+                .header("user-agent", "sport-crawl")
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                 .build();
+        return send(request);
+    }
+
+    private JsonNode send(HttpRequest request) {
         HttpResponse<String> response;
         try {
             response = http.send(request, HttpResponse.BodyHandlers.ofString());
@@ -93,6 +144,6 @@ public class JxtClient {
         return value;
     }
 
-    public record JxtAccount(String uid, String username) {
+    public record JxtAccount(String uid, String username, String accessToken, long expireAt) {
     }
 }

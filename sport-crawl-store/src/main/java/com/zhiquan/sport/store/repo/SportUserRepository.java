@@ -102,20 +102,25 @@ public class SportUserRepository {
         user.setJxtBound("1".equals(Attrs.str(item, "jxt_bound")));
         user.setJxtUid(Attrs.str(item, "jxt_uid"));
         user.setJxtAccount(Attrs.str(item, "jxt_account"));
+        user.setJxtAccessToken(Attrs.str(item, "jxt_token"));
+        Long tokenExpire = Attrs.lng(item, "jxt_token_expire");
+        user.setJxtTokenExpire(tokenExpire == null ? 0 : tokenExpire);
         Long balance = Attrs.lng(item, "balance_cent");
         user.setBalanceCent(balance == null ? 0 : balance);
         return Optional.of(user);
     }
 
-    public void saveJxt(String phone, String uid, String account) {
+    public void saveJxt(String phone, String uid, String account, String token, long tokenExpire) {
         Map<String, AttributeValue> values = new HashMap<>();
         values.put(":bound", Attrs.s("1"));
         values.put(":uid", Attrs.s(uid));
         values.put(":account", Attrs.s(account));
+        values.put(":token", Attrs.s(token));
+        values.put(":expire", Attrs.n(tokenExpire));
         dynamo.updateItem(UpdateItemRequest.builder()
                 .tableName(aws.getUserTable())
                 .key(key(phone, PROFILE))
-                .updateExpression("SET jxt_bound = :bound, jxt_uid = :uid, jxt_account = :account")
+                .updateExpression("SET jxt_bound = :bound, jxt_uid = :uid, jxt_account = :account, jxt_token = :token, jxt_token_expire = :expire")
                 .conditionExpression("attribute_exists(pk)")
                 .expressionAttributeValues(values)
                 .build());
@@ -125,7 +130,7 @@ public class SportUserRepository {
         dynamo.updateItem(UpdateItemRequest.builder()
                 .tableName(aws.getUserTable())
                 .key(key(phone, PROFILE))
-                .updateExpression("SET jxt_bound = :bound REMOVE jxt_uid, jxt_account")
+                .updateExpression("SET jxt_bound = :bound REMOVE jxt_uid, jxt_account, jxt_token, jxt_token_expire")
                 .conditionExpression("attribute_exists(pk)")
                 .expressionAttributeValues(Map.of(":bound", Attrs.s("0")))
                 .build());
