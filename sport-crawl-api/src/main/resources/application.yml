@@ -28,5 +28,5 @@ sport:
     resend-seconds: 60
     expire-seconds: 300
   jxt:
-    base-url: ${SPORT_JXT_BASE_URL:}
+    base-url: ${SPORT_JXT_BASE_URL:https://api.jixsports.com}
     bind-secret: ${SPORT_JXT_BIND_SECRET:}

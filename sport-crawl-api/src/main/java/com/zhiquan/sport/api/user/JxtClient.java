@@ -32,16 +32,27 @@ public class JxtClient {
     }
 
     public void sms(String phone) {
-        post("/api/liveBindSms", "sms", Map.of("phone", phone), phone);
+        postPublic("/smscode", Map.of(
+                "mobile", phone,
+                "phone_area_code", "86"
+        ));
     }
 
     public JxtAccount confirm(String phone, String code, String sportUserId) {
-        JsonNode data = post("/api/liveBindConfirm", "confirm", Map.of(
-                "phone", phone,
+        JsonNode data = postPublic("/mobilelogin", Map.of(
+                "mobile", phone,
                 "code", code,
-                "sportUserId", sportUserId
-        ), phone, code, sportUserId);
-        return new JxtAccount(text(data, "uid"), text(data, "username"));
+                "phone_area_code", "86"
+        ));
+        String uid = data.path("id").asText("");
+        if (uid.isBlank()) {
+            uid = text(data, "uid");
+        }
+        String username = data.path("username").asText("");
+        if (username.isBlank()) {
+            username = phone;
+        }
+        return new JxtAccount(uid, username);
     }
 
     public void unbind(String sportUserId) {
@@ -54,6 +65,16 @@ public class JxtClient {
         fields.put("amountCent", cents);
         fields.put("orderNo", orderNo);
         post("/api/liveTransfer", "transfer", fields, sportUserId, Long.toString(cents), orderNo);
+    }
+
+    private JsonNode postPublic(String path, Map<String, ?> fields) {
+        if (baseUrl.isBlank()) {
+            throw new IllegalArgumentException("吉祥接口未配置");
+        }
+        ObjectNode body = json.createObjectNode();
+        body.put("merchant_no", "10011");
+        fields.forEach((key, value) -> body.put(key, String.valueOf(value)));
+        return send(path, body);
     }
 
     private JsonNode post(String path, String action, Map<String, ?> fields, String... parts) {
@@ -70,6 +91,10 @@ public class JxtClient {
                 body.put(key, String.valueOf(value));
             }
         });
+        return send(path, body);
+    }
+
+    private JsonNode send(String path, ObjectNode body) {
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + path))
                 .timeout(Duration.ofSeconds(15))
                 .header("content-type", "application/json")
