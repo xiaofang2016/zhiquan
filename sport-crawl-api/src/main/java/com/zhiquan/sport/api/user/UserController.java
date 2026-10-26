@@ -10,10 +10,12 @@ public class UserController {
 
     private final UserAuthService auth;
     private final JxtBindService jxt;
+    private final UedBindService ued;
 
-    public UserController(UserAuthService auth, JxtBindService jxt) {
+    public UserController(UserAuthService auth, JxtBindService jxt, UedBindService ued) {
         this.auth = auth;
         this.jxt = jxt;
+        this.ued = ued;
     }
 
     @PostMapping("/prod-api/user/sms")
@@ -61,5 +63,31 @@ public class UserController {
     @PostMapping("/prod-api/user/jxt/withdraw")
     public KzbResult jxtWithdraw(@RequestBody UserRequest body) {
         return KzbResult.ok(jxt.withdraw(body.token(), body.amount()));
+    }
+
+    @PostMapping("/prod-api/user/ued/status")
+    public KzbResult uedStatus(@RequestBody UserRequest body) {
+        return KzbResult.ok(ued.status(body.token()));
+    }
+
+    @PostMapping("/prod-api/user/ued/sms")
+    public KzbResult uedSms(@RequestBody UserRequest body) {
+        ued.sms(body.token());
+        return KzbResult.ok(null);
+    }
+
+    @PostMapping("/prod-api/user/ued/bind")
+    public KzbResult uedBind(@RequestBody UserRequest body) {
+        return KzbResult.ok(ued.confirm(body.token(), body.code()));
+    }
+
+    @PostMapping("/prod-api/user/ued/unbind")
+    public KzbResult uedUnbind(@RequestBody UserRequest body) {
+        return KzbResult.ok(ued.unbind(body.token()));
+    }
+
+    @PostMapping("/prod-api/user/ued/withdraw")
+    public KzbResult uedWithdraw(@RequestBody UserRequest body) {
+        return KzbResult.ok(ued.withdraw(body.token(), body.amount()));
     }
 }

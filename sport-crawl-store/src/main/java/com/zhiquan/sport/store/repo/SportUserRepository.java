@@ -105,6 +105,12 @@ public class SportUserRepository {
         user.setJxtAccessToken(Attrs.str(item, "jxt_token"));
         Long tokenExpire = Attrs.lng(item, "jxt_token_expire");
         user.setJxtTokenExpire(tokenExpire == null ? 0 : tokenExpire);
+        user.setUedBound("1".equals(Attrs.str(item, "ued_bound")));
+        user.setUedUid(Attrs.str(item, "ued_uid"));
+        user.setUedAccount(Attrs.str(item, "ued_account"));
+        user.setUedAccessToken(Attrs.str(item, "ued_token"));
+        Long uedExpire = Attrs.lng(item, "ued_token_expire");
+        user.setUedTokenExpire(uedExpire == null ? 0 : uedExpire);
         Long balance = Attrs.lng(item, "balance_cent");
         user.setBalanceCent(balance == null ? 0 : balance);
         return Optional.of(user);
@@ -123,6 +129,32 @@ public class SportUserRepository {
                 .updateExpression("SET jxt_bound = :bound, jxt_uid = :uid, jxt_account = :account, jxt_token = :token, jxt_token_expire = :expire")
                 .conditionExpression("attribute_exists(pk)")
                 .expressionAttributeValues(values)
+                .build());
+    }
+
+    public void saveUed(String phone, String uid, String account, String token, long tokenExpire) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":bound", Attrs.s("1"));
+        values.put(":uid", Attrs.s(uid));
+        values.put(":account", Attrs.s(account));
+        values.put(":token", Attrs.s(token));
+        values.put(":expire", Attrs.n(tokenExpire));
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET ued_bound = :bound, ued_uid = :uid, ued_account = :account, ued_token = :token, ued_token_expire = :expire")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeValues(values)
+                .build());
+    }
+
+    public void clearUed(String phone) {
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET ued_bound = :bound REMOVE ued_uid, ued_account, ued_token, ued_token_expire")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeValues(Map.of(":bound", Attrs.s("0")))
                 .build());
     }
 

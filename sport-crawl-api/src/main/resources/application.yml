@@ -30,3 +30,6 @@ sport:
   jxt:
     base-url: ${SPORT_JXT_BASE_URL:https://api.jixsports.com}
     boxim-secret-name: ${SPORT_JXT_BOXIM_SECRET_NAME:prod/jxt-boxim}
+  ued:
+    base-url: ${SPORT_UED_BASE_URL:https://api.jixsports.com}
+    boxim-secret-name: ${SPORT_UED_BOXIM_SECRET_NAME:prod/jxt-boxim}

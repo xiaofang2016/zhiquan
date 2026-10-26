@@ -744,10 +744,12 @@
       <div class="mine-balance" id="jxt-balance">0.00</div>
       <input class="mine-amount" id="jxt-amount" inputmode="decimal" placeholder="请输入提现金额">
       <button class="mine-withdraw" id="jxt-withdraw" type="button" data-mine="jxt-withdraw">提现到吉祥｜未绑定</button>
-      <p class="mine-tip">单笔最低10元。提现到已绑定的吉祥体育主账户。</p>
+      <button class="mine-withdraw" id="ued-withdraw" type="button" data-mine="ued-withdraw">提现到UED｜未绑定</button>
+      <p class="mine-tip">单笔最低10元。提现到已绑定的吉祥或 UED 主账户。</p>
     </section>
     <section class="mine-card" id="mine-menu">
-      <button class="mine-row" id="jxt-bind-row" type="button" data-mine="jxt-bind" hidden>绑定设置<span>›</span></button>
+      <button class="mine-row" id="jxt-bind-row" type="button" data-mine="jxt-bind" hidden>绑定吉祥<span>›</span></button>
+      <button class="mine-row" id="ued-bind-row" type="button" data-mine="ued-bind" hidden>绑定UED<span>›</span></button>
       <button class="mine-row" type="button" data-mine="avatar">头像设置<span>›</span></button>
       <button class="mine-row" type="button" data-mine="match">比赛设置<span>›</span></button>
       <button class="mine-row" type="button" data-mine="order" data-login="1">我的订单<span>›</span></button>
@@ -767,8 +769,8 @@
   </div>
   <div class="jxt-card">
     <h2>账号验证</h2>
-    <div class="jxt-brands"><span>说球帝</span><b>⇒</b><span>吉祥体育</span></div>
-    <p class="jxt-note">首次使用需验证，未注册的手机号将自动创建为吉祥账号</p>
+    <div class="jxt-brands"><span>说球帝</span><b>⇒</b><span id="bind-target">吉祥体育</span></div>
+    <p class="jxt-note" id="bind-note">首次使用需验证，未注册的手机号将自动创建为吉祥账号</p>
     <div class="jxt-line"><em>手机号</em><b id="jxt-phone"></b></div>
     <div class="jxt-line"><em>验证码</em><input id="jxt-code" inputmode="numeric" maxlength="6" placeholder="请输入验证码"><button type="button" id="jxt-code-btn">获取验证码</button></div>
     <button class="jxt-submit" id="jxt-submit" type="button">一键登录</button>
@@ -825,7 +827,9 @@ const state = {
   user: null,
   authMode: "login",
   returnMine: false,
-  jxt: null
+  jxt: null,
+  ued: null,
+  bindBrand: "jxt"
 };
 
 const $ = (id) => document.getElementById(id);
@@ -2093,6 +2097,7 @@ function onMineClick(event) {
   if (action === "logout") {
     rememberAccount(null);
     paintJxt(null);
+    paintUed(null);
     toast("已退出");
     return;
   }
@@ -2101,10 +2106,12 @@ function onMineClick(event) {
     return;
   }
   if (action === "avatar" && !state.user) { toast("未登录，请登录后使用！"); return; }
-  if (action === "jxt-bind" || action === "jxt-withdraw") {
+  if (action === "jxt-bind" || action === "jxt-withdraw" || action === "ued-bind" || action === "ued-withdraw") {
     if (!state.user) { openAccount("login", true); return; }
-    if (action === "jxt-withdraw" && state.jxt && state.jxt.isBind === "1") { withdrawJxt(); return; }
-    openJxt();
+    const brand = action.startsWith("ued") ? "ued" : "jxt";
+    const info = brand === "ued" ? state.ued : state.jxt;
+    if (action.endsWith("withdraw") && info && info.isBind === "1") { withdrawBrand(brand); return; }
+    openBrand(brand);
     return;
   }
   if (item.dataset.login === "1" && !state.user) { openAccount("login", true); return; }
@@ -2115,36 +2122,70 @@ function paintJxt(info) {
   const bound = state.jxt.isBind === "1";
   $("mine-wallet").hidden = !state.user;
   $("jxt-bind-row").hidden = !state.user;
-  $("jxt-balance").textContent = state.jxt.balance || "0.00";
+  $("jxt-balance").textContent = state.jxt.balance || (state.ued && state.ued.balance) || "0.00";
   $("jxt-withdraw").textContent = "提现到吉祥｜" + (bound ? (state.jxt.account || "已绑定") : "未绑定");
+  if (state.bindBrand === "jxt") paintBindPage(state.jxt);
+}
+function paintUed(info) {
+  state.ued = info || { isBind: "0", account: "", balance: "0.00" };
+  const bound = state.ued.isBind === "1";
+  $("mine-wallet").hidden = !state.user;
+  $("ued-bind-row").hidden = !state.user;
+  if (state.ued.balance) $("jxt-balance").textContent = state.ued.balance;
+  $("ued-withdraw").textContent = "提现到UED｜" + (bound ? (state.ued.account || "已绑定") : "未绑定");
+  if (state.bindBrand === "ued") paintBindPage(state.ued);
+}
+function paintBindPage(info) {
+  const bound = info && info.isBind === "1";
+  const ued = state.bindBrand === "ued";
+  $("bind-target").textContent = ued ? "UED体育" : "吉祥体育";
+  $("bind-note").textContent = ued
+    ? "首次使用需验证，未注册的手机号将自动创建为UED账号"
+    : "首次使用需验证，未注册的手机号将自动创建为吉祥账号";
   $("jxt-phone").textContent = state.user ? (state.user.phone || "") : "";
   $("jxt-unbind").hidden = !bound;
 }
 async function loadJxt() {
-  if (!state.user || !state.user.token) { paintJxt(null); return; }
+  if (!state.user || !state.user.token) { paintJxt(null); paintUed(null); return; }
   try {
     paintJxt(await postAccount("/prod-api/user/jxt/status", { token: state.user.token }));
   } catch (error) {
     paintJxt(null);
   }
+  try {
+    paintUed(await postAccount("/prod-api/user/ued/status", { token: state.user.token }));
+  } catch (error) {
+    paintUed(null);
+  }
 }
-function openJxt() {
+function openBrand(brand) {
+  state.bindBrand = brand;
   $("mine-page").hidden = true;
   $("jxt-page").hidden = false;
-  paintJxt(state.jxt);
+  paintBindPage(brand === "ued" ? state.ued : state.jxt);
+}
+function openJxt() {
+  openBrand("jxt");
 }
 function closeJxt() {
   $("jxt-page").hidden = true;
   openMine();
 }
 let jxtCodeLeft = 0;
+function brandPath() {
+  return state.bindBrand === "ued" ? "/prod-api/user/ued" : "/prod-api/user/jxt";
+}
+function paintBrand(info) {
+  if (state.bindBrand === "ued") paintUed(info);
+  else paintJxt(info);
+}
 async function sendJxtCode() {
   if (!state.user) { openAccount("login", true); return; }
   if (jxtCodeLeft > 0) return;
   const button = $("jxt-code-btn");
   button.disabled = true;
   try {
-    await postAccount("/prod-api/user/jxt/sms", { token: state.user.token });
+    await postAccount(brandPath() + "/sms", { token: state.user.token });
     toast("验证码已发送");
     jxtCodeLeft = 60;
     const tick = () => {
@@ -2169,7 +2210,7 @@ async function submitJxt() {
   if (!/^\d{4,6}$/.test(code)) { toast("请输入验证码"); return; }
   $("jxt-submit").disabled = true;
   try {
-    paintJxt(await postAccount("/prod-api/user/jxt/bind", { token: state.user.token, code }));
+    paintBrand(await postAccount(brandPath() + "/bind", { token: state.user.token, code }));
     $("jxt-code").value = "";
     closeJxt();
     toast("绑定成功");
@@ -2181,27 +2222,35 @@ async function submitJxt() {
 }
 async function unbindJxt() {
   if (!state.user) return;
-  if (!window.confirm("是否确认解除绑定吉祥账号？解绑后将无法进行提现操作")) return;
+  const name = state.bindBrand === "ued" ? "UED" : "吉祥";
+  if (!window.confirm("是否确认解除绑定" + name + "账号？解绑后将无法进行提现操作")) return;
   try {
-    paintJxt(await postAccount("/prod-api/user/jxt/unbind", { token: state.user.token }));
+    paintBrand(await postAccount(brandPath() + "/unbind", { token: state.user.token }));
     toast("已解除绑定");
   } catch (error) {
     toast(error.message || "解除绑定失败");
   }
 }
-async function withdrawJxt() {
+async function withdrawBrand(brand) {
   if (!state.user) return;
   const amount = $("jxt-amount").value.trim();
-  $("jxt-withdraw").disabled = true;
+  const button = $(brand === "ued" ? "ued-withdraw" : "jxt-withdraw");
+  const path = brand === "ued" ? "/prod-api/user/ued/withdraw" : "/prod-api/user/jxt/withdraw";
+  button.disabled = true;
   try {
-    paintJxt(await postAccount("/prod-api/user/jxt/withdraw", { token: state.user.token, amount }));
+    const info = await postAccount(path, { token: state.user.token, amount });
+    if (brand === "ued") paintUed(info);
+    else paintJxt(info);
     $("jxt-amount").value = "";
     toast("提现成功");
   } catch (error) {
     toast(error.message || "提现失败");
   } finally {
-    $("jxt-withdraw").disabled = false;
+    button.disabled = false;
   }
+}
+async function withdrawJxt() {
+  withdrawBrand("jxt");
 }
 let codeLeft = 0;
 async function sendCode() {

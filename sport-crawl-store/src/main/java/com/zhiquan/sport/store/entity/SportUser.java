@@ -20,5 +20,10 @@ public class SportUser {
     private String jxtAccount;
     private String jxtAccessToken;
     private long jxtTokenExpire;
+    private boolean uedBound;
+    private String uedUid;
+    private String uedAccount;
+    private String uedAccessToken;
+    private long uedTokenExpire;
     private long balanceCent;
 }

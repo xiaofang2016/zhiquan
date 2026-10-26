@@ -70,6 +70,7 @@ class UserAccountTest {
         assertEquals(1000, JxtMoney.cents("10.00"));
         assertEquals("10.50", JxtMoney.yuan(1050));
         assertEquals("a***z", JxtBindService.mask("abcz"));
+        assertEquals("10012", UedClient.MERCHANT_NO);
         assertThrows(IllegalArgumentException.class, () -> JxtMoney.cents("9.99"));
         assertThrows(IllegalArgumentException.class, () -> JxtMoney.cents("10.555"));
     }
