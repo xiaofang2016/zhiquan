@@ -21,6 +21,9 @@ import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
 import software.amazon.awssdk.services.dynamodb.model.TableStatus;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItem;
+import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest;
+import software.amazon.awssdk.services.dynamodb.model.Update;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
 import java.util.HashMap;
@@ -38,6 +41,7 @@ public class SportUserRepository {
     static final String PROFILE = "PROFILE";
     static final String PASSWORD = "PASSWORD";
     static final String SMS = "SMS";
+    static final String REDPACK = "REDPACK";
 
     private final DynamoDbClient dynamo;
     private final SportAwsProperties aws;
@@ -222,6 +226,58 @@ public class SportUserRepository {
 
     public void credit(String phone, long cents) {
         dynamo.updateItem(balanceUpdate(phone, cents, "+"));
+    }
+
+    public String redpack(String day) {
+        Map<String, AttributeValue> item = dynamo.getItem(GetItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(REDPACK, day))
+                .build()).item();
+        if (item == null || item.isEmpty()) {
+            return "";
+        }
+        String saved = Attrs.str(item, "pack");
+        return saved == null ? "" : saved;
+    }
+
+    public void createRedpack(String day, String json) {
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("pk", Attrs.s(REDPACK));
+        item.put("sk", Attrs.s(day));
+        item.put("pack", Attrs.s(json));
+        dynamo.putItem(PutItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .item(item)
+                .conditionExpression("attribute_not_exists(pk)")
+                .build());
+    }
+
+    public void saveRedpack(String day, String expected, String next, String phone, long cents) {
+        Map<String, AttributeValue> packValues = new HashMap<>();
+        packValues.put(":next", Attrs.s(next));
+        packValues.put(":expected", Attrs.s(expected));
+        Update pack = Update.builder()
+                .tableName(aws.getUserTable())
+                .key(key(REDPACK, day))
+                .updateExpression("SET pack = :next")
+                .conditionExpression("attribute_exists(pk) AND pack = :expected")
+                .expressionAttributeValues(packValues)
+                .build();
+        Map<String, AttributeValue> balanceValues = new HashMap<>();
+        balanceValues.put(":zero", Attrs.n(0));
+        balanceValues.put(":amt", Attrs.n(cents));
+        Update balance = Update.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET balance_cent = if_not_exists(balance_cent, :zero) + :amt")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeValues(balanceValues)
+                .build();
+        dynamo.transactWriteItems(TransactWriteItemsRequest.builder()
+                .transactItems(
+                        TransactWriteItem.builder().update(pack).build(),
+                        TransactWriteItem.builder().update(balance).build())
+                .build());
     }
 
     private UpdateItemRequest balanceUpdate(String phone, long cents, String op) {

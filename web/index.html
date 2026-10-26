@@ -284,10 +284,28 @@
     text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
   }
   .dock-pack[hidden] { display: none; }
-  .pack-page { background: #c83c3c; overflow: hidden; }
-  .pack-page .sub-col { display: flex; flex-direction: column; height: 100%; min-height: 0; }
-  .pack-page .match-bar { flex: none; background: #fff; }
-  .pack-frame { flex: 1; width: 100%; border: 0; background: #c83c3c; }
+  .pack-page { background: #3a3a3a; overflow: auto; }
+  .pack-page .sub-col { display: flex; flex-direction: column; min-height: 100%; }
+  .pack-page .match-bar { flex: none; background: #fff; position: sticky; top: 0; }
+  .pack-stage { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 28px 16px 40px; }
+  .pack-card {
+    width: min(280px, 86%); border-radius: 16px; text-align: center; color: #fff;
+    padding: 28px 18px 32px; background: linear-gradient(180deg, #ff8a4a, #e23b3b 58%, #d12f3a);
+    box-shadow: 0 12px 30px rgba(0, 0, 0, .25);
+  }
+  .pack-face {
+    width: 64px; height: 64px; margin: 0 auto 12px; border-radius: 50%;
+    display: grid; place-items: center; background: #fff; color: #e23b3b; font-size: 28px; font-weight: 700;
+  }
+  .pack-card p { margin: 0; font-size: 14px; }
+  .pack-card b { display: block; margin: 10px 0 22px; font-size: 22px; }
+  .pack-chai {
+    width: 72px; height: 72px; border: 4px solid #ffe08a; border-radius: 50%;
+    background: #f6c445; color: #8a4b12; font-size: 28px; font-weight: 700;
+  }
+  .pack-chai[hidden], .pack-result[hidden] { display: none; }
+  .pack-result { margin: 0; font-size: 28px; font-weight: 700; }
+  .pack-foot { margin: 16px 0 0; color: rgba(255, 255, 255, .75); font-size: 13px; text-align: center; }
   .dock-top, .dock-app, .refresh {
     width: 46px;
     height: 46px;
@@ -442,7 +460,7 @@
   .login-page {
     position: fixed;
     inset: 0;
-    z-index: 40;
+    z-index: 60;
     overflow: auto;
     background: #fff;
   }
@@ -622,6 +640,7 @@
     background: #f6f7f9;
   }
   .sub-page[hidden] { display: none; }
+  .sub-page.pack-page { background: #3a3a3a; }
   .sub-col { width: min(440px, 100%); min-height: 100%; margin: 0 auto; }
   .match-page.sub-page { background: #fff; }
   .match-bar.with-side b { margin-right: 0; }
@@ -1223,7 +1242,16 @@
 <div class="sub-page pack-page" id="pack-page" hidden>
   <div class="sub-col">
     <div class="match-bar"><button type="button" id="pack-back" aria-label="返回">‹</button><b>领取红包</b></div>
-    <iframe id="pack-frame" class="pack-frame" title="领取红包"></iframe>
+    <div class="pack-stage">
+      <div class="pack-card">
+        <div class="pack-face">说</div>
+        <p id="pack-from">说球帝的红包</p>
+        <b id="pack-desc">拼手气红包</b>
+        <button class="pack-chai" id="pack-chai" type="button">拆</button>
+        <p class="pack-result" id="pack-result" hidden></p>
+      </div>
+      <p class="pack-foot">领到的金额记入说球帝余额，可提现到吉祥或 UED</p>
+    </div>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -1294,64 +1322,57 @@ function toast(text) {
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => { node.style.display = "none"; }, 1600);
 }
-const PACK_API = "https://kzb001.net/im-api/rest_get?processorId=1018&jobDispatchId=29&actionId=122&newData=" + encodeURIComponent("{}");
-function packUrl(packet) {
-  const payload = {
-    user_name: encodeURIComponent(packet.senderNickname || ""),
-    userId: "",
-    user_photo: encodeURIComponent(packet.senderAvatar || ""),
-    gid: "",
-    gid_name: "",
-    wallet_desc: encodeURIComponent(packet.description || ""),
-    msg_fingerprint: "",
-    walletId: String(packet.walletId || ""),
-    h: "",
-    from: "chat"
-  };
-  return "https://chat.imnono.net/coupon/recieveRedPacket.html?p=" + encodeURIComponent(btoa(JSON.stringify(payload)));
-}
 function paintPack() {
   const button = $("pack");
   const packet = state.pack;
-  if (!packet || !packet.walletId) {
+  const total = Number(packet && packet.num);
+  if (!packet || !Number.isFinite(total) || total <= 0) {
     button.hidden = true;
     $("pack-count").textContent = "";
     return;
   }
   button.hidden = false;
-  const drawn = Number(packet.drawNum);
-  const total = Number(packet.num);
-  $("pack-count").textContent = Number.isFinite(drawn) && Number.isFinite(total) ? drawn + "/" + total : "";
-  const page = $("pack-page");
-  if (page.hidden) return;
-  const frame = $("pack-frame");
-  const next = packUrl(packet);
-  if (frame.dataset.src !== next) {
-    frame.dataset.src = next;
-    frame.src = next;
-  }
+  const drawn = Number(packet.drawNum) || 0;
+  $("pack-count").textContent = drawn + "/" + total;
+  $("pack-from").textContent = (packet.sender || "说球帝") + "的红包";
+  $("pack-desc").textContent = packet.description || "拼手气红包";
+  const sold = drawn >= total;
+  $("pack-chai").hidden = !!packet.mine || sold;
+  $("pack-result").hidden = !packet.mine && !sold;
+  $("pack-result").textContent = packet.mine ? "¥" + packet.mine : "已领完";
 }
 async function loadPack() {
   try {
-    const response = await fetch(PACK_API + "&_t=" + Date.now(), { cache: "no-store" });
-    const body = await response.json();
-    let inner = body && body.returnValue;
-    if (typeof inner === "string") inner = JSON.parse(inner);
-    const data = inner && Number(inner.retCode) === 0 ? inner.data : null;
-    const active = data && data.walletId && data.active !== false && String(data.active) !== "false" && String(data.active) !== "0";
-    state.pack = active ? data : null;
+    const body = state.user && state.user.token ? { token: state.user.token } : {};
+    state.pack = await postAccount("/prod-api/user/redpack", body);
   } catch (error) {
     state.pack = null;
   }
   paintPack();
 }
 function openPack() {
-  if (!state.pack || !state.pack.walletId) {
+  if (!state.pack || !Number(state.pack.num)) {
     toast("暂无红包");
     return;
   }
   $("pack-page").hidden = false;
   paintPack();
+}
+async function claimPack() {
+  if (!state.user || !state.user.token) { openAccount("login"); return; }
+  if (state.pack && state.pack.mine) return;
+  const button = $("pack-chai");
+  if (button.disabled) return;
+  button.disabled = true;
+  try {
+    state.pack = await postAccount("/prod-api/user/redpack/claim", { token: state.user.token });
+    paintPack();
+  } catch (error) {
+    toast(error.message || "领取失败");
+    loadPack();
+  } finally {
+    button.disabled = false;
+  }
 }
 function closePack() {
   $("pack-page").hidden = true;
@@ -3638,13 +3659,7 @@ async function boot() {
   $("dock-app").onclick = () => toast("客户端暂未开放");
   $("pack").onclick = openPack;
   $("pack-back").onclick = closePack;
-  window.addEventListener("message", (event) => {
-    if (event.origin !== "https://chat.imnono.net") return;
-    let data = event.data;
-    try { if (typeof data === "string") data = JSON.parse(data); } catch (error) { return; }
-    if (!data || Number(data.type) !== 100) return;
-    loadPack();
-  });
+  $("pack-chai").onclick = claimPack;
   $("refresh").onclick = () => {
     if (state.tab === "live") { state.liveLoaded = false; state.liveRows = []; loadLive(); }
     else if (state.tab === "match") resetMatches();

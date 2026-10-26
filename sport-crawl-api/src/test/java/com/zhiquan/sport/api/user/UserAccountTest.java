@@ -5,7 +5,10 @@ import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Random;
+import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -119,6 +122,35 @@ class UserAccountTest {
         MissionRules.State restored = json.readValue(json.writeValueAsString(registered), MissionRules.State.class);
         assertEquals(650, restored.balance());
         assertEquals("连续登录", restored.records().get(1).title());
+    }
+
+    @Test
+    void redpackSplitsOneDailyPoolWithoutDoubleClaim() {
+        LocalDateTime now = LocalDateTime.of(2026, 10, 26, 22, 5, 0);
+        RedPackRules.Round round = RedPackRules.fresh();
+        assertEquals(188, round.count());
+        assertEquals(58800L, round.poolCent());
+        Random random = new Random(1);
+        long sum = 0;
+        Set<String> users = new HashSet<>();
+        for (int i = 0; i < RedPackRules.COUNT; i++) {
+            String userId = "u" + i;
+            RedPackRules.Round before = round;
+            round = RedPackRules.claim(round, userId, now, random);
+            long cent = round.claims().get(round.claims().size() - 1).cent();
+            assertTrue(cent >= 1);
+            sum += cent;
+            users.add(userId);
+            RedPackRules.Round taken = round;
+            assertThrows(IllegalArgumentException.class, () -> RedPackRules.claim(taken, userId, now, random));
+            assertEquals(before.remainCent() - cent, round.remainCent());
+        }
+        assertEquals(58800L, sum);
+        assertEquals(0, round.remainCount());
+        assertEquals(188, users.size());
+        assertEquals(round.claims().get(0).cent(), RedPackRules.mine(round, "u0"));
+        RedPackRules.Round finished = round;
+        assertThrows(IllegalArgumentException.class, () -> RedPackRules.claim(finished, "extra", now, random));
     }
 
     @Test

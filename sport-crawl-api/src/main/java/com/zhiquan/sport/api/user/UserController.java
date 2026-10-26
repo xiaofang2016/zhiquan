@@ -21,13 +21,15 @@ public class UserController {
     private final JxtBindService jxt;
     private final UedBindService ued;
     private final MissionService mission;
+    private final RedPackService redpack;
 
-    public UserController(UserAuthService auth, S3ImageStore images, JxtBindService jxt, UedBindService ued, MissionService mission) {
+    public UserController(UserAuthService auth, S3ImageStore images, JxtBindService jxt, UedBindService ued, MissionService mission, RedPackService redpack) {
         this.auth = auth;
         this.images = images;
         this.jxt = jxt;
         this.ued = ued;
         this.mission = mission;
+        this.redpack = redpack;
     }
 
     @PostMapping("/prod-api/user/sms")
@@ -64,6 +66,16 @@ public class UserController {
     @PostMapping("/prod-api/user/mission/claim")
     public KzbResult missionClaim(@RequestBody UserRequest body) {
         return KzbResult.ok(mission.claim(body.token(), body.type() == null ? 0 : body.type()));
+    }
+
+    @PostMapping("/prod-api/user/redpack")
+    public KzbResult redpack(@RequestBody(required = false) UserRequest body) {
+        return KzbResult.ok(redpack.state(body == null ? null : body.token()));
+    }
+
+    @PostMapping("/prod-api/user/redpack/claim")
+    public KzbResult redpackClaim(@RequestBody UserRequest body) {
+        return KzbResult.ok(redpack.claim(body.token()));
     }
 
     @PostMapping("/prod-api/user/avatar")
