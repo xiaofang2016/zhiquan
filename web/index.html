@@ -283,30 +283,11 @@
     font-weight: 700;
     text-shadow: 0 1px 2px rgba(0, 0, 0, .45);
   }
-  .pack-card {
-    display: none;
-    position: absolute;
-    right: 68px;
-    top: 0;
-    width: 220px;
-    background: #fff;
-    border-radius: 14px;
-    box-shadow: 0 10px 28px rgba(28, 39, 58, .16);
-    overflow: hidden;
-    text-align: center;
-  }
-  .pack-card.show { display: block; }
-  .pack-card .band { height: 72px; background: linear-gradient(180deg, #ff5a4a, #e23b3b); }
-  .pack-card .body { padding: 14px 16px 16px; }
-  .pack-card b { display: block; color: #e23b3b; font-size: 16px; }
-  .pack-card p { margin: 8px 0 12px; color: #8d939c; font-size: 13px; }
-  .pack-card .claim {
-    height: 32px;
-    padding: 0 18px;
-    border-radius: 16px;
-    background: #e23b3b;
-    color: #fff;
-  }
+  .dock-pack[hidden] { display: none; }
+  .pack-page { background: #c83c3c; overflow: hidden; }
+  .pack-page .sub-col { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+  .pack-page .match-bar { flex: none; background: #fff; }
+  .pack-frame { flex: 1; width: 100%; border: 0; background: #c83c3c; }
   .dock-top, .dock-app, .refresh {
     width: 46px;
     height: 46px;
@@ -1239,20 +1220,18 @@
     <button type="button" id="share-cancel">取消</button>
   </div>
 </div>
+<div class="sub-page pack-page" id="pack-page" hidden>
+  <div class="sub-col">
+    <div class="match-bar"><button type="button" id="pack-back" aria-label="返回">‹</button><b>领取红包</b></div>
+    <iframe id="pack-frame" class="pack-frame" title="领取红包"></iframe>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 <div class="dock" id="dock">
-  <button class="dock-pack" id="pack" type="button" aria-label="领取红包">
+  <button class="dock-pack" id="pack" type="button" aria-label="领取红包" hidden>
     <img alt="" src="https://live.qiandongslim.com/static/img/redpack-nomal.a0186118.gif">
     <span id="pack-count"></span>
   </button>
-  <div class="pack-card" id="pack-card">
-    <div class="band"></div>
-    <div class="body">
-      <b>元友红包</b>
-      <p>登录后可以领取</p>
-      <button class="claim" id="pack-claim" type="button">领取</button>
-    </div>
-  </div>
   <button class="dock-top" id="totop" type="button" aria-label="回到顶部">
     <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><path d="M11 4l7 8h-4v6H8v-6H4z" fill="#2ec8c4"/></svg>
   </button>
@@ -1303,7 +1282,8 @@ const state = {
   bindBrand: "jxt",
   avatarPreview: "",
   avatarReady: false,
-  mission: null
+  mission: null,
+  pack: null
 };
 
 const $ = (id) => document.getElementById(id);
@@ -1313,6 +1293,69 @@ function toast(text) {
   node.style.display = "block";
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => { node.style.display = "none"; }, 1600);
+}
+const PACK_API = "https://kzb001.net/im-api/rest_get?processorId=1018&jobDispatchId=29&actionId=122&newData=" + encodeURIComponent("{}");
+function packUrl(packet) {
+  const payload = {
+    user_name: encodeURIComponent(packet.senderNickname || ""),
+    userId: "",
+    user_photo: encodeURIComponent(packet.senderAvatar || ""),
+    gid: "",
+    gid_name: "",
+    wallet_desc: encodeURIComponent(packet.description || ""),
+    msg_fingerprint: "",
+    walletId: String(packet.walletId || ""),
+    h: "",
+    from: "chat"
+  };
+  return "https://chat.imnono.net/coupon/recieveRedPacket.html?p=" + encodeURIComponent(btoa(JSON.stringify(payload)));
+}
+function paintPack() {
+  const button = $("pack");
+  const packet = state.pack;
+  if (!packet || !packet.walletId) {
+    button.hidden = true;
+    $("pack-count").textContent = "";
+    return;
+  }
+  button.hidden = false;
+  const drawn = Number(packet.drawNum);
+  const total = Number(packet.num);
+  $("pack-count").textContent = Number.isFinite(drawn) && Number.isFinite(total) ? drawn + "/" + total : "";
+  const page = $("pack-page");
+  if (page.hidden) return;
+  const frame = $("pack-frame");
+  const next = packUrl(packet);
+  if (frame.dataset.src !== next) {
+    frame.dataset.src = next;
+    frame.src = next;
+  }
+}
+async function loadPack() {
+  try {
+    const response = await fetch(PACK_API + "&_t=" + Date.now(), { cache: "no-store" });
+    const body = await response.json();
+    let inner = body && body.returnValue;
+    if (typeof inner === "string") inner = JSON.parse(inner);
+    const data = inner && Number(inner.retCode) === 0 ? inner.data : null;
+    const active = data && data.walletId && data.active !== false && String(data.active) !== "false" && String(data.active) !== "0";
+    state.pack = active ? data : null;
+  } catch (error) {
+    state.pack = null;
+  }
+  paintPack();
+}
+function openPack() {
+  if (!state.pack || !state.pack.walletId) {
+    toast("暂无红包");
+    return;
+  }
+  $("pack-page").hidden = false;
+  paintPack();
+}
+function closePack() {
+  $("pack-page").hidden = true;
+  loadPack();
 }
 function el(tag, cls, text) {
   const node = document.createElement(tag);
@@ -3593,18 +3636,22 @@ async function boot() {
   $("app").onclick = () => toast("客户端暂未开放");
   $("totop").onclick = () => window.scrollTo({ top: 0, behavior: "smooth" });
   $("dock-app").onclick = () => toast("客户端暂未开放");
-  $("pack").onclick = () => $("pack-card").classList.toggle("show");
-  $("pack-claim").onclick = (event) => {
-    event.stopPropagation();
-    if (!state.user) { openAccount("login"); return; }
-    toast("红包暂未开放");
-  };
+  $("pack").onclick = openPack;
+  $("pack-back").onclick = closePack;
+  window.addEventListener("message", (event) => {
+    if (event.origin !== "https://chat.imnono.net") return;
+    let data = event.data;
+    try { if (typeof data === "string") data = JSON.parse(data); } catch (error) { return; }
+    if (!data || Number(data.type) !== 100) return;
+    loadPack();
+  });
   $("refresh").onclick = () => {
     if (state.tab === "live") { state.liveLoaded = false; state.liveRows = []; loadLive(); }
     else if (state.tab === "match") resetMatches();
     else render();
   };
   render();
+  loadPack();
   try {
     const [dates, categories] = await Promise.all([
       get("/prod-api/match/date/count?type=-1&cid=0"),
@@ -3633,6 +3680,7 @@ setInterval(() => {
 setInterval(() => {
   if (document.visibilityState === "hidden") return;
   if (state.tab === "live" && !state.loading) loadLive();
+  loadPack();
 }, 15000);
 boot();
 refreshScores().catch(() => {});
