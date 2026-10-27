@@ -4,8 +4,10 @@ phases:
   install:
     runtime-versions:
       java: corretto17
+      nodejs: 20
   build:
     commands:
+      - cd web && npm ci && npm run build && cd ..
       - mvn -B -DskipTests package
   post_build:
     commands:
@@ -16,10 +18,13 @@ phases:
       - cp Dockerfile docker-compose.yml docker-compose.db.yml appspec.yml output/
       - cp scripts/*.sh output/scripts/
       - chmod 755 output/scripts/*.sh
-      - mkdir -p output/site 
-      - find web -type f ! -name nginx.conf ! -name index.mjs -exec cp --parents {} output/site/ \;
-
-      - ( cd web && zip -qr /tmp/sport-crawl-web.zip . -x nginx.conf )
+      - mkdir -p output/site/web
+      - cp -a web/dist/. output/site/web/
+      - rm -rf /tmp/sport-crawl-web
+      - mkdir -p /tmp/sport-crawl-web
+      - cp -a web/dist/. /tmp/sport-crawl-web/
+      - cp web/index.mjs /tmp/sport-crawl-web/index.mjs
+      - ( cd /tmp/sport-crawl-web && zip -qr /tmp/sport-crawl-web.zip . )
       - aws lambda wait function-updated --function-name sport-crawl-web
       - |
         VER=$(aws lambda update-function-code --function-name sport-crawl-web --zip-file fileb:///tmp/sport-crawl-web.zip --publish --query Version --output text)

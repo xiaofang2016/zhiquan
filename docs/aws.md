@@ -87,7 +87,7 @@
 
 ## 一次发布换上什么
 
-Java 三个包打在同一个镜像 `sport-crawl:1.0.0` 里，用启动命令区分。CodeBuild 读 `buildspec.yml`：Corretto 17，`mvn package`，把 `worker.jar`、`api.jar`、`db.jar`、Dockerfile、两份 compose、`appspec.yml` 和 `scripts/` 打成制品。
+Java 三个包打在同一个镜像 `sport-crawl:1.0.0` 里，用启动命令区分。CodeBuild 读 `buildspec.yml`：先在 `web/` 用 npm 打出页面，再用 Corretto 17 执行 `mvn package`，把 `worker.jar`、`api.jar`、`db.jar`、Dockerfile、两份 compose、`appspec.yml` 和 `scripts/` 打成制品。页面制品是构建后的 `web/dist`。
 
 CodeDeploy 按 `appspec.yml` 盖到 `/var/local/sport-crawl`，钩子以 root 跑：
 
