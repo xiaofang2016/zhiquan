@@ -72,7 +72,7 @@
 
 ### 社球帝：同一进程里的另一口钟
 
-也在 `db.jar` 里，不跟上面三件任务共用那把锁，也不跟比赛抓取共用间隔。每 2 分钟拉 `kzb001.net` 的 `/comment-api/post/list` 前 3 页和圈子列表。评论只在 `lastCommentTime`、评论数或点赞数变了才重拉。
+也在 `db.jar` 里，不跟上面三件任务共用那把锁，也不跟比赛抓取共用间隔。进程起来先抓一轮，之后每 2 分钟再拉 `kzb001.net` 的 `/comment-api/post/list` 前 3 页和圈子列表。评论只在 `lastCommentTime`、评论数或点赞数变了才重拉。
 
 正文在同一个桶的 `community/feed.json`、`community/posts/{postId}/comments.json`。图片继续用上游地址。读接口是 `GET /prod-api/community/feed` 和 `GET /prod-api/community/posts/{postId}/comments`。
 

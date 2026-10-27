@@ -1,9 +1,9 @@
 package com.zhiquan.sport.db;
 
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
-
-import java.util.concurrent.TimeUnit;
 
 @Component
 public class CommunityScheduler {
@@ -16,8 +16,17 @@ public class CommunityScheduler {
         this.crawl = crawl;
     }
 
-    @Scheduled(fixedRate = 2, timeUnit = TimeUnit.MINUTES, initialDelay = 25)
+    @EventListener(ApplicationReadyEvent.class)
+    public void start() {
+        run();
+    }
+
+    @Scheduled(fixedRateString = "120000", initialDelayString = "120000")
     public void round() {
+        run();
+    }
+
+    private void run() {
         if (properties.isEnabled()) {
             crawl.round();
         }
