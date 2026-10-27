@@ -5,7 +5,7 @@
       <div><b>说球帝</b><small></small></div>
     </div>
     <nav class="tabs">
-      <button v-for="item in tabs" :key="item.id" type="button" :class="'tab' + (state.tab === item.id ? ' on' : '')" @click="selectTab(item.id)">
+      <button v-for="item in tabs" :key="item.id" type="button" :class="'tab' + (state.tab === item.id ? ' on' : '')" @click="openTab(item.id)">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path :d="item.icon" /></svg>
         {{ item.label }}
       </button>
@@ -19,8 +19,14 @@
   </header>
   <div class="layout">
     <aside v-show="showSide" class="side">
-      <h2>全部分类</h2>
+      <h2>{{ state.tab === 'community' ? '圈子' : '全部分类' }}</h2>
       <button v-if="state.tab === 'db'" class="cat on" type="button">资料库</button>
+      <template v-else-if="state.tab === 'community'">
+        <button type="button" :class="'cat' + (state.communityCircle ? '' : ' on')" @click="pickCircle(0)"><span class="ph">全</span>全部</button>
+        <button v-for="circle in state.communityCircles" :key="circle.id" type="button" :class="'league' + (state.communityCircle === circle.id ? ' on' : '')" @click="pickCircle(circle.id)">
+          <Logo :url="circle.icon" :name="circle.name" />{{ circle.name }}
+        </button>
+      </template>
       <template v-else>
         <button v-for="item in fixed" :key="item.id" type="button" :class="'cat' + (item.on ? ' on' : '')" @click="selectFixed(item.id)"><span class="ph">{{ item.label.slice(0, 1) }}</span>{{ item.label }}</button>
         <button v-for="league in state.leagues" :key="league.type + '-' + league.id" type="button" :class="'league' + (state.cid === league.id && state.type === league.type ? ' on' : '')" @click="selectLeague(league)">
@@ -32,6 +38,7 @@
       <DetailPage v-if="state.detail && state.tab === 'match'" />
       <MatchPage v-else-if="state.tab === 'match'" />
       <LivePage v-else-if="state.tab === 'live'" />
+      <CommunityPage v-else-if="state.tab === 'community'" />
       <DatabasePage v-else />
     </main>
   </div>
@@ -86,6 +93,7 @@ import Logo from "./components/Logo.vue";
 import MatchPage from "./pages/MatchPage.vue";
 import LivePage from "./pages/LivePage.vue";
 import DatabasePage from "./pages/DatabasePage.vue";
+import CommunityPage from "./pages/CommunityPage.vue";
 import DetailPage from "./pages/DetailPage.vue";
 import LoginPage from "./pages/LoginPage.vue";
 import MinePage from "./pages/MinePage.vue";
@@ -109,11 +117,13 @@ import AvatarSheet from "./components/AvatarSheet.vue";
 import { selectFixed, selectLeague, resetMatches } from "./lib/list.js";
 import { loadLive, selectTab } from "./lib/scores.js";
 import { chooseShare, openPack, packView, SHARE_CHANNELS, toggleMine } from "./lib/session.js";
+import { loadCommunity, pickCircle } from "./lib/community.js";
 
 const tabs = [
   ["match", "比赛", "M7 4h10v2a5 5 0 0 1-4 4.9V13h3v2H8v-2h3V10.9A5 5 0 0 1 7 6V4zm-2 1H3v2a4 4 0 0 0 3.2 3.9M19 5h2v2a4 4 0 0 1-3.2 3.9"],
   ["live", "即时比分", "M6 3v2M18 3v2M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"],
-  ["db", "资料库", "M4 18V8M10 18V4M16 18v-6M20 18H4"]
+  ["db", "资料库", "M4 18V8M10 18V4M16 18v-6M20 18H4"],
+  ["community", "社球帝", "M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"]
 ].map(([id, label, icon]) => ({ id, label, icon }));
 
 const showSide = computed(() => state.tab !== "live" && !(state.detail && state.tab === "match"));
@@ -125,12 +135,18 @@ const fixed = computed(() => [
 ].map(([id, label, on]) => ({ id, label, on })));
 const pack = computed(() => packView());
 
+function openTab(id) {
+  if (id !== state.tab) state.communityPost = null;
+  selectTab(id);
+  if (id === "community" && !state.communityPosts.length && !state.communityLoading) loadCommunity();
+}
 function refresh() {
   if (state.tab === "live") {
     state.liveLoaded = false;
     state.liveRows = [];
     loadLive();
-  } else if (state.tab === "match") resetMatches();
+  } else if (state.tab === "community") loadCommunity();
+  else if (state.tab === "match") resetMatches();
 }
 function toTop() {
   window.scrollTo({ top: 0, behavior: "smooth" });

@@ -4,7 +4,7 @@
 
 | 屏幕 | 基址 |
 |---|---|
-| 比赛、即时比分、登录、音浪、红包、提现、提示音 | `https://dgtplaoir00la.cloudfront.net` |
+| 比赛、即时比分、社球帝、登录、音浪、红包、提现、提示音 | `https://dgtplaoir00la.cloudfront.net` |
 | 资料库 | `https://sports-api.ued2sport.com` |
 | 播放页聊天 | `https://chat.kzbzcq.com/chat` |
 | 播放页直播、指数、数据、预测 | `https://live.kzbzcq.com/live`、`https://index.kzbzcq.com/index`、`https://data.kzbzcq.com/data`、`https://tip.kzbzcq.com/tip` |
@@ -162,6 +162,37 @@ GET /v1/competition-editions/{competition_edition_id}?lang=zh-hans&with_ranking=
 | `points` | 积分 |
 
 短名用赛季上的 `competition_short_name_zh`。没有时，把中文名开头的「英格兰足球」「英格兰」去掉再显示。
+
+## 社球帝
+
+只读，不需要登录。数据是抓取后的副本，大约每 2 分钟更新。页面只显示最近 60 帖。
+
+```text
+GET /prod-api/community/feed
+GET /prod-api/community/posts/{postId}/comments
+```
+
+`feed` 的 `data`：
+
+| 字段 | 说明 |
+|---|---|
+| `circles` | 这 60 帖里出现过的圈子。`id`、`name`、`icon` |
+| `posts` | 帖子，新的在前 |
+
+帖子：
+
+| 字段 | 说明 |
+|---|---|
+| `postId` | 帖子编号 |
+| `title` `content` | 标题和正文 |
+| `createTime` | ISO 时间，页面按上海时间显示 |
+| `nickname` `head` `badgeName` | 作者、头像、徽章 |
+| `likeCount` `commentCount` `viewCount` | 赞、评论、浏览 |
+| `circleIds` `circleName` | 所属圈子。筛左侧圈子时用 `circleIds` |
+| `images` | 图片地址。视频不在这里 |
+| `redPacket` | 没有红包时为 `null`。有则含 `amount`、`num`、`remainNum`、`statusName` |
+
+评论在 `data.comments`。每一条用 `commentId`、`nickname`、`head`、`badgeName`、`content`、`createTime`、`cityName`、`likeCount`。还没抓到时 `comments` 是空数组。
 
 ## 播放
 

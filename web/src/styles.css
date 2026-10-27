@@ -859,3 +859,15 @@
   .jxt-submit:disabled { background: #ddd; }
   .jxt-unbind { margin-top: 16px; border: 0; background: transparent; color: #888; font-size: 14px; }
   .jxt-unbind[hidden] { display: none; }
+  .cpost { display: block; width: 100%; margin: 0 0 12px; padding: 14px 16px; border: 0; border-radius: 12px; background: #fff; text-align: left; box-shadow: var(--shadow); }
+  .cpost header, .ccomment header { display: flex; align-items: center; gap: 8px; color: #667; font-size: 12px; }
+  .cpost header b, .ccomment header b { color: #222; font-size: 14px; }
+  .cpost header em, .ccomment header em { margin-left: auto; font-style: normal; }
+  .cpost h3 { margin: 10px 0 6px; font-size: 16px; }
+  .cpost p, .ccomment p { margin: 0; white-space: pre-wrap; color: #333; line-height: 1.5; }
+  .cphotos { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+  .cphotos img { width: 120px; height: 120px; object-fit: cover; border-radius: 8px; background: #f3f5f7; }
+  .cmeta { display: flex; gap: 14px; margin-top: 10px; color: #98a0aa; font-size: 12px; }
+  .cpacket { color: #e23b3b; }
+  .ccomments { display: flex; flex-direction: column; gap: 10px; }
+  .ccomment { padding: 12px 14px; border-radius: 12px; background: #fff; }

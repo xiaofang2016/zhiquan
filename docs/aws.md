@@ -70,6 +70,12 @@
 
 正文在 S3 `database/...json`。进度写在旁边的 `.meta`。还没抓过的球队、球员页面，读接口返回空的 `data`，并把路径放进 `database/_queue/`。内容的 SHA-256 没变时只改时间，不重写正文。历史赛季一旦有过正文就不再请求上游。
 
+### 社球帝：同一进程里的另一口钟
+
+也在 `db.jar` 里，不跟上面三件任务共用那把锁，也不跟比赛抓取共用间隔。每 2 分钟拉 `kzb001.net` 的 `/comment-api/post/list` 前 3 页和圈子列表。评论只在 `lastCommentTime`、评论数或点赞数变了才重拉。
+
+正文在同一个桶的 `community/feed.json`、`community/posts/{postId}/comments.json`。图片继续用上游地址。读接口是 `GET /prod-api/community/feed` 和 `GET /prod-api/community/posts/{postId}/comments`。
+
 ### 播放页：有人打开才拉
 
 聊天和四个栏目没有定时任务。

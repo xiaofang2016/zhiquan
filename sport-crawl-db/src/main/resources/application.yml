@@ -21,6 +21,14 @@ sport:
     chat-prefix: chat/
     db-prefix: database/
     db-table: sport_db_doc
+    community-prefix: community/
+  community:
+    enabled: true
+    base-url: https://kzb001.net
+    pages: 3
+    page-size: 20
+    comment-page-size: 50
+    request-interval-ms: 200
   database:
     enabled: true
     base-url: https://kzb001.net

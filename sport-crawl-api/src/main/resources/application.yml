@@ -17,6 +17,7 @@ sport:
     chat-prefix: chat/
     db-prefix: database/
     db-table: sport_db_doc
+    community-prefix: community/
     user-table: sport_user
   auth:
     token-secret: ${SPORT_AUTH_TOKEN_SECRET}

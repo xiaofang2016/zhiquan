@@ -18,6 +18,8 @@ public class SportAwsProperties {
     private String chatPrefix = "chat/";
     /** 资料库原文。单条可以超过 DynamoDB 400KB，正文放这里。 */
     private String dbPrefix = "database/";
+    /** 社球帝帖子列表和评论。图片仍用上游地址，不把文件再存一份。 */
+    private String communityPrefix = "community/";
     private String dbTable = "sport_db_doc";
     /** 说球帝自己的账号。不放 IM 用户，也不和 im 的用户表关联。 */
     private String userTable = "sport_user";
