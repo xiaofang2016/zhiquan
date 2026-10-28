@@ -22,6 +22,10 @@
         <span>{{ post.commentCount || 0 }} 评论</span>
       </div>
     </article>
+    <form class="composer" @submit.prevent="onComment">
+      <textarea v-model="reply" maxlength="200" :placeholder="state.user ? '回复这条帖子' : '登录后回复'"></textarea>
+      <button type="submit" :disabled="sending">回复</button>
+    </form>
     <div v-if="state.communityCommentsLoading" class="empty">正在读取评论</div>
     <div v-else-if="!state.communityComments.length" class="empty">暂无评论</div>
     <div v-else class="ccomments">
@@ -37,6 +41,11 @@
     </div>
   </div>
   <div v-else>
+    <form class="composer" @submit.prevent="onPost">
+      <input v-model="title" maxlength="40" :placeholder="state.user ? '标题，可以不填' : '登录后发帖'">
+      <textarea v-model="content" maxlength="500" placeholder="说点什么"></textarea>
+      <button type="submit" :disabled="sending">发帖</button>
+    </form>
     <div v-if="state.communityLoading && !state.communityPosts.length" class="empty">正在读取社球帝</div>
     <div v-else-if="state.communityError && !state.communityPosts.length" class="empty">{{ state.communityError }}</div>
     <div v-else-if="!windowed.total" class="empty">暂无帖子</div>
@@ -65,10 +74,44 @@
   </div>
 </template>
 <script setup>
-import { computed } from "vue";
+import { computed, ref } from "vue";
 import Logo from "../components/Logo.vue";
-import { state } from "../state.js";
-import { closeCommunityPost, communityPosts, communityTime, openCommunityPost } from "../lib/community.js";
+import { state, toast } from "../state.js";
+import { closeCommunityPost, communityPosts, communityTime, openCommunityPost, publishCommunityComment, publishCommunityPost } from "../lib/community.js";
+
+const title = ref("");
+const content = ref("");
+const reply = ref("");
+const sending = ref(false);
+
+async function onPost() {
+  const text = content.value.trim();
+  if (!text || sending.value) return;
+  sending.value = true;
+  try {
+    if (await publishCommunityPost(title.value, text)) {
+      title.value = "";
+      content.value = "";
+    }
+  } catch (error) {
+    toast(error.message || "发帖失败");
+  } finally {
+    sending.value = false;
+  }
+}
+
+async function onComment() {
+  const text = reply.value.trim();
+  if (!text || sending.value) return;
+  sending.value = true;
+  try {
+    if (await publishCommunityComment(text)) reply.value = "";
+  } catch (error) {
+    toast(error.message || "回复失败");
+  } finally {
+    sending.value = false;
+  }
+}
 
 const windowed = computed(() => communityPosts());
 const post = computed(() => state.communityPost);

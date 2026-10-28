@@ -1,5 +1,6 @@
-import { get } from "./api.js";
+import { get, postAccount } from "./api.js";
 import { state, toast } from "../state.js";
+import { openAccount } from "./session.js";
 
 const PAGE_SIZE = 20;
 
@@ -67,6 +68,36 @@ export async function openCommunityPost(post) {
       state.communityCommentsLoading = false;
     }
   }
+}
+
+export async function publishCommunityPost(title, content) {
+  if (!state.user || !state.user.token) {
+    openAccount("login");
+    return false;
+  }
+  await postAccount("/prod-api/community/posts", {
+    token: state.user.token,
+    title: title || "",
+    content
+  });
+  await loadCommunity();
+  return true;
+}
+
+export async function publishCommunityComment(content) {
+  const post = state.communityPost;
+  if (!post) return false;
+  if (!state.user || !state.user.token) {
+    openAccount("login");
+    return false;
+  }
+  await postAccount("/prod-api/community/posts/" + post.postId + "/comments", {
+    token: state.user.token,
+    content
+  });
+  post.commentCount = (post.commentCount || 0) + 1;
+  await openCommunityPost(post);
+  return true;
 }
 
 export function closeCommunityPost() {

@@ -84,6 +84,13 @@ public class DatabaseDocRepository {
         put(queueKey(key), node);
     }
 
+    public void discard(String key) {
+        if (key == null || key.isBlank()) {
+            return;
+        }
+        delete(queueKey(key));
+    }
+
     public void postpone(String key, Instant dueAt) {
         DatabaseDoc queued = read(queueKey(key), key);
         String path = queued == null ? "" : queued.path();

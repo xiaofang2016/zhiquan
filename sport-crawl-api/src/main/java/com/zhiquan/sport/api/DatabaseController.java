@@ -59,7 +59,7 @@ public class DatabaseController {
             refreshIfCached(key, path, query);
             return ResponseEntity.ok().contentType(JSON).cacheControl(org.springframework.http.CacheControl.maxAge(Duration.ofSeconds(60))).body(body);
         }
-        if (viewer(path)) {
+        if (viewer(path) && DatabaseQuery.demandable(path, query)) {
             enqueue(key, path, query);
         }
         return ResponseEntity.ok().contentType(JSON).cacheControl(org.springframework.http.CacheControl.noStore()).body(EMPTY);

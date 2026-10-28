@@ -181,6 +181,11 @@ public class DatabaseCrawlService {
                     if (interrupted(ex)) {
                         break;
                     }
+                    if (UpstreamFailure.giveUp(ex.getMessage())) {
+                        log.warn("资料库按需 {} 参数不足，不再重试: {}", doc.path(), ex.getMessage());
+                        docs.discard(doc.key());
+                        continue;
+                    }
                     log.warn("资料库按需 {} 失败: {}", doc.path(), ex.getMessage());
                     docs.postpone(doc.key(), Instant.now().plusSeconds(300));
                 }

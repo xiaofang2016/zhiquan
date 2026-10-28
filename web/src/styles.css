@@ -405,6 +405,10 @@
   .chat-list::-webkit-scrollbar { width: 8px; }
   .chat-list::-webkit-scrollbar-thumb { background: #c5cad3; border-radius: 4px; }
   .chat-list::-webkit-scrollbar-track { background: transparent; }
+  .chat-send { display: flex; gap: 8px; flex-shrink: 0; padding: 10px 12px; border-top: 1px solid #f2f3f5; background: #fff; }
+  .chat-send input { flex: 1; min-width: 0; height: 36px; padding: 0 10px; border: 1px solid #e5e6eb; border-radius: 8px; }
+  .chat-send button { height: 36px; padding: 0 14px; border: 0; border-radius: 8px; background: #20b7c8; color: #fff; }
+  .chat-send button:disabled { background: #c5cad3; }
   .chat-row { margin: 0 0 10px; word-break: break-word; }
   .chat-row b { color: #20b7c8; font-weight: 600; margin-right: 6px; }
   .chat-row .pic { display: block; max-width: 168px; max-height: 168px; margin-top: 4px; border-radius: 6px; object-fit: contain; background: #f4f5f7; }
@@ -859,6 +863,11 @@
   .jxt-submit:disabled { background: #ddd; }
   .jxt-unbind { margin-top: 16px; border: 0; background: transparent; color: #888; font-size: 14px; }
   .jxt-unbind[hidden] { display: none; }
+  .composer { display: flex; flex-direction: column; gap: 8px; margin: 0 0 12px; padding: 12px; border-radius: 12px; background: #fff; box-shadow: var(--shadow); }
+  .composer input, .composer textarea { width: 100%; border: 1px solid #e5e6eb; border-radius: 8px; padding: 8px 10px; font: inherit; }
+  .composer textarea { min-height: 72px; resize: vertical; }
+  .composer button { align-self: flex-end; height: 32px; padding: 0 16px; border: 0; border-radius: 8px; background: #20b7c8; color: #fff; }
+  .composer button:disabled { background: #c5cad3; }
   .cpost { display: block; width: 100%; margin: 0 0 12px; padding: 14px 16px; border: 0; border-radius: 12px; background: #fff; text-align: left; box-shadow: var(--shadow); }
   .cpost header, .ccomment header { display: flex; align-items: center; gap: 8px; color: #667; font-size: 12px; }
   .cpost header b, .ccomment header b { color: #222; font-size: 14px; }

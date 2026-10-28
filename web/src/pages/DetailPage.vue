@@ -42,6 +42,10 @@
             <img v-for="(image, index) in safeImages(message)" :key="index" class="pic" :src="image.url" alt="" referrerpolicy="no-referrer">
           </div>
         </div>
+        <form v-if="state.detailTab === 'chat'" class="chat-send" @submit.prevent="onSpeak">
+          <input v-model="draft" maxlength="200" :disabled="room.closed" :placeholder="room.closed ? '当前聊天室已关闭' : (state.user ? '说点什么' : '登录后发言')">
+          <button type="submit" :disabled="room.closed || sending">发送</button>
+        </form>
         <div v-else class="detail-slot">
           <div v-if="state.detailLoading" class="closed">正在读取</div>
           <div v-else-if="state.detailError" class="closed">{{ state.detailError }}</div>
@@ -55,13 +59,15 @@
 import { computed, nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import Logo from "../components/Logo.vue";
 import DetailFacts from "./DetailFacts.vue";
-import { state } from "../state.js";
+import { state, toast } from "../state.js";
 import { applyScore, liveStatus, phase, scoreText, sportType } from "../lib/match.js";
-import { animationFrame, chatOlder, closePlayer, detailLines, loadDetail, openRoomChat, playLine, room, showDetailTab, stopPlayback, stopRoomChat, stopDetailRoom } from "../lib/detail.js";
+import { animationFrame, chatOlder, closePlayer, detailLines, loadDetail, openRoomChat, playLine, room, sendRoomChat, showDetailTab, stopPlayback, stopRoomChat, stopDetailRoom } from "../lib/detail.js";
 
 const stage = ref(null);
 const video = ref(null);
 const chatList = ref(null);
+const draft = ref("");
+const sending = ref(false);
 const covered = ref(true);
 const videoOn = ref(false);
 const frameSrc = ref("");
@@ -118,6 +124,20 @@ function bubbleStyle(message) {
 function safeImages(message) {
   return (message.images || []).filter((image) => image && /^https?:\/\//.test(image.url || ""));
 }
+async function onSpeak() {
+  if (sending.value || room.closed) return;
+  const text = draft.value.trim();
+  if (!text) return;
+  sending.value = true;
+  try {
+    if (await sendRoomChat(text)) draft.value = "";
+  } catch (error) {
+    toast(error.message || "发送失败");
+  } finally {
+    sending.value = false;
+  }
+}
+
 function onChatScroll() {
   const list = chatList.value;
   if (!list) return;

@@ -22,6 +22,8 @@ sport:
   auth:
     token-secret: ${SPORT_AUTH_TOKEN_SECRET}
     token-days: 30
+  admin:
+    key: ${SPORT_ADMIN_KEY:}
   sms:
     url: ${SPORT_SMS_URL:https://nexsms.ai/api/v1/sms/send}
     secret-name: ${SPORT_SMS_SECRET:prod/nexsms}

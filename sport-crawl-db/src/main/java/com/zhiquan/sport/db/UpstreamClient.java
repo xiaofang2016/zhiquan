@@ -56,8 +56,12 @@ public class UpstreamClient {
         try {
             JsonNode root = objectMapper.readTree(body);
             if (!"0".equals(root.path("code").asText())) {
-                throw new IllegalStateException("upstream " + root.path("code").asText()
-                        + " " + root.path("msg").asText());
+                String detail = root.path("msg").asText("");
+                String info = root.path("info").asText("");
+                if (!info.isBlank()) {
+                    detail = detail.isBlank() ? info : detail + " " + info;
+                }
+                throw new IllegalStateException("upstream " + root.path("code").asText() + " " + detail);
             }
             return body;
         } catch (IllegalStateException ex) {

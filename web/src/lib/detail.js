@@ -1,5 +1,7 @@
 import { reactive } from "vue";
 import { state, toast } from "../state.js";
+import { postAccount } from "./api.js";
+import { openAccount } from "./session.js";
 import { animationSrc, applyScore, linesOf, playerPath, readPlayerRoute, sportType } from "./match.js";
 import { listedMatch } from "./list.js";
 
@@ -195,6 +197,26 @@ export function openRoomChat(match) {
       room.closed = Boolean(body.closed);
     }).catch(() => {});
   }, 4000);
+}
+
+export async function sendRoomChat(content) {
+  const text = String(content || "").trim();
+  if (!text) return false;
+  if (!state.user || !state.user.token) {
+    openAccount("login");
+    return false;
+  }
+  if (room.closed) {
+    toast("当前聊天室已关闭");
+    return false;
+  }
+  const message = await postAccount("/prod-api/chat/messages", {
+    token: state.user.token,
+    mid: room.mid,
+    content: text
+  });
+  if (room.mid) mergeRoomMessages([message]);
+  return true;
 }
 
 export function chatOlder(match) {
