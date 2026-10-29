@@ -1,6 +1,6 @@
 # 说球帝转到吉祥
 
-页面要调的账号接口在 [frontend.md](frontend.md)。入账由说球帝服务器再调吉祥，浏览器不接触吉祥的令牌和签名。
+页面要调的账号接口在 [说球帝frontend.md](说球帝frontend.md)。入账由说球帝服务器再调吉祥，浏览器不接触吉祥的令牌和签名。
 
 说球帝基址：`https://dgtplaoir00la.cloudfront.net`
 

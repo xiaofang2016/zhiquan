@@ -19,6 +19,9 @@ sport:
     db-table: sport_db_doc
     community-prefix: community/
     user-table: sport_user
+  community:
+    base-url: https://kzb001.net
+    public-base: https://dgtplaoir00la.cloudfront.net
   auth:
     token-secret: ${SPORT_AUTH_TOKEN_SECRET}
     token-days: 30

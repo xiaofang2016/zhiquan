@@ -9,8 +9,12 @@ public class CommunityProperties {
 
     private boolean enabled = true;
     private String baseUrl = "https://kzb001.net";
-    private int pages = 3;
+    private String publicBase = "https://dgtplaoir00la.cloudfront.net";
+    private int pages = 20;
     private int pageSize = 20;
+    private int essencePages = 3;
+    private int circlePages = 2;
     private int commentPageSize = 50;
+    private int commentPages = 10;
     private long requestIntervalMs = 200;
 }

@@ -20,7 +20,7 @@ public class ImageController {
         this.imageStore = imageStore;
     }
 
-    @GetMapping("/api/sport/images/{hash:[a-f0-9]{64}}")
+    @GetMapping({"/api/sport/images/{hash:[a-f0-9]{64}}", "/prod-api/community/images/{hash:[a-f0-9]{64}}"})
     public ResponseEntity<byte[]> image(@PathVariable String hash) {
         SportImage image = imageRepository.selectByHash(hash);
         if (image == null || !"ok".equals(image.getStatus()) || image.getRelativePath() == null || image.getRelativePath().isBlank()) {

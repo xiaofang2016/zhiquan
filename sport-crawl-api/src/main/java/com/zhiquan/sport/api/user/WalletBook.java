@@ -6,6 +6,7 @@ import com.zhiquan.sport.store.repo.SportUserRepository;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.ConditionalCheckFailedException;
+import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledException;
 
 import java.time.Instant;
 import java.time.ZoneId;
@@ -51,6 +52,17 @@ public class WalletBook {
     public void redpack(SportUser user, long cents, String orderNo) {
         long now = Instant.now().toEpochMilli();
         put(row(user.getPhone(), now, orderNo, "redpacket", "", cents, 1, "红包", ""));
+    }
+
+    /** @return 这次新入账。同一单号已经记过时为 false */
+    public boolean postRedpack(SportUser user, long cents, String orderNo) {
+        long now = Instant.now().toEpochMilli();
+        try {
+            users.credit(user.getPhone(), cents, row(user.getPhone(), now, orderNo, "redpacket", "", cents, 1, "帖子红包", ""));
+            return true;
+        } catch (TransactionCanceledException ex) {
+            return false;
+        }
     }
 
     public Map<String, Object> page(SportUser user, String kind, Integer pageRaw) {

@@ -1,6 +1,6 @@
 # 接口
 
-页面对接以 [frontend.md](frontend.md) 为准。本文是网关、聊天和播放栏目的字段说明。
+页面对接以 [说球帝frontend.md](说球帝frontend.md) 为准。本文是网关、聊天和播放栏目的字段说明。
 
 比赛、即时比分、登录和注册挂在同一个网关。只读接口不需要登录。聊天在另一个地址，见文末。资料库页面走公共赛事接口，不走下面的 `/prod-api/database/`。
 
@@ -151,7 +151,9 @@
 
 `page` 从 1 起，每页 10 条。`data` 含 `page`、`size`、`total`、`records`。每条有 `tradeNo`、`kind`、`platform`（`jxt` / `ued`，红包为空）、`title`、`amount`（提现为负数）、`status`（`1` 成功，`2` 失败已退回）、`statusName`、`failReason`、`time`、`createdAt`。
 
-红包额度用 `POST /prod-api/user/redpack`，不要用职圈 `GET /redpacket/quota`。已登录时 `data` 另有 `dailyLimit`、`claimedAmount`、`remainAmount`、`canClaim`。
+红包额度用 `POST /prod-api/user/redpack`，不要用职圈 `GET /redpacket/quota`。已登录时 `data` 另有 `dailyLimit`、`claimedAmount`、`remainAmount`、`canClaim`。每天这一份和帖子红包都会出现在 `kind=redpacket` 里，标题分别是「红包」和「帖子红包」。
+
+帖子红包是说球帝自己发的，不走原站钱包。`POST /prod-api/community/posts/{postId}/redpacket`，请求体 `{ "token" }`。只出现在原站带红包标记的帖上，每帖 10 份、共 `10.00` 元，每个人每帖只能领一次。成功时 `data` 是这篇帖子，`redPacket.mine` 是领到的金额。领完返回「红包已领完」，这篇没有红包返回「这篇没有红包」。字段见 [说球帝frontend.md](说球帝frontend.md) 的社球帝一节。
 
 ### 恢复登录
 
@@ -463,7 +465,7 @@
 
 ## 资料库
 
-这一节是网关上的旧资料库。页面已经改接 [frontend.md](frontend.md) 里的公共赛事接口。
+这一节是网关上的旧资料库。页面已经改接 [说球帝frontend.md](说球帝frontend.md) 里的公共赛事接口。
 
 路径、参数和成功返回与 kzb001.net 的 `/prod-api` 一致。只读，不需要登录。请求进来时不再访问上游。联赛、日期和赛程仍用比赛接口。卡片上的实时比分用即时比分。
 

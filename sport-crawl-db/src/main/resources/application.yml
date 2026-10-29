@@ -25,9 +25,13 @@ sport:
   community:
     enabled: true
     base-url: https://kzb001.net
-    pages: 3
+    public-base: https://dgtplaoir00la.cloudfront.net
+    pages: 20
     page-size: 20
+    essence-pages: 3
+    circle-pages: 2
     comment-page-size: 50
+    comment-pages: 10
     request-interval-ms: 200
   database:
     enabled: true

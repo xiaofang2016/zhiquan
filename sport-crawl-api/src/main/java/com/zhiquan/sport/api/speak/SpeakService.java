@@ -11,6 +11,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
+import java.util.concurrent.ThreadLocalRandom;
+
 @Service
 public class SpeakService {
 
@@ -56,8 +58,56 @@ public class SpeakService {
         return CommunityBoard.feed(json, upstream, loadBoard());
     }
 
-    public ObjectNode communityComments(JsonNode upstream, String postId) {
-        return CommunityBoard.comments(json, upstream, loadBoard(), postId);
+    public ObjectNode communityPost(JsonNode feed, JsonNode file, String postId, String viewer) {
+        return CommunityBoard.find(feed, file, loadBoard(), postId, viewer);
+    }
+
+    public ObjectNode communityComments(JsonNode upstream, String postId, int page, int pageSize, String viewer) {
+        return CommunityBoard.comments(json, upstream, loadBoard(), postId, page, pageSize, viewer);
+    }
+
+    public ObjectNode board() {
+        return loadBoard();
+    }
+
+    public ObjectNode like(String userId, String postId) {
+        String id = Voice.postId(postId);
+        return update(boardKey(), board -> CommunityBoard.like(json, CommunityBoard.ensure(json, board), userId, id));
+    }
+
+    public ObjectNode collect(String userId, String postId) {
+        String id = Voice.postId(postId);
+        return update(boardKey(), board -> CommunityBoard.collect(json, CommunityBoard.ensure(json, board), userId, id));
+    }
+
+    public ObjectNode followUser(String userId, String target) {
+        String id = Voice.postId(target);
+        return update(boardKey(), board -> CommunityBoard.followUser(json, CommunityBoard.ensure(json, board), userId, id));
+    }
+
+    public ObjectNode followCircle(String userId, String circleId) {
+        String id = Voice.postId(circleId);
+        return update(boardKey(), board -> CommunityBoard.followCircle(json, CommunityBoard.ensure(json, board), userId, id));
+    }
+
+    public ObjectNode block(String userId, String target) {
+        String id = Voice.postId(target);
+        return update(boardKey(), board -> CommunityBoard.block(json, CommunityBoard.ensure(json, board), userId, id));
+    }
+
+    public ObjectNode report(String userId, String targetType, String targetId, String reason) {
+        return update(boardKey(), board -> CommunityBoard.report(json, CommunityBoard.ensure(json, board), userId, targetType, targetId, reason));
+    }
+
+    public long takePacket(String userId, String postId) {
+        String id = Voice.postId(postId);
+        long[] cent = new long[1];
+        update(boardKey(), board -> {
+            CommunityBoard.ensure(json, board);
+            cent[0] = PostRedPack.take(board, id, userId, ThreadLocalRandom.current());
+            return board;
+        });
+        return cent[0];
     }
 
     public static String nickOf(SportUser user) {

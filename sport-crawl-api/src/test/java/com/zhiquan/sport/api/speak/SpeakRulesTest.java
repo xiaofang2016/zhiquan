@@ -59,6 +59,91 @@ class SpeakRulesTest {
         assertEquals(1, comments.path("comments").size());
         assertEquals("另一人", comments.path("comments").get(0).path("nickname").asText());
         assertEquals("球迷", comments.path("comments").get(0).path("badgeName").asText());
+        assertEquals(1, comments.path("total").asInt());
+    }
+
+    @Test
+    void feedPageKeepsCirclesAndCanOpenAnOlderPost() throws Exception {
+        ObjectNode full = CommunityBoard.feed(json, json.readTree("""
+                {"circles":[{"id":14,"name":"足球热聊"},{"id":22,"name":"精华圈"}],
+                 "posts":[
+                   {"postId":3,"title":"新","content":"","createTime":"2026-10-29T03:00:00.000+00:00","circleIds":[14],"essence":false,"commentCount":1},
+                   {"postId":2,"title":"精","content":"","createTime":"2026-10-29T02:00:00.000+00:00","circleIds":[22],"essence":true,"commentCount":0},
+                   {"postId":1,"title":"旧","content":"","createTime":"2026-10-29T01:00:00.000+00:00","circleIds":[14],"essence":false,"commentCount":4}
+                 ]}
+                """), null);
+        ObjectNode first = CommunityBoard.page(json, full, 1, 2, null, null, null);
+        assertEquals(2, first.path("posts").size());
+        assertEquals(3, first.path("posts").get(0).path("postId").asLong());
+        assertEquals(3, first.path("total").asInt());
+        assertEquals(2, first.path("circles").size());
+        ObjectNode circle = CommunityBoard.page(json, full, 1, 60, 14L, null, null);
+        assertEquals(2, circle.path("total").asInt());
+        ObjectNode essence = CommunityBoard.page(json, full, 1, 60, null, "essence", null);
+        assertEquals(2, essence.path("posts").get(0).path("postId").asLong());
+        ObjectNode older = CommunityBoard.page(json, full, 1, 60, null, null, "2026-10-29T02:00:00.000+00:00");
+        assertEquals(1, older.path("posts").get(0).path("postId").asLong());
+        ObjectNode stored = (ObjectNode) json.readTree("{\"postId\":9,\"title\":\"落下的\",\"commentCount\":4}");
+        ObjectNode opened = CommunityBoard.find(json.readTree("{\"posts\":[]}"), stored, null, "9");
+        assertEquals("落下的", opened.path("title").asText());
+        assertEquals(4, opened.path("commentCount").asInt());
+        assertEquals(null, CommunityBoard.find(json.readTree("{\"posts\":[]}"), json.createObjectNode(), null, "9"));
+    }
+
+    @Test
+    void followAndLikeStayOnTheLocalBoard() throws Exception {
+        ObjectNode board = CommunityBoard.ensure(json, json.createObjectNode());
+        assertTrue(CommunityBoard.like(json, board, "u1", "9").path("liked").asBoolean());
+        assertFalse(CommunityBoard.like(json, board, "u1", "9").path("liked").asBoolean());
+        assertTrue(CommunityBoard.like(json, board, "u1", "9").path("liked").asBoolean());
+        assertTrue(CommunityBoard.followUser(json, board, "u1", "12").path("followed").asBoolean());
+        assertTrue(CommunityBoard.followCircle(json, board, "u1", "14").path("followed").asBoolean());
+        ObjectNode full = CommunityBoard.feed(json, json.readTree("""
+                {"circles":[],"posts":[
+                  {"postId":9,"title":"甲","content":"","createTime":"2026-10-29T03:00:00.000+00:00","userId":12,"circleIds":[14],"likeCount":1,"collectCount":0,"commentCount":0},
+                  {"postId":8,"title":"乙","content":"","createTime":"2026-10-29T02:00:00.000+00:00","userId":3,"circleIds":[22],"likeCount":0,"collectCount":0,"commentCount":0}
+                ]}
+                """), board);
+        ObjectNode followed = CommunityBoard.page(json, full, 1, 60, null, "follow", null, board, "u1");
+        assertEquals(1, followed.path("total").asInt());
+        assertEquals(9, followed.path("posts").get(0).path("postId").asLong());
+        assertEquals(2, followed.path("posts").get(0).path("likeCount").asInt());
+        assertTrue(followed.path("posts").get(0).path("liked").asBoolean());
+        CommunityBoard.block(json, board, "u1", "12");
+        ObjectNode hidden = CommunityBoard.page(json, full, 1, 60, null, null, null, board, "u1");
+        assertEquals(1, hidden.path("total").asInt());
+        assertEquals(8, hidden.path("posts").get(0).path("postId").asLong());
+        CommunityBoard.report(json, board, "u1", "post", "9", "不适");
+        assertEquals(1, board.path("reports").size());
+        assertThrows(IllegalArgumentException.class, () -> CommunityBoard.report(json, board, "u1", "post", "9", ""));
+    }
+
+    @Test
+    void postRedPackIsOursAndPaysOnce() throws Exception {
+        ObjectNode board = CommunityBoard.ensure(json, json.createObjectNode());
+        ObjectNode post = (ObjectNode) json.readTree("""
+                {"postId":9,"redPacket":{"walletId":"671044","amount":"38.00","num":5,"remainNum":4}}
+                """);
+        PostRedPack.apply(post, board, null);
+        assertEquals("10.00", post.path("redPacket").path("amount").asText());
+        assertEquals(10, post.path("redPacket").path("num").asInt());
+        assertEquals(10, post.path("redPacket").path("remainNum").asInt());
+        assertTrue(post.path("redPacket").path("mine").isNull());
+        assertTrue(post.path("redPacket").path("walletId").isMissingNode());
+        java.util.Random random = new java.util.Random(1);
+        long first = PostRedPack.take(board, "9", "u1", random);
+        assertEquals(first, PostRedPack.take(board, "9", "u1", random));
+        assertEquals(1, board.path("packets").path("9").size());
+        long sum = first;
+        for (int i = 2; i <= PostRedPack.COUNT; i++) {
+            sum += PostRedPack.take(board, "9", "u" + i, random);
+        }
+        assertEquals(PostRedPack.POOL_CENT, sum);
+        assertThrows(IllegalArgumentException.class, () -> PostRedPack.take(board, "9", "extra", random));
+        PostRedPack.apply(post, board, "u1");
+        assertEquals(0, post.path("redPacket").path("remainNum").asInt());
+        assertEquals("已领完", post.path("redPacket").path("statusName").asText());
+        assertFalse(post.path("redPacket").path("mine").isNull());
     }
 
     @Test

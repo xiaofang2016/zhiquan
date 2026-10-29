@@ -10,6 +10,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 
@@ -55,6 +56,29 @@ public class CommunityClient {
         } catch (Exception ex) {
             throw new IllegalStateException("社球帝响应无法解析", ex);
         }
+    }
+
+    public String text(String url) {
+        URI uri = URI.create(url);
+        String host = uri.getHost();
+        if (host == null || host.isBlank()) {
+            return "";
+        }
+        pace();
+        byte[] body = restTemplate.execute(uri, HttpMethod.GET, request -> {
+            request.getHeaders().set(HttpHeaders.USER_AGENT, UpstreamClient.USER_AGENT);
+            request.getHeaders().set(HttpHeaders.REFERER, "https://kzb001.net/community/");
+        }, response -> {
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                return new byte[0];
+            }
+            byte[] bytes = response.getBody().readNBytes(256 * 1024);
+            return bytes == null ? new byte[0] : bytes;
+        });
+        if (body == null || body.length == 0) {
+            return "";
+        }
+        return new String(body, StandardCharsets.UTF_8);
     }
 
     private void pace() {

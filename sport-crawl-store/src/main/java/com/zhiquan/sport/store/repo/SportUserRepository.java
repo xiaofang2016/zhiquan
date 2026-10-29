@@ -361,6 +361,30 @@ public class SportUserRepository {
                 .build());
     }
 
+    /** 同一单号只入账一次。流水已存在时整笔取消，余额不会再加。 */
+    public void credit(String phone, long cents, Map<String, AttributeValue> ledger) {
+        Map<String, AttributeValue> balanceValues = new HashMap<>();
+        balanceValues.put(":zero", Attrs.n(0));
+        balanceValues.put(":amt", Attrs.n(cents));
+        Update balance = Update.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET balance_cent = if_not_exists(balance_cent, :zero) + :amt")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeValues(balanceValues)
+                .build();
+        Put row = Put.builder()
+                .tableName(aws.getUserTable())
+                .item(ledger)
+                .conditionExpression("attribute_not_exists(pk)")
+                .build();
+        dynamo.transactWriteItems(TransactWriteItemsRequest.builder()
+                .transactItems(
+                        TransactWriteItem.builder().update(balance).build(),
+                        TransactWriteItem.builder().put(row).build())
+                .build());
+    }
+
     private UpdateItemRequest balanceUpdate(String phone, long cents, String op) {
         Map<String, AttributeValue> values = new HashMap<>();
         values.put(":zero", Attrs.n(0));

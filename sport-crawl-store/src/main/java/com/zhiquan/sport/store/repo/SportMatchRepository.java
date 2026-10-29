@@ -10,6 +10,7 @@ import org.springframework.stereotype.Repository;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.DeleteItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.QueryResponse;
@@ -56,6 +57,17 @@ public class SportMatchRepository {
         }
         item.put("updated_at", Attrs.s(Attrs.now()));
         dynamo.putItem(PutItemRequest.builder().tableName(aws.getMatchTable()).item(item).build());
+    }
+
+    public SportMatch find(LocalDate date, long sourceId) {
+        Map<String, AttributeValue> item = dynamo.getItem(GetItemRequest.builder()
+                .tableName(aws.getMatchTable())
+                .key(Map.of("source_id", Attrs.s(MatchKeys.itemKey(date, sourceId))))
+                .build()).item();
+        if (item == null || item.isEmpty()) {
+            return null;
+        }
+        return toMatch(item);
     }
 
     public int deleteAbsent(LocalDate date, Set<String> kept) {

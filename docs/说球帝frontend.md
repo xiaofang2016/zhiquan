@@ -212,7 +212,7 @@ GET /prod-api/community/circles/{circleId}
 | `videos` | `url`、`cover`、`w`、`h`、`duration`。`duration` 是秒，播放列表没拿到时为 `null`。地址已补成完整链接 |
 | `match` | 没有关联比赛时为 `null`。有则含 `id`、`type`、`home`、`away`、`homeLogo`、`awayLogo`、`score`、`status`。多场只给第一场。`score` 如 `1-0`，`status` 如「上半场」。近三天的赛程里没有这场时这两项为 `null` |
 | `hotComment` | 没有亮评时为 `null`。有则含 `nickname`、`content`、`likeCount`、`cityName` |
-| `redPacket` | 没有红包时为 `null`。有则含 `walletId`、`amount`、`num`、`remainNum`、`status`、`statusName`、`description`、`drawn`、`drawnAmount`。`drawn` 是上游这次抓取时的登录态，匿名抓取一般是 `null`，不是当前说球帝用户领没领 |
+| `redPacket` | 没有红包时为 `null`。有则是说球帝自己发的，不使用原站金额。每帖 10 份、共 `10.00` 元。字段有 `amount`、`num`、`remainNum`、`status`、`statusName`、`description`、`mine`。`mine` 是当前用户领到的金额，没领或没带 `token` 时为 `null`。领完 `statusName` 是「已领完」 |
 
 评论在 `data.comments`，新的在前。`total` 是顶层条数，不含回复。一条评论：`commentId`、`userId`、`nickname`、`head`、`badgeName`、`badgeLevel`、`vipLevel`、`content`、`createTime`、`cityName`、`likeCount`、`replyCount`、`replies`。回复里用 `replyId`，被回复的人是 `replyToNickname`，其余字段和评论相同，没有再嵌一层。上游没把回复塞进 `replies` 时，`replyCount` 可以更大，多出来的这里没有。头像若在外站，会转成 `https://dgtplaoir00la.cloudfront.net/prod-api/community/images/{hash}` 的小图；COS 地址会先补上缺失的连字符。
 
@@ -248,7 +248,14 @@ POST /prod-api/community/reports
 
 点赞和收藏成功时，`data` 仍是这篇帖子，带上新的计数和 `liked`、`collected`。关注返回 `followed`，拉黑返回 `blocked`。
 
-红包金额在原站钱包里，这里不能代领，也没有领取接口。
+帖子红包要登录后领。每个人每帖只能领一次，再领不会再入账，`mine` 仍是上次的金额。领到的钱记进说球帝余额，流水标题是「帖子红包」。份数领完返回「红包已领完」。这篇没有红包时返回「这篇没有红包」。
+
+```text
+POST /prod-api/community/posts/{postId}/redpacket
+{ "token": "" }
+```
+
+成功时 `data` 仍是这篇帖子，`redPacket.mine` 有值。每天那份 588 元红包是另一条接口，和帖子红包互不相干。
 
 ## 播放
 

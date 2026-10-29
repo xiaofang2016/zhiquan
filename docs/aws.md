@@ -1,6 +1,6 @@
 # AWS 上的自动化
 
-说球帝在 AWS 上自己跑的部分：请求怎么被拆开、抓取怎么自己续上、一次发布怎么换上 Java 服务。区域 `ap-northeast-1`。页面对接见 [frontend.md](frontend.md)，网关字段见 [api.md](api.md)。
+说球帝在 AWS 上自己跑的部分：请求怎么被拆开、抓取怎么自己续上、一次发布怎么换上 Java 服务。区域 `ap-northeast-1`。页面对接见 [说球帝frontend.md](说球帝frontend.md)，网关字段见 [api.md](api.md)。
 
 聊天、直播、指数、数据、预测、动画不在下面这条发布里。那些是各自的函数或本机进程，改完要单独发。页面 `web/` 和三个 Java 包在同一次推送里换上。
 
@@ -72,9 +72,9 @@
 
 ### 社球帝：同一进程里的另一口钟
 
-也在 `db.jar` 里，不跟上面三件任务共用那把锁，也不跟比赛抓取共用间隔。进程起来先抓一轮，之后每 2 分钟再拉 `kzb001.net` 的 `/comment-api/post/list` 前 3 页和圈子列表。评论只在 `lastCommentTime`、评论数或点赞数变了才重拉。
+也在 `db.jar` 里，不跟上面三件任务共用那把锁，也不跟比赛抓取共用间隔。进程起来先抓一轮，之后每 2 分钟再拉 `kzb001.net` 的 `/comment-api/post/list`：社区最近 20 页、精华 3 页、每个圈子 2 页，外加圈子列表和圈子详情。帖子在最后回复时间、评论数、点赞数、浏览数或收藏数变了才重写正文和评论。评论最多翻 10 页。不在这些页里的帖，有人打开单帖时再补这一篇。
 
-正文在同一个桶的 `community/feed.json`、`community/posts/{postId}/comments.json`。图片继续用上游地址。读接口是 `GET /prod-api/community/feed` 和 `GET /prod-api/community/posts/{postId}/comments`。
+正文在同一个桶的 `community/feed.json`、`community/posts/{postId}.json`、`community/posts/{postId}/comments.json`。外站头像转存到图片桶，地址换成 `/prod-api/community/images/{hash}`。读接口见前端文档的社球帝一节。`/prod-api/` 的响应不论请求有没有 `Origin` 都带 `Access-Control-Allow-Origin: *`，预检直接返回 204，避免 CloudFront 把没带头的那份缓存住。
 
 ### 播放页：有人打开才拉
 
