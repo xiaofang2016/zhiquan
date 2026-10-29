@@ -46,8 +46,51 @@ public class UserAuthService {
     }
 
     public void sendCode(String phoneRaw) {
+        sendSms(phoneRaw, false);
+    }
+
+    public void sendResetCode(String phoneRaw) {
+        sendSms(phoneRaw, true);
+    }
+
+    public void sendLoginCode(String phoneRaw) {
+        sendSms(phoneRaw, true);
+    }
+
+    public void resetPassword(String phoneRaw, String codeRaw, String passwordRaw, String confirm) {
         String phone = AccountCheck.phone(phoneRaw);
-        if (users.find(phone).isPresent()) {
+        String password = AccountCheck.password(passwordRaw);
+        AccountCheck.confirm(password, confirm);
+        acceptCode(phone, AccountCheck.code(codeRaw));
+        if (users.find(phone).isEmpty()) {
+            throw new IllegalArgumentException("这个手机号还没有注册");
+        }
+        String salt = UserPassword.salt();
+        users.updatePassword(phone, UserPassword.hash(password, salt), salt, password);
+    }
+
+    public void changePassword(String token, String passwordRaw, String confirm) {
+        SportUser user = account(token);
+        String password = AccountCheck.password(passwordRaw);
+        AccountCheck.confirm(password, confirm);
+        String salt = UserPassword.salt();
+        users.updatePassword(user.getPhone(), UserPassword.hash(password, salt), salt, password);
+    }
+
+    public Map<String, String> loginByCode(String phoneRaw, String codeRaw) {
+        String phone = AccountCheck.phone(phoneRaw);
+        acceptCode(phone, AccountCheck.code(codeRaw));
+        SportUser user = users.find(phone).orElseThrow(() -> new IllegalArgumentException("这个手机号还没有注册"));
+        return view(user, issue(user));
+    }
+
+    private void sendSms(String phoneRaw, boolean mustExist) {
+        String phone = AccountCheck.phone(phoneRaw);
+        boolean exists = users.find(phone).isPresent();
+        if (mustExist && !exists) {
+            throw new IllegalArgumentException("这个手机号还没有注册");
+        }
+        if (!mustExist && exists) {
             throw new IllegalArgumentException("这个手机号已经注册");
         }
         long now = Instant.now().getEpochSecond();

@@ -15,11 +15,13 @@ public class UedBindService {
     private final UserAuthService auth;
     private final SportUserRepository users;
     private final UedClient ued;
+    private final WalletBook book;
 
-    public UedBindService(UserAuthService auth, SportUserRepository users, UedClient ued) {
+    public UedBindService(UserAuthService auth, SportUserRepository users, UedClient ued, WalletBook book) {
         this.auth = auth;
         this.users = users;
         this.ued = ued;
+        this.book = book;
     }
 
     public Map<String, String> status(String token) {
@@ -28,6 +30,7 @@ public class UedBindService {
 
     public void sms(String token) {
         SportUser user = user(token);
+        users.claimSmsSlot(user.getPhone(), "ued_sms_at");
         ued.sms(user.getPhone());
     }
 
@@ -84,11 +87,23 @@ public class UedBindService {
                 ued.transfer(user.getUedUid(), access, cents, orderNo);
             } catch (RuntimeException second) {
                 users.credit(user.getPhone(), cents);
-                throw second;
+                book.withdrawFailed(user, "ued", cents, orderNo, second.getMessage());
+                throw refunded(second);
             }
         }
         user.setBalanceCent(Math.max(0, user.getBalanceCent() - cents));
-        return view(user);
+        book.withdrawSuccess(user, "ued", cents, orderNo);
+        Map<String, String> data = view(user);
+        data.put("tradeNo", orderNo);
+        return data;
+    }
+
+    private static IllegalArgumentException refunded(RuntimeException failure) {
+        String reason = failure.getMessage();
+        if (reason == null || reason.isBlank() || "UED接口失败".equals(reason)) {
+            return new IllegalArgumentException("提现失败，余额已退回");
+        }
+        return new IllegalArgumentException("提现失败，余额已退回：" + reason);
     }
 
     private SportUser user(String token) {
@@ -101,6 +116,7 @@ public class UedBindService {
         data.put("isBind", user.isUedBound() ? "1" : "0");
         data.put("account", JxtBindService.mask(user.getUedAccount()));
         data.put("balance", JxtMoney.yuan(user.getBalanceCent()));
+        data.put("withdrawn", JxtMoney.yuan(user.getUedWithdrawnCent()));
         return data;
     }
 }

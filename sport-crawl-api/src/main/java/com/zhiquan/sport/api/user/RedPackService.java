@@ -20,11 +20,13 @@ public class RedPackService {
     private final UserAuthService auth;
     private final SportUserRepository users;
     private final ObjectMapper json;
+    private final WalletBook book;
 
-    public RedPackService(UserAuthService auth, SportUserRepository users, ObjectMapper json) {
+    public RedPackService(UserAuthService auth, SportUserRepository users, ObjectMapper json, WalletBook book) {
         this.auth = auth;
         this.users = users;
         this.json = json;
+        this.book = book;
     }
 
     public Map<String, Object> state(String token) {
@@ -42,6 +44,7 @@ public class RedPackService {
             try {
                 users.saveRedpack(loaded.day(), loaded.raw(), encode(next), user.getPhone(), cent);
                 user.setBalanceCent(user.getBalanceCent() + cent);
+                book.redpack(user, cent, user.getUserId() + "-" + loaded.day());
                 return view(next, user);
             } catch (TransactionCanceledException ex) {
                 if (attempt == 1 || !conditional(ex)) {
@@ -118,6 +121,10 @@ public class RedPackService {
         data.put("amount", JxtMoney.yuan(round.poolCent()));
         Long mine = user == null ? null : RedPackRules.mine(round, user.getUserId());
         data.put("mine", mine == null ? null : JxtMoney.yuan(mine));
+        data.put("dailyLimit", JxtMoney.yuan(round.poolCent()));
+        data.put("claimedAmount", mine == null ? "0.00" : JxtMoney.yuan(mine));
+        data.put("remainAmount", JxtMoney.yuan(round.remainCent()));
+        data.put("canClaim", user != null && mine == null && round.remainCount() > 0);
         if (user != null) {
             data.put("balance", JxtMoney.yuan(user.getBalanceCent()));
         }

@@ -69,6 +69,14 @@ class UserAccountTest {
     }
 
     @Test
+    void walletSortKeyPutsNewerRowsFirst() {
+        String older = WalletBook.sortKey(1_000L, "a");
+        String newer = WalletBook.sortKey(2_000L, "b");
+        assertTrue(newer.compareTo(older) < 0);
+        assertTrue(older.startsWith("tx#"));
+    }
+
+    @Test
     void jxtAmountUsesCentsAndTenYuanMinimum() {
         assertEquals(1000, JxtMoney.cents("10"));
         assertEquals(1050, JxtMoney.cents("10.5"));

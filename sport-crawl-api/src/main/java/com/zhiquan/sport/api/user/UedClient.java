@@ -119,10 +119,11 @@ public class UedClient {
         ObjectNode body = json.createObjectNode();
         body.put("merchant_no", MERCHANT_NO);
         fields.forEach((key, value) -> body.put(key, String.valueOf(value)));
+        Object mobile = fields.get("mobile");
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + path))
                 .timeout(Duration.ofSeconds(15))
                 .header("content-type", "application/json")
-                .header("user-agent", "sport-crawl")
+                .header("user-agent", SportVendorAgent.forPhone(mobile == null ? "" : String.valueOf(mobile)))
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                 .build();
         return send(request);

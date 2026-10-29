@@ -16,7 +16,9 @@ import software.amazon.awssdk.services.dynamodb.model.DescribeTableRequest;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
 import software.amazon.awssdk.services.dynamodb.model.KeySchemaElement;
 import software.amazon.awssdk.services.dynamodb.model.KeyType;
+import software.amazon.awssdk.services.dynamodb.model.Put;
 import software.amazon.awssdk.services.dynamodb.model.PutItemRequest;
+import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import software.amazon.awssdk.services.dynamodb.model.ResourceInUseException;
 import software.amazon.awssdk.services.dynamodb.model.ResourceNotFoundException;
 import software.amazon.awssdk.services.dynamodb.model.ScalarAttributeType;
@@ -26,7 +28,9 @@ import software.amazon.awssdk.services.dynamodb.model.TransactWriteItemsRequest;
 import software.amazon.awssdk.services.dynamodb.model.Update;
 import software.amazon.awssdk.services.dynamodb.model.UpdateItemRequest;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -118,6 +122,10 @@ public class SportUserRepository {
         user.setUedTokenExpire(uedExpire == null ? 0 : uedExpire);
         Long balance = Attrs.lng(item, "balance_cent");
         user.setBalanceCent(balance == null ? 0 : balance);
+        Long jxtWithdrawn = Attrs.lng(item, "jxt_withdrawn_cent");
+        user.setJxtWithdrawnCent(jxtWithdrawn == null ? 0 : jxtWithdrawn);
+        Long uedWithdrawn = Attrs.lng(item, "ued_withdrawn_cent");
+        user.setUedWithdrawnCent(uedWithdrawn == null ? 0 : uedWithdrawn);
         return Optional.of(user);
     }
 
@@ -226,6 +234,79 @@ public class SportUserRepository {
 
     public void credit(String phone, long cents) {
         dynamo.updateItem(balanceUpdate(phone, cents, "+"));
+    }
+
+    public void updatePassword(String phone, String hash, String salt, String plain) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":hash", Attrs.s(hash));
+        values.put(":salt", Attrs.s(salt));
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET password_hash = :hash, password_salt = :salt")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeValues(values)
+                .build());
+        Map<String, AttributeValue> stored = new HashMap<>();
+        stored.put("pk", Attrs.s(phone));
+        stored.put("sk", Attrs.s(PASSWORD));
+        stored.put("phone", Attrs.s(phone));
+        stored.put("password_plain", Attrs.s(plain));
+        stored.put("updated_at", Attrs.s(java.time.Instant.now().toString()));
+        dynamo.putItem(PutItemRequest.builder().tableName(aws.getUserTable()).item(stored).build());
+    }
+
+    /**
+     * 记一笔成功提现，并累加该平台的累计提现。
+     *
+     * @param withdrawnField 只允许 jxt_withdrawn_cent 或 ued_withdrawn_cent
+     */
+    public void noteWithdraw(String phone, String withdrawnField, long cents, Map<String, AttributeValue> ledger) {
+        if (!"jxt_withdrawn_cent".equals(withdrawnField) && !"ued_withdrawn_cent".equals(withdrawnField)) {
+            throw new IllegalStateException("unknown withdrawn field");
+        }
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":zero", Attrs.n(0));
+        values.put(":amt", Attrs.n(cents));
+        Update withdrawn = Update.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET #w = if_not_exists(#w, :zero) + :amt")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeNames(Map.of("#w", withdrawnField))
+                .expressionAttributeValues(values)
+                .build();
+        Put row = Put.builder()
+                .tableName(aws.getUserTable())
+                .item(ledger)
+                .conditionExpression("attribute_not_exists(pk)")
+                .build();
+        dynamo.transactWriteItems(TransactWriteItemsRequest.builder()
+                .transactItems(
+                        TransactWriteItem.builder().update(withdrawn).build(),
+                        TransactWriteItem.builder().put(row).build())
+                .build());
+    }
+
+    public void putLedger(Map<String, AttributeValue> ledger) {
+        dynamo.putItem(PutItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .item(ledger)
+                .conditionExpression("attribute_not_exists(pk)")
+                .build());
+    }
+
+    public List<Map<String, AttributeValue>> listLedger(String phone) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":pk", Attrs.s(phone));
+        values.put(":tx", Attrs.s("tx#"));
+        return new ArrayList<>(dynamo.query(QueryRequest.builder()
+                .tableName(aws.getUserTable())
+                .keyConditionExpression("pk = :pk AND begins_with(sk, :tx)")
+                .expressionAttributeValues(values)
+                .scanIndexForward(true)
+                .limit(1000)
+                .build()).items());
     }
 
     public String redpack(String day) {
@@ -353,6 +434,34 @@ public class SportUserRepository {
 
     public void deleteCode(String phone) {
         dynamo.deleteItem(DeleteItemRequest.builder().tableName(aws.getUserTable()).key(key(phone, SMS)).build());
+    }
+
+    /**
+     * 同一手机号 60 秒内只发一次绑定验证码。没到时间抛出业务错误。
+     *
+     * @param phone 手机号
+     * @param field 记录上次发送时间的字段，只允许 jxt_sms_at 或 ued_sms_at
+     */
+    public void claimSmsSlot(String phone, String field) {
+        if (!"jxt_sms_at".equals(field) && !"ued_sms_at".equals(field)) {
+            throw new IllegalStateException("unknown sms slot");
+        }
+        long now = java.time.Instant.now().getEpochSecond();
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":now", Attrs.n(now));
+        values.put(":limit", Attrs.n(now - 60));
+        try {
+            dynamo.updateItem(UpdateItemRequest.builder()
+                    .tableName(aws.getUserTable())
+                    .key(key(phone, PROFILE))
+                    .updateExpression("SET #at = :now")
+                    .conditionExpression("attribute_exists(pk) AND (attribute_not_exists(#at) OR #at <= :limit)")
+                    .expressionAttributeNames(Map.of("#at", field))
+                    .expressionAttributeValues(values)
+                    .build());
+        } catch (ConditionalCheckFailedException ex) {
+            throw new IllegalArgumentException("当前操作太频繁请您1分钟后再尝试");
+        }
     }
 
     private static Map<String, AttributeValue> key(String phone, String sort) {

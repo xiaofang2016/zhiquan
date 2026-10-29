@@ -27,4 +27,6 @@ public class SportUser {
     private String uedAccessToken;
     private long uedTokenExpire;
     private long balanceCent;
+    private long jxtWithdrawnCent;
+    private long uedWithdrawnCent;
 }

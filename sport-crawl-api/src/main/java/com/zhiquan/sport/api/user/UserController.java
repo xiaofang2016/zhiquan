@@ -22,14 +22,16 @@ public class UserController {
     private final UedBindService ued;
     private final MissionService mission;
     private final RedPackService redpack;
+    private final WalletBook book;
 
-    public UserController(UserAuthService auth, S3ImageStore images, JxtBindService jxt, UedBindService ued, MissionService mission, RedPackService redpack) {
+    public UserController(UserAuthService auth, S3ImageStore images, JxtBindService jxt, UedBindService ued, MissionService mission, RedPackService redpack, WalletBook book) {
         this.auth = auth;
         this.images = images;
         this.jxt = jxt;
         this.ued = ued;
         this.mission = mission;
         this.redpack = redpack;
+        this.book = book;
     }
 
     @PostMapping("/prod-api/user/sms")
@@ -46,6 +48,45 @@ public class UserController {
     @PostMapping("/prod-api/user/login")
     public KzbResult login(@RequestBody UserRequest body) {
         return KzbResult.ok(auth.login(body.phone(), body.password()));
+    }
+
+    @PostMapping("/prod-api/user/login/sms")
+    public KzbResult loginSms(@RequestBody UserRequest body) {
+        auth.sendLoginCode(body.phone());
+        return KzbResult.ok(null);
+    }
+
+    @PostMapping("/prod-api/user/login/code")
+    public KzbResult loginCode(@RequestBody UserRequest body) {
+        return KzbResult.ok(auth.loginByCode(body.phone(), body.code()));
+    }
+
+    @PostMapping("/prod-api/user/password/sms")
+    public KzbResult passwordSms(@RequestBody UserRequest body) {
+        auth.sendResetCode(body.phone());
+        return KzbResult.ok(null);
+    }
+
+    @PostMapping("/prod-api/user/password/reset")
+    public KzbResult passwordReset(@RequestBody UserRequest body) {
+        auth.resetPassword(body.phone(), body.code(), body.password(), body.confirm());
+        return KzbResult.ok(null);
+    }
+
+    @PostMapping("/prod-api/user/password")
+    public KzbResult passwordChange(@RequestBody UserRequest body) {
+        auth.changePassword(body.token(), body.password(), body.confirm());
+        return KzbResult.ok(null);
+    }
+
+    @PostMapping("/prod-api/user/withdraw/records")
+    public KzbResult withdrawRecords(@RequestBody UserRequest body) {
+        return KzbResult.ok(book.page(auth.account(body.token()), "withdraw", body.page()));
+    }
+
+    @PostMapping("/prod-api/user/wallet/records")
+    public KzbResult walletRecords(@RequestBody UserRequest body) {
+        return KzbResult.ok(book.page(auth.account(body.token()), body.kind(), body.page()));
     }
 
     @PostMapping("/prod-api/user/session")

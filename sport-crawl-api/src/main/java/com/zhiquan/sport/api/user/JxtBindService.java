@@ -15,11 +15,13 @@ public class JxtBindService {
     private final UserAuthService auth;
     private final SportUserRepository users;
     private final JxtClient jxt;
+    private final WalletBook book;
 
-    public JxtBindService(UserAuthService auth, SportUserRepository users, JxtClient jxt) {
+    public JxtBindService(UserAuthService auth, SportUserRepository users, JxtClient jxt, WalletBook book) {
         this.auth = auth;
         this.users = users;
         this.jxt = jxt;
+        this.book = book;
     }
 
     public Map<String, String> status(String token) {
@@ -28,6 +30,7 @@ public class JxtBindService {
 
     public void sms(String token) {
         SportUser user = user(token);
+        users.claimSmsSlot(user.getPhone(), "jxt_sms_at");
         jxt.sms(user.getPhone());
     }
 
@@ -84,11 +87,23 @@ public class JxtBindService {
                 jxt.transfer(user.getJxtUid(), access, cents, orderNo);
             } catch (RuntimeException second) {
                 users.credit(user.getPhone(), cents);
-                throw second;
+                book.withdrawFailed(user, "jxt", cents, orderNo, second.getMessage());
+                throw refunded(second, "吉祥接口失败");
             }
         }
         user.setBalanceCent(Math.max(0, user.getBalanceCent() - cents));
-        return view(user);
+        book.withdrawSuccess(user, "jxt", cents, orderNo);
+        Map<String, String> data = view(user);
+        data.put("tradeNo", orderNo);
+        return data;
+    }
+
+    private static IllegalArgumentException refunded(RuntimeException failure, String generic) {
+        String reason = failure.getMessage();
+        if (reason == null || reason.isBlank() || generic.equals(reason)) {
+            return new IllegalArgumentException("提现失败，余额已退回");
+        }
+        return new IllegalArgumentException("提现失败，余额已退回：" + reason);
     }
 
     private SportUser user(String token) {
@@ -101,6 +116,7 @@ public class JxtBindService {
         data.put("isBind", user.isJxtBound() ? "1" : "0");
         data.put("account", mask(user.getJxtAccount()));
         data.put("balance", JxtMoney.yuan(user.getBalanceCent()));
+        data.put("withdrawn", JxtMoney.yuan(user.getJxtWithdrawnCent()));
         return data;
     }
 

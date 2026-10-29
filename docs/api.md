@@ -50,7 +50,7 @@
 
 ## 登录和注册
 
-账号接口都是 `POST`，请求体是 JSON。没有退出接口，退出时把本地的 `token` 丢掉即可。忘记密码这次没有提供。
+账号接口都是 `POST`，请求体是 JSON。没有退出接口，退出时把本地的 `token` 丢掉即可。只支持 11 位大陆手机号，不带 `+86`，不支持港澳台和海外号码。
 
 手机号是 11 位大陆号码，`1` 开头，第二位是 `3` 到 `9`。不要带 `+86`。密码 6 到 20 位，前后空格也算在长度里。验证码是 6 位数字。
 
@@ -126,6 +126,32 @@
 | `password` | 是 | 密码，规则和注册相同 |
 
 手机号没注册，或者密码不对，都返回「手机号或密码不正确」。成功时 `data` 带新的 `token`。
+
+### 验证码登录
+
+已注册的手机号可以用验证码登录。没注册返回「这个手机号还没有注册」。
+
+1. `POST /prod-api/user/login/sms`，body `{ "phone" }`。成功 `data` 为 `null`。60 秒和 5 分钟规则与注册验证码相同。
+2. `POST /prod-api/user/login/code`，body `{ "phone", "code" }`。成功 `data` 就是登录结果。
+
+### 找回密码和修改密码
+
+1. `POST /prod-api/user/password/sms`，body `{ "phone" }`。只发给已注册的手机号。
+2. `POST /prod-api/user/password/reset`，body `{ "phone", "code", "password", "confirm" }`。成功 `data` 为 `null`，之后用新密码登录。
+3. 已登录改密码：`POST /prod-api/user/password`，body `{ "token", "password", "confirm" }`。
+
+### 账单、红包记录、提现记录
+
+说球帝账号不要用职圈 `GET /wallet/records?merchantNo=`。余额流水在说球帝：
+
+| 接口 | 请求体 |
+|---|---|
+| `POST /prod-api/user/wallet/records` | `{ "token", "kind", "page" }`。`kind` 为 `bill`、`redpacket` 或 `withdraw` |
+| `POST /prod-api/user/withdraw/records` | `{ "token", "page" }`。等同 `kind=withdraw` |
+
+`page` 从 1 起，每页 10 条。`data` 含 `page`、`size`、`total`、`records`。每条有 `tradeNo`、`kind`、`platform`（`jxt` / `ued`，红包为空）、`title`、`amount`（提现为负数）、`status`（`1` 成功，`2` 失败已退回）、`statusName`、`failReason`、`time`、`createdAt`。
+
+红包额度用 `POST /prod-api/user/redpack`，不要用职圈 `GET /redpacket/quota`。已登录时 `data` 另有 `dailyLimit`、`claimedAmount`、`remainAmount`、`canClaim`。
 
 ### 恢复登录
 
