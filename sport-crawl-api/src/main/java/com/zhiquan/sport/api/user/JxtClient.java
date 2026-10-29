@@ -152,6 +152,10 @@ public class JxtClient {
         return root.path("data");
     }
 
+    public String outboundSecret() {
+        return signingSecret();
+    }
+
     private String signingSecret() {
         String cached = signingSecret;
         if (cached != null && !cached.isBlank()) {
