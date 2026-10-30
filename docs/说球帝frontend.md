@@ -175,16 +175,18 @@ GET /prod-api/community/posts/{postId}?token=
 GET /prod-api/community/posts/{postId}/comments?page=1&ps=50&sortRule=like&token=
 GET /prod-api/community/posts/{postId}/highlights?token=
 GET /prod-api/community/comments/{commentId}/replies?postId={postId}&page=1&ps=50&sortRule=newest&token=
-GET /prod-api/community/circles
-GET /prod-api/community/circles?type=essence
-GET /prod-api/community/circles/{circleId}
+GET /prod-api/community/circles?token=
+GET /prod-api/community/circles?type=essence&token=
+GET /prod-api/community/circles/{circleId}?token=
 ```
+
+读接口的 `token` 无效或过期时按未登录处理，仍然返回数据。写接口仍要有效登录。社区 JSON 带 `Cache-Control: no-store`。视频清单、密钥和分片仍可缓存。
 
 `page` 从 1。`ps` 不传时流是 60、评论和回复是 50，最大也是这两个数。`circleId` 只留这个圈子。`type=essence` 只留精华。`type=follow` 是头部「关注」。只留当前登录用户在说球帝点过关注的作者或圈子，不使用原站的关注列表。要带 `token`，没登录或还没关注任何人时这一页是空的。原站被关注的人新发的帖，下一轮抓取写进副本后会出现在这里，大约 2 分钟。`sortRule=publish` 按发布时间，`sortRule=comment` 按 `lastReplyTime`，没有回复的用发布时间。不传按发布时间。`before` 只留这条时间之前的帖；按发布时间排时用 `createTime`，按最新回复排时用 `lastReplyTime`。筛完再分页。`total` 是筛完的条数，`pages` 是页数。拉黑的作者不会出现在流和评论里。
 
-`GET /circles?type=essence` 的 `data` 仍是圈子数组，只留这份副本里有精华帖的圈子，顺序和全部圈子一致。圈子详情多一个 `announces`，每条有 `title` 和 `url`，没有时是空数组。下一轮抓取才会写上。
+`GET /circles?type=essence` 的 `data` 仍是圈子数组，只留这份副本里有精华帖的圈子，顺序和全部圈子一致。带 `token` 时每个圈子有 `followed`，表示当前用户有没有在说球帝关注这个圈子。`followCount` 是原站人数，再加上说球帝本地关注人数。圈子详情多一个 `announces`。上游有公告时每条有 `title`、`url`，能对上的还有 `id`、`type`、`createTime`、`content`。没有时是空数组。
 
-帖子不在已抓到的范围里时，单帖 `data` 为 `null`。评论还没抓到，或帖子不存在，`comments` 是空数组。
+帖子不在已抓到的范围里时，单帖 `data` 为 `null`。评论还没抓到，或帖子不存在，`comments` 是空数组。说球帝账号发出的帖、评论和回复，`userId` 是登录接口返回的 32 位编号，用来对上当前用户。原站内容仍是数字编号。社区里的 `head`、`ownerHead` 若是站内相对路径，会补成 `https://dgtplaoir00la.cloudfront.net` 开头的绝对地址。
 
 `feed` 的 `data`：
 
@@ -194,7 +196,7 @@ GET /prod-api/community/circles/{circleId}
 | `posts` | 当前页。默认新发的在前；`sortRule=comment` 时最后回复的在前 |
 | `total` `page` `pages` | 分页 |
 
-圈子：`id`、`name`、`icon`、`cover`、`followCount`、`postCount`、`ownerName`、`ownerHead`、`topics`。`topics` 里是 `id`、`name`，圈子上的话题还有 `cover`。`GET /circles` 的 `data` 就是这个数组。单个圈子没有时 `data` 为 `null`。
+圈子：`id`、`name`、`icon`、`cover`、`followCount`、`postCount`、`ownerName`、`ownerHead`、`topics`、`followed`。`topics` 里是 `id`、`name`，圈子上的话题还有 `cover`。`GET /circles` 的 `data` 就是这个数组。单个圈子没有时 `data` 为 `null`。没带有效 `token` 时 `followed` 是 `false`。
 
 社区流抓最近 20 页，精华 3 页，每个圈子 2 页。更早的帖第一次打开单帖或评论时再向上游要这一篇，之后就留在副本里。
 
@@ -205,10 +207,10 @@ GET /prod-api/community/circles/{circleId}
 | `postId` | 原站编号 |
 | `title` `content` | 标题和正文 |
 | `createTime` `lastReplyTime` | ISO 时间。页面按上海时间显示。没有回复时 `lastReplyTime` 可能为空 |
-| `nickname` `head` `userId` | 作者。`userId` 是原站用户编号 |
+| `nickname` `head` `userId` | 作者。原站是数字编号。说球帝账号是登录返回的 32 位编号 |
 | `badgeName` `badgeLevel` `badgeStyle` `vipLevel` `jxfLevel` `uedLevel` | 徽章名和等级。`badgeStyle` 是 `1` 或 `2`，没有时为 `null`。`jxfLevel`、`uedLevel` 是两个平台的 V 级，没有或是 `-1` 时为 `null`。`vipLevel` 仍是 UED 的等级，页面要两套图标时用前两个，取高的那个 |
 | `cityName` | 没有时为空字符串 |
-| `likeCount` `commentCount` `viewCount` `collectCount` | `commentCount` 是这份副本里实际带上的顶层评论和回复，和列表对得上。`liked`、`collected`、`followed` 要带 `token` 才知道是不是当前用户，否则是 `false`。`followed` 只表示当前用户有没有关注这篇的作者，和原站无关 |
+| `likeCount` `commentCount` `viewCount` `collectCount` | `commentCount` 是这份副本里实际带上的顶层评论和回复，和列表对得上。`liked`、`collected`、`followed` 要带有效 `token` 才知道是不是当前用户，否则是 `false`。`followed` 只表示当前用户有没有关注这篇的作者，和原站无关 |
 | `essence` | 精华是 `true` |
 | `circleIds` `circleName` | 所属圈子 |
 | `topics` | `{ id, name }`。没有时是空数组 |
@@ -222,7 +224,7 @@ GET /prod-api/community/circles/{circleId}
 | `hotComment` | 没有亮评时为 `null`。有则含 `commentId`、`userId`、`nickname`、`head`、`createTime`、`content`、`likeCount`、`cityName`。头像没有时是空字符串 |
 | `redPacket` | 没有红包时为 `null`。有则是说球帝自己发的，不使用原站金额。每帖 10 份、共 `10.00` 元。字段有 `amount`、`num`、`remainNum`、`status`、`statusName`、`description`、`mine`。`mine` 是当前用户领到的金额，没领或没带 `token` 时为 `null`。领完 `statusName` 是「已领完」 |
 
-评论在 `data.comments`。`sortRule=newest` 新的在前，`oldest` 早的在前，`like` 按点赞从高到低，点赞相同再按时间新的在前。不传按最新。`total` 是顶层条数，不含回复。一条评论：`commentId`、`userId`、`nickname`、`head`、`badgeName`、`badgeLevel`、`badgeStyle`、`vipLevel`、`jxfLevel`、`uedLevel`、`content`、`imageUrls`、`createTime`、`cityName`、`likeCount`、`replyCount`、`replies`。`imageUrls` 是配图地址，没有时是空数组。回复里用 `replyId`，被回复的人是 `replyToNickname`，楼中楼还可以有 `replyToUserId`，其余字段和评论相同，没有再嵌一层。头像若在外站，会转成 `https://dgtplaoir00la.cloudfront.net/prod-api/community/images/{hash}` 的小图；COS 地址会先补上缺失的连字符。
+评论在 `data.comments`。`sortRule=newest` 新的在前，`oldest` 早的在前，`like` 按点赞从高到低，点赞相同再按时间新的在前。不传按最新。`total` 是顶层条数，不含回复。一条评论：`commentId`、`userId`、`nickname`、`head`、`badgeName`、`badgeLevel`、`badgeStyle`、`vipLevel`、`jxfLevel`、`uedLevel`、`content`、`imageUrls`、`createTime`、`cityName`、`likeCount`、`replyCount`、`replies`。`imageUrls` 是配图地址，没有时是空数组。`replyCount` 等于这条评论里实际带上的 `replies` 条数。回复里用 `replyId`。只有回复的是别人的楼中楼时才有 `replyToUserId` 和 `replyToNickname`；直接回复评论作者时这两个字段不出现。其余字段和评论相同，没有再嵌一层。头像若在外站，会转成 `https://dgtplaoir00la.cloudfront.net/prod-api/community/images/{hash}` 的小图；COS 地址会先补上缺失的连字符。说球帝账号的 `head` 是绝对地址。
 
 亮评是 `GET /posts/{postId}/highlights`。`data.comments` 一次给全，字段和评论相同，按点赞从高到低。点赞少于 2 的不算。`data.total` 是条数。
 
@@ -233,7 +235,7 @@ POST /prod-api/community/posts/{postId}/comments
 { "token": "", "content": "", "commentId": 9603, "replyToUserId": 1050718, "imageUrls": ["https://img.example/a.jpg"] }
 ```
 
-`commentId` 不传就是评这篇帖子。传了就是回复这条评论，返回的回复带 `replyId` 和 `replyToNickname`。`replyToUserId` 不传时，被回复的人是这条评论的作者。配图最多 4 张，地址要以 `http://` 或 `https://` 开头。评论不存在时返回「这条评论不存在」。
+`commentId` 不传就是评这篇帖子。传了就是回复这条评论。`replyToUserId` 不传，或传的就是这条评论的作者时，这是直接回复，返回里不带 `replyToNickname`。传了别人的编号时，返回带 `replyToUserId` 和 `replyToNickname`。编号可以是数字，也可以是说球帝登录返回的 32 位编号。配图最多 4 张，地址要以 `http://` 或 `https://` 开头。评论不存在时返回「这条评论不存在」。说球帝账号发出的评论和回复带同一个 32 位 `userId`。
 
 发帖和评论要登录。令牌放在 JSON 的 `token` 里。写进去的只在说球帝这份副本上，所有打开这个接口的人都能看到，不会同步回原站。
 

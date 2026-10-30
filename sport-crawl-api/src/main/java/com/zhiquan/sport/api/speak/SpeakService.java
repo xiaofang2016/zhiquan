@@ -45,8 +45,12 @@ public class SpeakService {
     }
 
     public ObjectNode post(String nick, String head, String badge, String title, String content) {
+        return post(nick, head, badge, title, content, "");
+    }
+
+    public ObjectNode post(String nick, String head, String badge, String title, String content, String userId) {
         return update(boardKey(), board -> CommunityBoard.addPost(json, CommunityBoard.ensure(json, board),
-                Voice.nick(nick), Voice.head(head), Voice.badge(badge), Voice.title(title), Voice.post(content)));
+                Voice.nick(nick), Voice.head(head), Voice.badge(badge), Voice.title(title), Voice.post(content), userId));
     }
 
     public ObjectNode comment(String postId, String nick, String head, String badge, String content) {
@@ -54,19 +58,28 @@ public class SpeakService {
     }
 
     public ObjectNode comment(String postId, String nick, String head, String badge, String content, List<String> images) {
+        return comment(postId, nick, head, badge, content, images, "");
+    }
+
+    public ObjectNode comment(String postId, String nick, String head, String badge, String content, List<String> images, String userId) {
         String id = Voice.postId(postId);
         List<String> pictures = Voice.images(images);
         return update(boardKey(), board -> CommunityBoard.addComment(json, CommunityBoard.ensure(json, board), id,
-                Voice.nick(nick), Voice.head(head), Voice.badge(badge), Voice.comment(content), pictures));
+                Voice.nick(nick), Voice.head(head), Voice.badge(badge), Voice.comment(content), pictures, userId));
     }
 
     public ObjectNode reply(String postId, String commentId, String replyToUserId, String replyToNickname,
                             String nick, String head, String badge, String content, List<String> images) {
+        return reply(postId, commentId, replyToUserId, replyToNickname, nick, head, badge, content, images, "");
+    }
+
+    public ObjectNode reply(String postId, String commentId, String replyToUserId, String replyToNickname,
+                            String nick, String head, String badge, String content, List<String> images, String userId) {
         String id = Voice.postId(postId);
         String parent = Voice.postId(commentId);
         List<String> pictures = Voice.images(images);
         return update(boardKey(), board -> CommunityBoard.addReply(json, CommunityBoard.ensure(json, board), id, parent,
-                replyToUserId, replyToNickname, Voice.nick(nick), Voice.head(head), Voice.badge(badge), Voice.comment(content), pictures));
+                replyToUserId, replyToNickname, Voice.nick(nick), Voice.head(head), Voice.badge(badge), Voice.comment(content), pictures, userId));
     }
 
     public ObjectNode communityFeed(JsonNode upstream) {
@@ -104,7 +117,7 @@ public class SpeakService {
     }
 
     public ObjectNode followUser(String userId, String target) {
-        String id = Voice.postId(target);
+        String id = Voice.personId(target);
         return update(boardKey(), board -> CommunityBoard.followUser(json, CommunityBoard.ensure(json, board), userId, id));
     }
 
@@ -114,7 +127,7 @@ public class SpeakService {
     }
 
     public ObjectNode block(String userId, String target) {
-        String id = Voice.postId(target);
+        String id = Voice.personId(target);
         return update(boardKey(), board -> CommunityBoard.block(json, CommunityBoard.ensure(json, board), userId, id));
     }
 
@@ -143,6 +156,13 @@ public class SpeakService {
 
     public static String headOf(SportUser user) {
         return user.getAvatar() == null ? "" : user.getAvatar();
+    }
+
+    public static String absoluteHead(String head, String base) {
+        if (head == null || head.isBlank() || base == null || base.isBlank() || !head.startsWith("/")) {
+            return head == null ? "" : head;
+        }
+        return base + head;
     }
 
     private ObjectNode update(String key, Editor editor) {

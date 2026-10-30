@@ -172,7 +172,7 @@ class SpeakRulesTest {
         assertEquals(11, replies.path("replies").get(0).path("replyId").asLong());
         assertEquals(12, replies.path("replies").get(1).path("replyId").asLong());
         ObjectNode spoken = CommunityBoard.addReply(json, board, "9", "1", null, "甲", "戊", "", "", "再回", java.util.List.of("https://img.example/a.jpg"));
-        assertEquals("甲", spoken.path("replyToNickname").asText());
+        assertEquals("", spoken.path("replyToNickname").asText());
         assertEquals("https://img.example/a.jpg", spoken.path("imageUrls").get(0).asText());
         ObjectNode again = CommunityBoard.replies(json, upstream, board, "9", "1", json.createArrayNode(), 1, 50, "newest", null);
         assertEquals(spoken.path("replyId").asLong(), again.path("replies").get(0).path("replyId").asLong());
@@ -187,6 +187,37 @@ class SpeakRulesTest {
         assertEquals(2, byReply.path("posts").get(0).path("postId").asLong());
         assertEquals(1, CommunityBoard.essenceCircles(json, full).size());
         assertEquals(14, CommunityBoard.essenceCircles(json, full).get(0).path("id").asLong());
+    }
+
+    @Test
+    void ownPostsKeepTheAccountAndReplyCountsMatchBodies() throws Exception {
+        ObjectNode board = CommunityBoard.ensure(json, json.createObjectNode());
+        String user = "0123456789abcdef0123456789abcdef";
+        ObjectNode post = CommunityBoard.addPost(json, board, "我", "/prod-api/user/avatar/a.jpg", "", "标题", "正文", user);
+        assertEquals(user, post.path("userId").asText());
+        CommunityBoard.absoluteHeads(post, "https://dgtplaoir00la.cloudfront.net");
+        assertEquals("https://dgtplaoir00la.cloudfront.net/prod-api/user/avatar/a.jpg", post.path("head").asText());
+        ObjectNode upstream = (ObjectNode) json.readTree("""
+                {"comments":[{"commentId":8,"userId":8,"nickname":"甲","content":"楼","createTime":"2026-10-29T01:00:00.000+00:00","likeCount":0,"replyCount":6,
+                  "replies":[
+                    {"replyId":1,"userId":8,"nickname":"甲","replyToUserId":8,"replyToNickname":"甲","content":"自己","createTime":"2026-10-29T01:01:00.000+00:00"},
+                    {"replyId":2,"userId":5,"nickname":"乙","replyToUserId":9,"replyToNickname":"丙","content":"别人","createTime":"2026-10-29T01:02:00.000+00:00"},
+                    {"replyId":3,"userId":9,"nickname":"丙","content":"再","createTime":"2026-10-29T01:03:00.000+00:00"}
+                  ]}]}
+                """);
+        ObjectNode page = CommunityBoard.comments(json, upstream, board, "9", 1, 50, null, "newest");
+        assertEquals(3, page.path("comments").get(0).path("replyCount").asInt());
+        assertFalse(page.path("comments").get(0).path("replies").get(0).has("replyToNickname"));
+        ObjectNode rows = CommunityBoard.replies(json, upstream, board, "9", "8", json.createArrayNode(), 1, 50, "oldest", null);
+        assertEquals(3, rows.path("total").asInt());
+        assertFalse(rows.path("replies").get(0).has("replyToUserId"));
+        assertEquals(9, rows.path("replies").get(1).path("replyToUserId").asLong());
+        ObjectNode circle = (ObjectNode) json.readTree("{\"id\":14,\"name\":\"足球\",\"followCount\":2}");
+        CommunityBoard.followCircle(json, board, user, "14");
+        CommunityBoard.markCircle(circle, board, user);
+        assertTrue(circle.path("followed").asBoolean());
+        assertEquals(3, circle.path("followCount").asInt());
+        assertEquals(user, Voice.personId(user));
     }
 
     @Test

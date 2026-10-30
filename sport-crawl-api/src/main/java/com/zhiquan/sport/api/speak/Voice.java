@@ -93,6 +93,14 @@ public final class Voice {
         return id;
     }
 
+    public static String personId(String raw) {
+        String id = trim(raw);
+        if (!id.matches("[0-9]{1,18}") && !id.matches("[0-9a-fA-F]{32}")) {
+            throw new IllegalArgumentException("用户编号不正确");
+        }
+        return id;
+    }
+
     private static String trim(String raw) {
         return raw == null ? "" : raw.trim();
     }

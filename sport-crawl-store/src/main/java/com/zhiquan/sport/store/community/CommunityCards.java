@@ -154,7 +154,7 @@ public final class CommunityCards {
         circle.put("ownerName", text(node, "groupAdminNickname"));
         circle.put("ownerHead", repair(text(node, "groupAdminHead")));
         circle.put("topics", topics(node.path("topics"), true));
-        circle.put("announces", announces(node.path("announces")));
+        circle.put("announces", announces(firstArray(node, "announces", "noticeList", "announceList", "notices")));
         return circle;
     }
 
@@ -389,11 +389,32 @@ public final class CommunityCards {
                 continue;
             }
             Map<String, Object> row = new LinkedHashMap<>();
+            if (node.path("id").canConvertToLong()) {
+                row.put("id", node.path("id").asLong());
+            } else if (node.path("announceId").canConvertToLong()) {
+                row.put("id", node.path("announceId").asLong());
+            }
             row.put("title", title);
+            row.put("type", first(node, "type", "announceType", "noticeType"));
+            row.put("createTime", first(node, "createTime", "publishTime", "time"));
             row.put("url", url);
+            String content = first(node, "content", "detail", "text");
+            if (!content.isEmpty() && !content.equals(title)) {
+                row.put("content", content);
+            }
             rows.add(row);
         }
         return rows;
+    }
+
+    private static JsonNode firstArray(JsonNode node, String... fields) {
+        for (String field : fields) {
+            JsonNode value = node.path(field);
+            if (value.isArray() && !value.isEmpty()) {
+                return value;
+            }
+        }
+        return node.path(fields[0]);
     }
 
     private static String first(JsonNode node, String... fields) {

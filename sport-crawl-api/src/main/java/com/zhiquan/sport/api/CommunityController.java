@@ -2,6 +2,7 @@ package com.zhiquan.sport.api;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.zhiquan.sport.api.speak.CommunityBoard;
 import com.zhiquan.sport.api.speak.CommunityMatch;
@@ -75,25 +76,39 @@ public class CommunityController {
         ObjectNode body = CommunityBoard.page(json, full, pageNo, size, circleId, type, before, speak.board(), viewer, feedSort(sortRule));
         matches.fill(body);
         playable(body);
-        return KzbResult.ok(body);
+        return ready(body);
     }
 
     @GetMapping("/prod-api/community/circles")
-    public KzbResult circles(@RequestParam(required = false) String type) {
+    public KzbResult circles(@RequestParam(required = false) String type, @RequestParam(required = false) String token) {
         JsonNode feed = read(key("feed.json"));
-        if ("essence".equals(type)) {
-            return KzbResult.ok(CommunityBoard.essenceCircles(json, feed));
+        JsonNode circles = "essence".equals(type)
+                ? CommunityBoard.essenceCircles(json, feed)
+                : feed.path("circles");
+        ArrayNode marked = json.createArrayNode();
+        if (circles.isArray()) {
+            String viewer = viewer(token);
+            for (JsonNode circle : circles) {
+                if (circle instanceof ObjectNode object) {
+                    ObjectNode copy = object.deepCopy();
+                    CommunityBoard.markCircle(copy, speak.board(), viewer);
+                    marked.add(copy);
+                }
+            }
         }
-        JsonNode circles = feed.path("circles");
-        return KzbResult.ok(circles.isArray() ? circles : json.createArrayNode());
+        CommunityBoard.absoluteHeads(marked, publicBase);
+        return KzbResult.ok(marked);
     }
 
     @GetMapping("/prod-api/community/circles/{circleId:[0-9]{1,18}}")
-    public KzbResult circle(@PathVariable String circleId) {
+    public KzbResult circle(@PathVariable String circleId, @RequestParam(required = false) String token) {
         long id = Long.parseLong(circleId);
         for (JsonNode circle : read(key("feed.json")).path("circles")) {
-            if (circle.path("id").asLong() == id) {
-                return KzbResult.ok(circle);
+            if (circle.path("id").asLong() == id && circle instanceof ObjectNode object) {
+                ObjectNode copy = object.deepCopy();
+                CommunityBoard.markCircle(copy, speak.board(), viewer(token));
+                CommunityBoard.absoluteHeads(copy, publicBase);
+                return KzbResult.ok(copy);
             }
         }
         return KzbResult.ok(null);
@@ -109,7 +124,7 @@ public class CommunityController {
         }
         matches.fill(opened);
         playable(opened);
-        return KzbResult.ok(opened);
+        return ready(opened);
     }
 
     @PostMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/redpacket")
@@ -124,7 +139,7 @@ public class CommunityController {
         ObjectNode after = open(postId, user.getUserId());
         ObjectNode shown = after == null ? opened : after;
         playable(shown);
-        return KzbResult.ok(shown);
+        return ready(shown);
     }
 
     @PostMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/like")
@@ -135,7 +150,7 @@ public class CommunityController {
         if (opened != null) {
             playable(opened);
         }
-        return KzbResult.ok(opened == null ? flags : opened);
+        return ready(opened == null ? flags : opened);
     }
 
     @PostMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/collect")
@@ -146,10 +161,10 @@ public class CommunityController {
         if (opened != null) {
             playable(opened);
         }
-        return KzbResult.ok(opened == null ? flags : opened);
+        return ready(opened == null ? flags : opened);
     }
 
-    @PostMapping("/prod-api/community/users/{userId:[0-9]{1,18}}/follow")
+    @PostMapping("/prod-api/community/users/{userId:[0-9a-fA-F]{1,32}}/follow")
     public KzbResult followUser(@PathVariable String userId, @RequestBody SpeakBody body) {
         return KzbResult.ok(speak.followUser(auth.account(body.token()).getUserId(), userId));
     }
@@ -159,7 +174,7 @@ public class CommunityController {
         return KzbResult.ok(speak.followCircle(auth.account(body.token()).getUserId(), circleId));
     }
 
-    @PostMapping("/prod-api/community/users/{userId:[0-9]{1,18}}/block")
+    @PostMapping("/prod-api/community/users/{userId:[0-9a-fA-F]{1,32}}/block")
     public KzbResult block(@PathVariable String userId, @RequestBody SpeakBody body) {
         return KzbResult.ok(speak.block(auth.account(body.token()).getUserId(), userId));
     }
@@ -172,7 +187,7 @@ public class CommunityController {
     @PostMapping("/prod-api/community/posts")
     public KzbResult publish(@RequestBody SpeakBody body) {
         SportUser user = auth.account(body.token());
-        return KzbResult.ok(speak.post(SpeakService.nickOf(user), SpeakService.headOf(user), "", body.title(), body.content()));
+        return ready(speak.post(SpeakService.nickOf(user), head(user), "", body.title(), body.content(), user.getUserId()));
     }
 
     @GetMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/highlights")
@@ -181,7 +196,7 @@ public class CommunityController {
                 && !containsPost(read(key("feed.json")), postId)) {
             source.fill(postId);
         }
-        return KzbResult.ok(speak.communityHighlights(read(key("posts/" + postId + "/comments.json")), postId, viewer(token)));
+        return ready(speak.communityHighlights(read(key("posts/" + postId + "/comments.json")), postId, viewer(token)));
     }
 
     @GetMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/comments")
@@ -200,7 +215,7 @@ public class CommunityController {
                 && !containsPost(read(key("feed.json")), postId)) {
             source.fill(postId);
         }
-        return KzbResult.ok(speak.communityComments(read(key("posts/" + postId + "/comments.json")), postId, pageNo, size, viewer, commentSort(sortRule)));
+        return ready(speak.communityComments(read(key("posts/" + postId + "/comments.json")), postId, pageNo, size, viewer, commentSort(sortRule)));
     }
 
     @GetMapping("/prod-api/community/comments/{commentId:[0-9]{1,18}}/replies")
@@ -222,7 +237,7 @@ public class CommunityController {
         int declared = comment == null ? 0 : comment.path("replyCount").asInt(0);
         int embedded = comment == null || !comment.path("replies").isArray() ? 0 : comment.path("replies").size();
         JsonNode fetched = declared > embedded ? source.moreReplies(commentId) : json.createArrayNode();
-        return KzbResult.ok(speak.communityReplies(stored, post == null ? "" : post, commentId, fetched, pageNo, size, sort, viewer(token)));
+        return ready(speak.communityReplies(stored, post == null ? "" : post, commentId, fetched, pageNo, size, sort, viewer(token)));
     }
 
     @PostMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/comments")
@@ -235,15 +250,17 @@ public class CommunityController {
             if (parent == null) {
                 throw new IllegalArgumentException("这条评论不存在");
             }
+            String authorId = CommunityBoard.parentUserId(stored, speak.board(), postId, commentId);
             String toUser = null;
-            String toName = parent;
-            if (body.replyToUserId() != null) {
-                toUser = Voice.postId(Long.toString(body.replyToUserId()));
+            String toName = "";
+            String candidate = textId(body.replyToUserId());
+            if (candidate != null && !candidate.equals(authorId)) {
+                toUser = candidate;
                 toName = CommunityBoard.replyName(stored, speak.board(), postId, commentId, toUser);
             }
-            return KzbResult.ok(speak.reply(postId, commentId, toUser, toName, SpeakService.nickOf(user), SpeakService.headOf(user), "", body.content(), body.imageUrls()));
+            return ready(speak.reply(postId, commentId, toUser, toName, SpeakService.nickOf(user), head(user), "", body.content(), body.imageUrls(), user.getUserId()));
         }
-        return KzbResult.ok(speak.comment(postId, SpeakService.nickOf(user), SpeakService.headOf(user), "", body.content(), body.imageUrls()));
+        return ready(speak.comment(postId, SpeakService.nickOf(user), head(user), "", body.content(), body.imageUrls(), user.getUserId()));
     }
 
     private JsonNode read(String key) {
@@ -258,7 +275,7 @@ public class CommunityController {
         }
     }
 
-    public record SpeakBody(String token, String title, String content, Long commentId, Long replyToUserId, List<String> imageUrls) {
+    public record SpeakBody(String token, String title, String content, Long commentId, JsonNode replyToUserId, List<String> imageUrls) {
     }
 
     public record ReportBody(String token, String targetType, String targetId, String reason) {
@@ -344,11 +361,32 @@ public class CommunityController {
         throw new IllegalArgumentException("排序不正确");
     }
 
+    private static String textId(JsonNode node) {
+        if (node == null || node.isNull() || !node.isValueNode()) {
+            return null;
+        }
+        String text = node.asText("").trim();
+        return text.isEmpty() ? null : text;
+    }
+
     private String viewer(String token) {
         if (token == null || token.isBlank()) {
             return null;
         }
-        return auth.account(token).getUserId();
+        try {
+            return auth.account(token).getUserId();
+        } catch (IllegalArgumentException ex) {
+            return null;
+        }
+    }
+
+    private String head(SportUser user) {
+        return SpeakService.absoluteHead(SpeakService.headOf(user), publicBase);
+    }
+
+    private KzbResult ready(JsonNode body) {
+        CommunityBoard.absoluteHeads(body, publicBase);
+        return KzbResult.ok(body);
     }
 
     private static boolean containsPost(JsonNode feed, String postId) {
