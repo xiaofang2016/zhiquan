@@ -696,6 +696,7 @@ public final class CommunityBoard {
         String key = post.path("postId").asText();
         post.put("liked", viewer != null && contains(board, "likes", key, viewer));
         post.put("collected", viewer != null && contains(board, "collects", key, viewer));
+        post.put("followed", followsUser(board, viewer, post.path("userId").asText("")));
     }
 
     private static ObjectNode bag(ObjectMapper json, ObjectNode board, String viewer) {
@@ -750,19 +751,30 @@ public final class CommunityBoard {
         return false;
     }
 
+    /**
+     * 只看说球帝本地的关注。原站 authorFollowed 不参与。
+     */
     private static boolean followed(JsonNode board, String viewer, JsonNode post) {
+        if (followsUser(board, viewer, post.path("userId").asText(""))) {
+            return true;
+        }
         if (board == null || viewer == null || viewer.isBlank()) {
             return false;
         }
-        JsonNode bag = board.path("follows").path(viewer);
-        String author = post.path("userId").asText("");
-        for (JsonNode id : bag.path("users")) {
-            if (author.equals(id.asText())) {
+        for (JsonNode circle : board.path("follows").path(viewer).path("circles")) {
+            if (circle.canConvertToLong() && inCircle(post, circle.asLong())) {
                 return true;
             }
         }
-        for (JsonNode circle : bag.path("circles")) {
-            if (circle.canConvertToLong() && inCircle(post, circle.asLong())) {
+        return false;
+    }
+
+    private static boolean followsUser(JsonNode board, String viewer, String author) {
+        if (board == null || viewer == null || viewer.isBlank() || author.isEmpty()) {
+            return false;
+        }
+        for (JsonNode id : board.path("follows").path(viewer).path("users")) {
+            if (author.equals(id.asText())) {
                 return true;
             }
         }

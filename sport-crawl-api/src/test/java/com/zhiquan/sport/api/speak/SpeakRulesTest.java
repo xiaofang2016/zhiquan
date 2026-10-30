@@ -109,6 +109,7 @@ class SpeakRulesTest {
         assertEquals(9, followed.path("posts").get(0).path("postId").asLong());
         assertEquals(2, followed.path("posts").get(0).path("likeCount").asInt());
         assertTrue(followed.path("posts").get(0).path("liked").asBoolean());
+        assertTrue(followed.path("posts").get(0).path("followed").asBoolean());
         CommunityBoard.block(json, board, "u1", "12");
         ObjectNode hidden = CommunityBoard.page(json, full, 1, 60, null, null, null, board, "u1");
         assertEquals(1, hidden.path("total").asInt());

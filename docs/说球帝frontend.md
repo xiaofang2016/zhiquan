@@ -180,7 +180,7 @@ GET /prod-api/community/circles?type=essence
 GET /prod-api/community/circles/{circleId}
 ```
 
-`page` 从 1。`ps` 不传时流是 60、评论和回复是 50，最大也是这两个数。`circleId` 只留这个圈子。`type=essence` 只留精华。`type=follow` 只留当前用户关注的作者或圈子，要带 `token`，没登录时这一页是空的。`sortRule=publish` 按发布时间，`sortRule=comment` 按 `lastReplyTime`，没有回复的用发布时间。不传按发布时间。`before` 只留这条时间之前的帖；按发布时间排时用 `createTime`，按最新回复排时用 `lastReplyTime`。筛完再分页。`total` 是筛完的条数，`pages` 是页数。拉黑的作者不会出现在流和评论里。
+`page` 从 1。`ps` 不传时流是 60、评论和回复是 50，最大也是这两个数。`circleId` 只留这个圈子。`type=essence` 只留精华。`type=follow` 是头部「关注」。只留当前登录用户在说球帝点过关注的作者或圈子，不使用原站的关注列表。要带 `token`，没登录或还没关注任何人时这一页是空的。原站被关注的人新发的帖，下一轮抓取写进副本后会出现在这里，大约 2 分钟。`sortRule=publish` 按发布时间，`sortRule=comment` 按 `lastReplyTime`，没有回复的用发布时间。不传按发布时间。`before` 只留这条时间之前的帖；按发布时间排时用 `createTime`，按最新回复排时用 `lastReplyTime`。筛完再分页。`total` 是筛完的条数，`pages` 是页数。拉黑的作者不会出现在流和评论里。
 
 `GET /circles?type=essence` 的 `data` 仍是圈子数组，只留这份副本里有精华帖的圈子，顺序和全部圈子一致。圈子详情多一个 `announces`，每条有 `title` 和 `url`，没有时是空数组。下一轮抓取才会写上。
 
@@ -208,7 +208,7 @@ GET /prod-api/community/circles/{circleId}
 | `nickname` `head` `userId` | 作者。`userId` 是原站用户编号 |
 | `badgeName` `badgeLevel` `badgeStyle` `vipLevel` `jxfLevel` `uedLevel` | 徽章名和等级。`badgeStyle` 是 `1` 或 `2`，没有时为 `null`。`jxfLevel`、`uedLevel` 是两个平台的 V 级，没有或是 `-1` 时为 `null`。`vipLevel` 仍是 UED 的等级，页面要两套图标时用前两个，取高的那个 |
 | `cityName` | 没有时为空字符串 |
-| `likeCount` `commentCount` `viewCount` `collectCount` | `commentCount` 是这份副本里实际带上的顶层评论和回复，和列表对得上。`liked`、`collected` 要带 `token` 才知道是不是当前用户，否则是 `false` |
+| `likeCount` `commentCount` `viewCount` `collectCount` | `commentCount` 是这份副本里实际带上的顶层评论和回复，和列表对得上。`liked`、`collected`、`followed` 要带 `token` 才知道是不是当前用户，否则是 `false`。`followed` 只表示当前用户有没有关注这篇的作者，和原站无关 |
 | `essence` | 精华是 `true` |
 | `circleIds` `circleName` | 所属圈子 |
 | `topics` | `{ id, name }`。没有时是空数组 |
@@ -262,7 +262,7 @@ POST /prod-api/community/reports
 
 `targetType` 是 `post`、`comment` 或 `user`。`reason` 是 1 到 100 个字。同一个人重复举报同一对象，保留第一次。
 
-点赞和收藏成功时，`data` 仍是这篇帖子，带上新的计数和 `liked`、`collected`。关注返回 `followed`，拉黑返回 `blocked`。
+点赞和收藏成功时，`data` 仍是这篇帖子，带上新的计数和 `liked`、`collected`。关注作者是 `POST /users/{userId}/follow`，`userId` 用帖子上的原站用户编号。成功时 `data` 是 `{ userId, followed }`。再点一次取消。取消后，头部「关注」不再出现这个人的帖。这个人之后在原站发的新帖，仍要等下一轮抓取；只要关注还在，就会进「关注」。拉黑返回 `blocked`。
 
 帖子红包要登录后领。每个人每帖只能领一次，再领不会再入账，`mine` 仍是上次的金额。领到的钱记进说球帝余额，流水标题是「帖子红包」。份数领完返回「红包已领完」。这篇没有红包时返回「这篇没有红包」。
 
