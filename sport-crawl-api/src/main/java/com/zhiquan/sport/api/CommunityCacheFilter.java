@@ -17,7 +17,9 @@ public class CommunityCacheFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain chain)
             throws ServletException, IOException {
         String path = request.getRequestURI();
-        if (path != null && path.startsWith("/prod-api/community/") && !path.startsWith("/prod-api/community/video/")) {
+        if (path != null && path.startsWith("/prod-api/community/")
+                && !path.startsWith("/prod-api/community/video/")
+                && !path.startsWith("/prod-api/community/media/")) {
             response.setHeader("Cache-Control", "no-store");
         }
         chain.doFilter(request, response);

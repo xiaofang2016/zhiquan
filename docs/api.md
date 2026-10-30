@@ -64,6 +64,8 @@
     "userId": "0c9a1e4b7d2f4a6e8b1c3d5f709182a4",
     "phone": "13800138000",
     "nickname": "138****8000",
+    "avatar": "",
+    "cityName": "",
     "token": "登录令牌"
   }
 }
@@ -74,7 +76,11 @@
 | `userId` | 用户 id，32 位，没有横线 |
 | `phone` | 注册时的手机号 |
 | `nickname` | 默认是打码后的手机号，例如 `138****8000` |
+| `avatar` | 头像路径，可能是空串。相对路径拼在网关基址后面 |
+| `cityName` | 当前城市，还没设置时是空串。评论定位用这个值 |
 | `token` | 登录令牌。保存下来，恢复登录时原样传回。30 天后失效 |
+
+设置城市是 `POST /prod-api/user/city`，body `{ "token", "cityName" }`。最多 20 个字。成功 `data` 仍是登录结果。发评论或改社区资料时带了 `cityName`，也会写进这里。
 
 ### 发送验证码
 
@@ -153,7 +159,9 @@
 
 红包额度用 `POST /prod-api/user/redpack`，不要用职圈 `GET /redpacket/quota`。已登录时 `data` 另有 `dailyLimit`、`claimedAmount`、`remainAmount`、`canClaim`。每天这一份和帖子红包都会出现在 `kind=redpacket` 里，标题分别是「红包」和「帖子红包」。
 
-帖子红包是说球帝自己发的，不走原站钱包。`POST /prod-api/community/posts/{postId}/redpacket`，请求体 `{ "token" }`。只出现在原站带红包标记的帖上，每帖 10 份、共 `10.00` 元，每个人每帖只能领一次。成功时 `data` 是这篇帖子，`redPacket.mine` 是领到的金额。领完返回「红包已领完」，这篇没有红包返回「这篇没有红包」。字段见 [说球帝frontend.md](说球帝frontend.md) 的社球帝一节。
+帖子红包是说球帝自己发的，不走原站钱包。`POST /prod-api/community/posts/{postId}/redpacket`，请求体 `{ "token" }`。只出现在原站带红包标记的帖上，每帖 10 份、共 `10.00` 元，每个人每帖只能领一次。成功时 `data` 是这篇帖子，`redPacket.mine` 是领到的金额。领完返回「红包已领完」，这篇没有红包返回「这篇没有红包」。
+
+社球帝的评论、发帖、打赏、用户主页、通知和上传都在 [说球帝frontend.md](说球帝frontend.md) 的社球帝一节。评论和回复的 `likeCount` 不会小于原站。回复某一条回复时带 `replyToReplyId`。自己发的帖和评论会计入用户主页。公告从圈子详情和话题详情抓来；原站这两处目前是空的。发帖视频填已经能播的地址，不做转码。
 
 ### 恢复登录
 
@@ -165,7 +173,7 @@
 { "token": "登录令牌" }
 ```
 
-令牌缺失、对不上或用户已经不存在，返回「请先登录」。超过 30 天返回「登录已过期」。成功时 `data` 仍是上面那四项，`token` 就是请求里的这一份。
+令牌缺失、对不上或用户已经不存在，返回「请先登录」。超过 30 天返回「登录已过期」。成功时 `data` 仍是登录结果，`token` 就是请求里的这一份。
 
 ## 比赛
 

@@ -65,7 +65,9 @@ public class CommunityController {
                           @RequestParam(required = false) String type,
                           @RequestParam(required = false) String before,
                           @RequestParam(required = false) String sortRule,
-                          @RequestParam(required = false) String token) {
+                          @RequestParam(required = false) String token,
+                          @RequestParam(required = false) String userId,
+                          @RequestParam(required = false) Long topicId) {
         int pageNo = page == null || page < 1 ? 1 : Math.min(page, 500);
         int size = ps == null ? 60 : ps;
         if (size < 1 || size > 60) {
@@ -73,7 +75,7 @@ public class CommunityController {
         }
         String viewer = viewer(token);
         ObjectNode full = speak.communityFeed(read(key("feed.json")));
-        ObjectNode body = CommunityBoard.page(json, full, pageNo, size, circleId, type, before, speak.board(), viewer, feedSort(sortRule));
+        ObjectNode body = CommunityBoard.page(json, full, pageNo, size, circleId, type, before, speak.board(), viewer, feedSort(sortRule), userId, topicId);
         matches.fill(body);
         playable(body);
         return ready(body);
@@ -144,9 +146,11 @@ public class CommunityController {
 
     @PostMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/like")
     public KzbResult like(@PathVariable String postId, @RequestBody SpeakBody body) {
-        String viewer = auth.account(body.token()).getUserId();
-        ObjectNode flags = speak.like(viewer, postId);
-        ObjectNode opened = open(postId, viewer);
+        SportUser user = auth.account(body.token());
+        ObjectNode openedBefore = open(postId, user.getUserId());
+        String author = openedBefore == null ? "" : openedBefore.path("userId").asText("");
+        ObjectNode flags = speak.like(user.getUserId(), postId, author, SpeakService.nickOf(user), head(user));
+        ObjectNode opened = open(postId, user.getUserId());
         if (opened != null) {
             playable(opened);
         }
@@ -166,7 +170,8 @@ public class CommunityController {
 
     @PostMapping("/prod-api/community/users/{userId:[0-9a-fA-F]{1,32}}/follow")
     public KzbResult followUser(@PathVariable String userId, @RequestBody SpeakBody body) {
-        return KzbResult.ok(speak.followUser(auth.account(body.token()).getUserId(), userId));
+        SportUser user = auth.account(body.token());
+        return KzbResult.ok(speak.followUser(user.getUserId(), userId, SpeakService.nickOf(user), head(user)));
     }
 
     @PostMapping("/prod-api/community/circles/{circleId:[0-9]{1,18}}/follow")
@@ -187,7 +192,7 @@ public class CommunityController {
     @PostMapping("/prod-api/community/posts")
     public KzbResult publish(@RequestBody SpeakBody body) {
         SportUser user = auth.account(body.token());
-        return ready(speak.post(SpeakService.nickOf(user), head(user), "", body.title(), body.content(), user.getUserId()));
+        return ready(speak.publish(SpeakService.nickOf(user), head(user), user.getUserId(), user.getPhone(), body.title(), body.content(), body.circleIds(), body.pictures(), body.videos(), body.topicIds(), body.mentionUserIds(), body.matchId(), body.matchType()));
     }
 
     @GetMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/highlights")
@@ -243,6 +248,10 @@ public class CommunityController {
     @PostMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/comments")
     public KzbResult reply(@PathVariable String postId, @RequestBody SpeakBody body) {
         SportUser user = auth.account(body.token());
+        if (body.cityName() != null) {
+            auth.saveCity(body.token(), body.cityName());
+            speak.saveProfile(user.getUserId(), null, null, body.cityName());
+        }
         if (body.commentId() != null) {
             String commentId = Voice.postId(Long.toString(body.commentId()));
             JsonNode stored = read(key("posts/" + postId + "/comments.json"));
@@ -254,13 +263,28 @@ public class CommunityController {
             String toUser = null;
             String toName = "";
             String candidate = textId(body.replyToUserId());
-            if (candidate != null && !candidate.equals(authorId)) {
+            String nested = textId(body.replyToReplyId());
+            if (nested != null) {
+                if (candidate == null || candidate.isBlank()) {
+                    candidate = CommunityBoard.replyOwner(stored, speak.board(), postId, commentId, nested);
+                }
+                if (candidate != null && !candidate.isBlank()) {
+                    toUser = candidate;
+                    toName = CommunityBoard.replyName(stored, speak.board(), postId, commentId, toUser);
+                    if (toName == null) {
+                        toName = "";
+                    }
+                }
+            } else if (candidate != null && !candidate.equals(authorId)) {
                 toUser = candidate;
                 toName = CommunityBoard.replyName(stored, speak.board(), postId, commentId, toUser);
             }
-            return ready(speak.reply(postId, commentId, toUser, toName, SpeakService.nickOf(user), head(user), "", body.content(), body.imageUrls(), user.getUserId()));
+            String notify = toUser == null ? authorId : toUser;
+            return ready(speak.reply(postId, commentId, toUser, toName, SpeakService.nickOf(user), head(user), "", body.content(), body.imageUrls(), user.getUserId(), body.cityName(), notify, nested));
         }
-        return ready(speak.comment(postId, SpeakService.nickOf(user), head(user), "", body.content(), body.imageUrls(), user.getUserId()));
+        ObjectNode opened = open(postId, user.getUserId());
+        String author = opened == null ? "" : opened.path("userId").asText("");
+        return ready(speak.comment(postId, SpeakService.nickOf(user), head(user), "", body.content(), body.imageUrls(), user.getUserId(), body.cityName(), author));
     }
 
     private JsonNode read(String key) {
@@ -275,7 +299,7 @@ public class CommunityController {
         }
     }
 
-    public record SpeakBody(String token, String title, String content, Long commentId, JsonNode replyToUserId, List<String> imageUrls) {
+    public record SpeakBody(String token, String title, String content, Long commentId, JsonNode replyToUserId, JsonNode replyToReplyId, List<String> imageUrls, String cityName, List<Long> circleIds, List<String> pictures, List<String> videos, List<Long> topicIds, List<String> mentionUserIds, Long matchId, String matchType) {
     }
 
     public record ReportBody(String token, String targetType, String targetId, String reason) {

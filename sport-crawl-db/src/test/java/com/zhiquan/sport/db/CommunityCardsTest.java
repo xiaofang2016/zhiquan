@@ -100,7 +100,7 @@ class CommunityCardsTest {
                  "content":"顶","createTime":"2026-10-28T01:00:00.000+00:00","cityName":"","likeCount":1,"replyCount":1,"auditStatus":"1",
                  "replies":[{"replyId":4,"userId":5,"nickname":"丁","head":"","badgeName":"体验","badgeLevel":1,"uedLevel":"3",
                    "content":"回","createTime":"2026-10-28T01:01:00.000+00:00","cityName":"上海","likeCount":0,
-                   "replyToNickname":"丙","auditStatus":"1"}]}
+                   "replyToId":3,"commentId":9,"replyToNickname":"丙","replyToUserId":8,"auditStatus":"1"}]}
                 """);
         Map<String, Object> mapped = CommunityCards.comment(comment);
         assertEquals(9L, mapped.get("commentId"));
@@ -109,6 +109,7 @@ class CommunityCardsTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> reply = ((java.util.List<Map<String, Object>>) mapped.get("replies")).get(0);
         assertEquals("丙", reply.get("replyToNickname"));
+        assertEquals(3L, reply.get("replyToReplyId"));
         assertEquals(3, reply.get("vipLevel"));
         assertEquals(3, reply.get("uedLevel"));
         assertNull(CommunityCards.comment(json.readTree("{\"commentId\":1,\"auditStatus\":\"2\",\"content\":\"不行\"}")));
@@ -116,7 +117,8 @@ class CommunityCardsTest {
         var circle = json.readTree("""
                 {"circleId":14,"circleName":"足球热聊","icon":"https://img/i.jpg","cover":"https://img/c.jpg",
                  "followCount":84,"postCount":1363,"groupAdminNickname":"假想敌","groupAdminHead":"https://img/o.jpg",
-                 "topics":[{"topicId":15,"topicName":"天下足球","cover":"https://img/t.jpg"}]}
+                 "topics":[{"topicId":15,"topicName":"天下足球","cover":"https://img/t.jpg"}],
+                 "announces":[{"announceId":3,"title":"赛程","typeName":"公告","content":"<p>正文</p>","createTime":"2026-10-01T00:00:00.000+00:00"}]}
                 """);
         Map<String, Object> profile = CommunityCards.circle(circle);
         assertEquals("假想敌", profile.get("ownerName"));
@@ -124,6 +126,11 @@ class CommunityCardsTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> circleTopic = ((java.util.List<Map<String, Object>>) profile.get("topics")).get(0);
         assertEquals("https://img/t.jpg", circleTopic.get("cover"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> announce = ((java.util.List<Map<String, Object>>) profile.get("announces")).get(0);
+        assertEquals(3L, announce.get("id"));
+        assertEquals("公告", announce.get("type"));
+        assertEquals("<p>正文</p>", announce.get("content"));
     }
 
     @Test

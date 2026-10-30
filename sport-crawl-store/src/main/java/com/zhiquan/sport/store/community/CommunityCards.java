@@ -199,6 +199,13 @@ public final class CommunityCards {
         if (node.path("replyToUserId").canConvertToLong()) {
             reply.put("replyToUserId", node.path("replyToUserId").asLong());
         }
+        if (node.path("replyToId").canConvertToLong() && node.path("replyToId").asLong() > 0) {
+            long target = node.path("replyToId").asLong();
+            long parent = node.path("commentId").asLong(-1);
+            if (target != parent) {
+                reply.put("replyToReplyId", target);
+            }
+        }
         return reply;
     }
 
@@ -395,13 +402,10 @@ public final class CommunityCards {
                 row.put("id", node.path("announceId").asLong());
             }
             row.put("title", title);
-            row.put("type", first(node, "type", "announceType", "noticeType"));
+            row.put("type", first(node, "type", "typeName", "announceType", "noticeType"));
             row.put("createTime", first(node, "createTime", "publishTime", "time"));
             row.put("url", url);
-            String content = first(node, "content", "detail", "text");
-            if (!content.isEmpty() && !content.equals(title)) {
-                row.put("content", content);
-            }
+            row.put("content", first(node, "content", "detail", "text"));
             rows.add(row);
         }
         return rows;

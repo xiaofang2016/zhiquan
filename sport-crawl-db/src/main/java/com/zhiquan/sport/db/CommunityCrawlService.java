@@ -3,6 +3,8 @@ package com.zhiquan.sport.db;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.zhiquan.sport.store.aws.SportAwsProperties;
 import com.zhiquan.sport.store.community.CommunityCards;
 import com.zhiquan.sport.store.community.CommunityHeads;
@@ -14,8 +16,10 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.locks.ReentrantLock;
 
 @Slf4j
@@ -83,6 +87,9 @@ public class CommunityCrawlService {
                         }
                     } catch (Exception ex) {
                         log.warn("社球帝圈子 {} 详情没有拉到: {}", circleId, ex.getMessage());
+                    }
+                    if (detail instanceof ObjectNode object) {
+                        mergeTopicAnnounces(object);
                     }
                     Map<String, Object> profile = CommunityCards.circle(detail);
                     profile.put("ownerHead", heads.place(String.valueOf(profile.get("ownerHead"))));
@@ -297,6 +304,41 @@ public class CommunityCrawlService {
             return saved == null ? new LinkedHashMap<>() : new LinkedHashMap<>(saved);
         } catch (Exception ex) {
             return new LinkedHashMap<>();
+        }
+    }
+
+    /** 公告正文在圈子详情或话题详情的 announces 里，列表接口没有。 */
+    private void mergeTopicAnnounces(ObjectNode circle) {
+        ArrayNode announces = circle.path("announces") instanceof ArrayNode existing
+                ? existing
+                : circle.putArray("announces");
+        Set<String> seen = new LinkedHashSet<>();
+        for (JsonNode item : announces) {
+            String id = item.path("announceId").asText(item.path("id").asText(""));
+            if (!id.isEmpty()) {
+                seen.add(id);
+            }
+        }
+        for (JsonNode topic : circle.path("topics")) {
+            if (!topic.path("topicId").canConvertToLong()) {
+                continue;
+            }
+            long topicId = topic.path("topicId").asLong();
+            try {
+                JsonNode extra = client.get("/topic/detail?topicId=" + topicId).path("data").path("announces");
+                if (!extra.isArray()) {
+                    continue;
+                }
+                for (JsonNode item : extra) {
+                    String id = item.path("announceId").asText(item.path("id").asText(""));
+                    if (!id.isEmpty() && !seen.add(id)) {
+                        continue;
+                    }
+                    announces.add(item);
+                }
+            } catch (Exception ex) {
+                log.warn("社球帝话题 {} 的公告没有拉到: {}", topicId, ex.getMessage());
+            }
         }
     }
 

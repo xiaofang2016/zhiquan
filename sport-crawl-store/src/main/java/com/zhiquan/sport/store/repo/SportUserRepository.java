@@ -105,6 +105,7 @@ public class SportUserRepository {
         user.setUserId(Attrs.str(item, "user_id"));
         user.setNickname(Attrs.str(item, "nickname"));
         user.setAvatar(Attrs.str(item, "avatar"));
+        user.setCityName(Attrs.str(item, "city_name"));
         user.setPasswordHash(Attrs.str(item, "password_hash"));
         user.setPasswordSalt(Attrs.str(item, "password_salt"));
         user.setCreatedAt(Attrs.str(item, "created_at"));
@@ -158,6 +159,16 @@ public class SportUserRepository {
                 .updateExpression("SET mission = :next")
                 .conditionExpression(condition)
                 .expressionAttributeValues(values)
+                .build());
+    }
+
+    public void saveCity(String phone, String cityName) {
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET city_name = :city")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeValues(Map.of(":city", Attrs.s(cityName == null ? "" : cityName)))
                 .build());
     }
 

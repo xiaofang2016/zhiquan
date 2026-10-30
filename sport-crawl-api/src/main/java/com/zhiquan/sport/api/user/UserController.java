@@ -89,6 +89,11 @@ public class UserController {
         return KzbResult.ok(book.page(auth.account(body.token()), body.kind(), body.page()));
     }
 
+    @PostMapping("/prod-api/user/city")
+    public KzbResult city(@RequestBody UserRequest body) {
+        return KzbResult.ok(auth.saveCity(body.token(), body.cityName()));
+    }
+
     @PostMapping("/prod-api/user/session")
     public KzbResult session(@RequestBody UserRequest body) {
         return KzbResult.ok(auth.session(body.token()));

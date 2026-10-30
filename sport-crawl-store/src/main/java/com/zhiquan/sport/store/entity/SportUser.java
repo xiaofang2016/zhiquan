@@ -13,6 +13,7 @@ public class SportUser {
     private String userId;
     private String nickname;
     private String avatar;
+    private String cityName;
     private String passwordHash;
     private String passwordSalt;
     private String createdAt;

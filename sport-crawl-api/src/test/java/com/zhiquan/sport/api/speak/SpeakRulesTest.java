@@ -1,7 +1,9 @@
 package com.zhiquan.sport.api.speak;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.zhiquan.sport.api.user.UserAuthService;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -202,22 +204,52 @@ class SpeakRulesTest {
                   "replies":[
                     {"replyId":1,"userId":8,"nickname":"甲","replyToUserId":8,"replyToNickname":"甲","content":"自己","createTime":"2026-10-29T01:01:00.000+00:00"},
                     {"replyId":2,"userId":5,"nickname":"乙","replyToUserId":9,"replyToNickname":"丙","content":"别人","createTime":"2026-10-29T01:02:00.000+00:00"},
-                    {"replyId":3,"userId":9,"nickname":"丙","content":"再","createTime":"2026-10-29T01:03:00.000+00:00"}
+                    {"replyId":3,"userId":9,"nickname":"丙","content":"再","createTime":"2026-10-29T01:03:00.000+00:00"},
+                    {"replyId":4,"userId":5,"nickname":"乙","replyToUserId":8,"replyToNickname":"甲","replyToReplyId":1,"content":"回作者自己","createTime":"2026-10-29T01:04:00.000+00:00"}
                   ]}]}
                 """);
         ObjectNode page = CommunityBoard.comments(json, upstream, board, "9", 1, 50, null, "newest");
-        assertEquals(3, page.path("comments").get(0).path("replyCount").asInt());
+        assertEquals(4, page.path("comments").get(0).path("replyCount").asInt());
         assertFalse(page.path("comments").get(0).path("replies").get(0).has("replyToNickname"));
+        assertEquals(1, page.path("comments").get(0).path("replies").get(3).path("replyToReplyId").asLong());
+        assertEquals(8, page.path("comments").get(0).path("replies").get(3).path("replyToUserId").asLong());
         ObjectNode rows = CommunityBoard.replies(json, upstream, board, "9", "8", json.createArrayNode(), 1, 50, "oldest", null);
-        assertEquals(3, rows.path("total").asInt());
+        assertEquals(4, rows.path("total").asInt());
         assertFalse(rows.path("replies").get(0).has("replyToUserId"));
         assertEquals(9, rows.path("replies").get(1).path("replyToUserId").asLong());
+        assertEquals("甲", rows.path("replies").get(3).path("replyToNickname").asText());
         ObjectNode circle = (ObjectNode) json.readTree("{\"id\":14,\"name\":\"足球\",\"followCount\":2}");
         CommunityBoard.followCircle(json, board, user, "14");
         CommunityBoard.markCircle(circle, board, user);
         assertTrue(circle.path("followed").asBoolean());
         assertEquals(3, circle.path("followCount").asInt());
         assertEquals(user, Voice.personId(user));
+        ObjectNode hidden = CommunityLife.publish(json, board, "我", "", user, "13800000000", "仅自己", "正文", java.util.List.of(14L), null, null, null, null, null, null);
+        CommunityLife.visibility(board, user, hidden.path("postId").asText(), "self");
+        ObjectNode feed = CommunityBoard.feed(json, json.readTree("{\"circles\":[],\"posts\":[]}"), board);
+        String hiddenId = hidden.path("postId").asText();
+        assertFalse(listed(CommunityBoard.page(json, feed, 1, 20, null, null, null, board, "someone", "publish"), hiddenId));
+        assertTrue(listed(CommunityBoard.page(json, feed, 1, 20, null, null, null, board, user, "publish"), hiddenId));
+        ObjectNode comment = CommunityBoard.addComment(json, board, hidden.path("postId").asText(), "我", "", "", "说一句", java.util.List.of(), user);
+        ObjectNode liked = CommunityLife.likeNote(json, board, user, "我", "", comment.path("commentId").asText(), false, user, hidden.path("postId").asText(), comment.path("commentId").asText(), 5);
+        assertTrue(liked.path("liked").asBoolean());
+        assertEquals(6, liked.path("likeCount").asInt());
+        ObjectNode home = CommunityLife.profile(json, json.readTree("{\"posts\":[]}"), board, user, user);
+        assertEquals("我", home.path("nickname").asText());
+        CommunityBoard.addReply(json, board, hidden.path("postId").asText(), "8687", null, "", "我", "/prod-api/user/avatar/a.jpg", "", "回原站", java.util.List.of(), user);
+        ObjectNode mine = CommunityLife.myComments(json, json.readTree("{\"posts\":[{\"postId\":" + hidden.path("postId").asText() + ",\"title\":\"仅自己\"}]}"), json.createObjectNode(), board, user, 1, 20);
+        assertTrue(mine.path("comments").toString().contains(hidden.path("postId").asText()));
+        assertTrue(mine.path("comments").toString().contains("仅自己"));
+        CommunityLife.removeComment(json, board, user, hidden.path("postId").asText(), comment.path("commentId").asText());
+        assertEquals("13800000000", CommunityLife.rewardPhone(board, hidden.path("postId").asText()));
+        assertEquals("reply", CommunityBoard.report(json, board, user, "reply", "12", "内容不适").path("targetType").asText());
+        String fan = "abcdef0123456789abcdef0123456789";
+        ObjectNode fanPost = CommunityBoard.addPost(json, board, "粉", "", "", "粉丝帖", "正文", fan);
+        CommunityBoard.followUser(json, board, fan, user);
+        ObjectNode fans = CommunityBoard.page(json, CommunityBoard.feed(json, json.readTree("{\"circles\":[],\"posts\":[]}"), board), 1, 20, null, "fans", null, board, user, "publish");
+        assertTrue(listed(fans, fanPost.path("postId").asText()));
+        assertFalse(listed(fans, hiddenId));
+        assertEquals(0, CommunityBoard.page(json, CommunityBoard.feed(json, json.readTree("{\"circles\":[],\"posts\":[]}"), board), 1, 20, null, "fans", null, board, null, "publish").path("total").asInt());
     }
 
     @Test
@@ -239,10 +271,21 @@ class SpeakRulesTest {
     @Test
     void unknownNickIsAccepted() {
         assertEquals("路人甲", Voice.nick("路人甲"));
+        assertEquals("上海", UserAuthService.city(" 上海 "));
+        assertThrows(IllegalArgumentException.class, () -> UserAuthService.city("一二三四五六七八九十一二三四五六七八九十一"));
         assertThrows(IllegalArgumentException.class, () -> Voice.nick("  "));
         assertThrows(IllegalArgumentException.class, () -> AdminKey.check("", "secret"));
         assertThrows(IllegalArgumentException.class, () -> AdminKey.check("secret", "nope"));
         AdminKey.check("secret", "secret");
+    }
+
+    private static boolean listed(ObjectNode page, String postId) {
+        for (JsonNode post : page.path("posts")) {
+            if (postId.equals(post.path("postId").asText())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static boolean containsPost(ObjectNode feed, long postId) {

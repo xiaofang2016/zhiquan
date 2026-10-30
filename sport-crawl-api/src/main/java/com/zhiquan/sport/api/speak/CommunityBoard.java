@@ -31,13 +31,16 @@ public final class CommunityBoard {
         if (!document.path("replies").isObject()) {
             document.set("replies", json.createObjectNode());
         }
-        for (String name : List.of("likes", "collects", "follows", "blocks")) {
+        for (String name : List.of("likes", "collects", "follows", "blocks", "commentLikes", "replyLikes", "authors", "profiles", "rewards")) {
             if (!document.path(name).isObject()) {
                 document.set(name, json.createObjectNode());
             }
         }
         if (!document.path("reports").isArray()) {
             document.set("reports", json.createArrayNode());
+        }
+        if (!document.path("messages").isArray()) {
+            document.set("messages", json.createArrayNode());
         }
         return document;
     }
@@ -148,6 +151,7 @@ public final class CommunityBoard {
             reply.put("replyToNickname", "");
         }
         writeImages(reply, images);
+        reply.put("postId", postId);
         ObjectNode parent = findComment(board.path("comments").path(postId), commentId);
         if (parent != null) {
             repliesOf(json, parent).add(reply);
@@ -212,6 +216,13 @@ public final class CommunityBoard {
      * sort 为 comment 时按最后回复时间，没有回复的用发布时间。publish 按发布时间。
      */
     public static ObjectNode page(ObjectMapper json, ObjectNode feed, int page, int pageSize, Long circleId, String type, String before, JsonNode board, String viewer, String sort) {
+        return page(json, feed, page, pageSize, circleId, type, before, board, viewer, sort, null, null);
+    }
+
+    /**
+     * authorId、topicId 有值时再按作者或话题收窄。仅自己可见的帖子只留给作者。
+     */
+    public static ObjectNode page(ObjectMapper json, ObjectNode feed, int page, int pageSize, Long circleId, String type, String before, JsonNode board, String viewer, String sort, String authorId, Long topicId) {
         boolean byReply = "comment".equals(sort);
         long beforeMs = before == null || before.isBlank() ? 0 : time(before);
         List<JsonNode> picked = new ArrayList<>();
@@ -225,7 +236,19 @@ public final class CommunityBoard {
             if ("follow".equals(type) && !followed(board, viewer, post)) {
                 continue;
             }
+            if ("fans".equals(type) && !fanWrote(board, viewer, post)) {
+                continue;
+            }
             if (blocked(board, viewer, post.path("userId").asText(""))) {
+                continue;
+            }
+            if (!visibleTo(post, viewer)) {
+                continue;
+            }
+            if (authorId != null && !authorId.isBlank() && !authorId.equals(post.path("userId").asText(""))) {
+                continue;
+            }
+            if (topicId != null && !hasTopic(post, topicId)) {
                 continue;
             }
             if (beforeMs > 0 && (byReply ? replyTime(post) : time(post)) >= beforeMs) {
@@ -280,6 +303,9 @@ public final class CommunityBoard {
             return null;
         }
         if (blocked(board, viewer, object.path("userId").asText(""))) {
+            return null;
+        }
+        if (!visibleTo(object, viewer)) {
             return null;
         }
         ObjectNode copy = object.deepCopy();
@@ -356,7 +382,8 @@ public final class CommunityBoard {
         sortNotes(ordered, sort);
         String author = parent == null ? "" : parent.path("userId").asText("");
         for (ObjectNode reply : ordered) {
-            hideDirectReply(reply, author);
+            hideDirectReply(reply, author, commentId);
+            CommunityLife.paintLike(reply, board, viewer, true);
         }
         return pageNotes(json, "replies", ordered, page, pageSize, null, viewer);
     }
@@ -440,6 +467,29 @@ public final class CommunityBoard {
         return "";
     }
 
+    /** @return 这条回复的作者。找不到时为空 */
+    public static String replyOwner(JsonNode upstream, JsonNode board, String postId, String commentId, String replyId) {
+        ObjectNode parent = findComment(upstream == null ? null : upstream.path("comments"), commentId);
+        if (parent == null && board != null) {
+            parent = findComment(board.path("comments").path(postId), commentId);
+        }
+        if (parent != null) {
+            for (JsonNode reply : parent.path("replies")) {
+                if (replyId.equals(reply.path("replyId").asText(""))) {
+                    return reply.path("userId").asText("");
+                }
+            }
+        }
+        if (board != null) {
+            for (JsonNode reply : board.path("replies").path(commentId)) {
+                if (replyId.equals(reply.path("replyId").asText(""))) {
+                    return reply.path("userId").asText("");
+                }
+            }
+        }
+        return "";
+    }
+
     public static String postOfComment(JsonNode board, String commentId) {
         if (board == null || !(board.path("comments") instanceof ObjectNode comments)) {
             return null;
@@ -510,7 +560,7 @@ public final class CommunityBoard {
     public static ObjectNode report(ObjectMapper json, ObjectNode board, String viewer, String targetType, String targetId, String reason) {
         ensure(json, board);
         String type = targetType == null ? "" : targetType.trim();
-        if (!"post".equals(type) && !"comment".equals(type) && !"user".equals(type)) {
+        if (!"post".equals(type) && !"comment".equals(type) && !"user".equals(type) && !"reply".equals(type)) {
             throw new IllegalArgumentException("举报类型不正确");
         }
         if (targetId == null || !targetId.matches("[0-9]{1,18}")) {
@@ -613,9 +663,11 @@ public final class CommunityBoard {
         }
         for (JsonNode reply : copy.path("replies")) {
             if (reply instanceof ObjectNode row) {
-                hideDirectReply(row, copy.path("userId").asText(""));
+                hideDirectReply(row, copy.path("userId").asText(""), copy.path("commentId").asText(""));
+                CommunityLife.paintLike(row, board, viewer, true);
             }
         }
+        CommunityLife.paintLike(copy, board, viewer, false);
         return copy;
     }
 
@@ -787,8 +839,19 @@ public final class CommunityBoard {
         return false;
     }
 
-    /** 直接回复评论时，被回复的人就是评论作者，不再带回复对象。 */
-    private static void hideDirectReply(ObjectNode reply, String authorId) {
+    /**
+     * 直接回复评论时，被回复的人就是评论作者，不再带回复对象。
+     * 带 replyToReplyId 的是在回某一条回复，哪怕对方就是评论作者也保留。
+     */
+    private static void hideDirectReply(ObjectNode reply, String authorId, String commentId) {
+        String nested = reply.path("replyToReplyId").asText("");
+        if (!nested.isEmpty() && nested.equals(commentId)) {
+            reply.remove("replyToReplyId");
+            nested = "";
+        }
+        if (!nested.isEmpty()) {
+            return;
+        }
         if (authorId.isEmpty() || !authorId.equals(reply.path("replyToUserId").asText(""))) {
             return;
         }
@@ -813,6 +876,10 @@ public final class CommunityBoard {
         post.put("liked", viewer != null && contains(board, "likes", key, viewer));
         post.put("collected", viewer != null && contains(board, "collects", key, viewer));
         post.put("followed", followsUser(board, viewer, post.path("userId").asText("")));
+        if (!post.path("visibility").isTextual()) {
+            post.put("visibility", "public");
+        }
+        CommunityLife.attachRewards(post, board);
     }
 
     private static ObjectNode bag(ObjectMapper json, ObjectNode board, String viewer) {
@@ -885,6 +952,23 @@ public final class CommunityBoard {
         return false;
     }
 
+    /** 粉丝发的帖：作者关注了当前用户。 */
+    private static boolean fanWrote(JsonNode board, String viewer, JsonNode post) {
+        if (board == null || viewer == null || viewer.isBlank()) {
+            return false;
+        }
+        String author = post.path("userId").asText("");
+        if (author.isEmpty()) {
+            return false;
+        }
+        for (JsonNode id : board.path("follows").path(author).path("users")) {
+            if (viewer.equals(id.asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
     private static boolean followsUser(JsonNode board, String viewer, String author) {
         if (board == null || viewer == null || viewer.isBlank() || author.isEmpty()) {
             return false;
@@ -903,6 +987,23 @@ public final class CommunityBoard {
         }
         for (JsonNode id : board.path("blocks").path(viewer)) {
             if (author.equals(id.asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean visibleTo(JsonNode post, String viewer) {
+        if (!"self".equals(post.path("visibility").asText("public"))) {
+            return true;
+        }
+        String author = post.path("userId").asText("");
+        return viewer != null && !viewer.isBlank() && viewer.equals(author);
+    }
+
+    private static boolean hasTopic(JsonNode post, long topicId) {
+        for (JsonNode topic : post.path("topics")) {
+            if (topic.path("id").canConvertToLong() && topic.path("id").asLong() == topicId) {
                 return true;
             }
         }

@@ -188,7 +188,27 @@ public class UserAuthService {
         data.put("phone", user.getPhone());
         data.put("nickname", user.getNickname());
         data.put("avatar", user.getAvatar() == null ? "" : user.getAvatar());
+        data.put("cityName", user.getCityName() == null ? "" : user.getCityName());
         data.put("token", token);
         return data;
+    }
+
+    public Map<String, String> saveCity(String token, String cityName) {
+        SportUser user = account(token);
+        String city = city(cityName);
+        users.saveCity(user.getPhone(), city);
+        user.setCityName(city);
+        return view(user, token);
+    }
+
+    public static String city(String raw) {
+        if (raw == null) {
+            return "";
+        }
+        String city = raw.trim();
+        if (city.length() > 20) {
+            throw new IllegalArgumentException("城市名称过长");
+        }
+        return city;
     }
 }

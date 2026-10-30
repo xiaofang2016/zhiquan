@@ -65,6 +65,21 @@ public class WalletBook {
         }
     }
 
+    /** 打赏从付款人扣到收款人。作者是原站用户时不要调用。 */
+    public void reward(SportUser from, SportUser to, long cents, String orderNo) {
+        if (!users.deduct(from.getPhone(), cents)) {
+            throw new IllegalArgumentException("余额不足");
+        }
+        long now = Instant.now().toEpochMilli();
+        try {
+            users.credit(to.getPhone(), cents, row(to.getPhone(), now, orderNo + "-in", "bill", "", cents, 1, "帖子打赏", ""));
+        } catch (RuntimeException ex) {
+            users.credit(from.getPhone(), cents);
+            throw new IllegalArgumentException("打赏失败，余额已退回");
+        }
+        put(row(from.getPhone(), now, orderNo, "bill", "", cents, 1, "帖子打赏", "", "debit"));
+    }
+
     public Map<String, Object> page(SportUser user, String kind, Integer pageRaw) {
         String normalized = kind == null ? "bill" : kind.trim();
         if (!"bill".equals(normalized) && !"redpacket".equals(normalized) && !"withdraw".equals(normalized)) {
@@ -98,6 +113,10 @@ public class WalletBook {
     }
 
     private static Map<String, AttributeValue> row(String phone, long now, String orderNo, String kind, String platform, long cents, int status, String title, String reason) {
+        return row(phone, now, orderNo, kind, platform, cents, status, title, reason, "");
+    }
+
+    private static Map<String, AttributeValue> row(String phone, long now, String orderNo, String kind, String platform, long cents, int status, String title, String reason, String direction) {
         String id = orderNo == null || orderNo.isBlank() ? Long.toString(now) : orderNo;
         Map<String, AttributeValue> item = new HashMap<>();
         item.put("pk", Attrs.s(phone));
@@ -109,6 +128,7 @@ public class WalletBook {
         item.put("title", Attrs.s(title));
         item.put("trade_no", Attrs.s(id));
         item.put("fail_reason", Attrs.s(reason));
+        item.put("direction", Attrs.s(direction));
         item.put("created_at", Attrs.n(now));
         return item;
     }
