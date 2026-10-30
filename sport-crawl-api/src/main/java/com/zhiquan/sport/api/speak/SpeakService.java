@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
+import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 @Service
@@ -49,9 +50,23 @@ public class SpeakService {
     }
 
     public ObjectNode comment(String postId, String nick, String head, String badge, String content) {
+        return comment(postId, nick, head, badge, content, List.of());
+    }
+
+    public ObjectNode comment(String postId, String nick, String head, String badge, String content, List<String> images) {
         String id = Voice.postId(postId);
+        List<String> pictures = Voice.images(images);
         return update(boardKey(), board -> CommunityBoard.addComment(json, CommunityBoard.ensure(json, board), id,
-                Voice.nick(nick), Voice.head(head), Voice.badge(badge), Voice.comment(content)));
+                Voice.nick(nick), Voice.head(head), Voice.badge(badge), Voice.comment(content), pictures));
+    }
+
+    public ObjectNode reply(String postId, String commentId, String replyToUserId, String replyToNickname,
+                            String nick, String head, String badge, String content, List<String> images) {
+        String id = Voice.postId(postId);
+        String parent = Voice.postId(commentId);
+        List<String> pictures = Voice.images(images);
+        return update(boardKey(), board -> CommunityBoard.addReply(json, CommunityBoard.ensure(json, board), id, parent,
+                replyToUserId, replyToNickname, Voice.nick(nick), Voice.head(head), Voice.badge(badge), Voice.comment(content), pictures));
     }
 
     public ObjectNode communityFeed(JsonNode upstream) {
@@ -62,8 +77,16 @@ public class SpeakService {
         return CommunityBoard.find(feed, file, loadBoard(), postId, viewer);
     }
 
-    public ObjectNode communityComments(JsonNode upstream, String postId, int page, int pageSize, String viewer) {
-        return CommunityBoard.comments(json, upstream, loadBoard(), postId, page, pageSize, viewer);
+    public ObjectNode communityComments(JsonNode upstream, String postId, int page, int pageSize, String viewer, String sort) {
+        return CommunityBoard.comments(json, upstream, loadBoard(), postId, page, pageSize, viewer, sort);
+    }
+
+    public ObjectNode communityHighlights(JsonNode upstream, String postId, String viewer) {
+        return CommunityBoard.highlights(json, upstream, loadBoard(), postId, viewer);
+    }
+
+    public ObjectNode communityReplies(JsonNode upstream, String postId, String commentId, JsonNode fetched, int page, int pageSize, String sort, String viewer) {
+        return CommunityBoard.replies(json, upstream, loadBoard(), postId, commentId, fetched, page, pageSize, sort, viewer);
     }
 
     public ObjectNode board() {

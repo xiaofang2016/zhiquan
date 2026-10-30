@@ -29,7 +29,7 @@ public final class CommunityCards {
                 + "|" + post.path("likeCount").asInt(0)
                 + "|" + post.path("viewCount").asInt(0)
                 + "|" + post.path("favoriteCount").asInt(0)
-                + "|v2";
+                + "|v3";
     }
 
     /** 顶层评论加回复。和接口里能看到的条数一致。 */
@@ -77,7 +77,10 @@ public final class CommunityCards {
         card.put("userId", node.path("userId").canConvertToLong() ? node.path("userId").asLong() : null);
         card.put("badgeName", text(node, "badgeName"));
         card.put("badgeLevel", node.path("badgeLevel").asInt(0));
+        card.put("badgeStyle", style(node));
         card.put("vipLevel", level(node, "uedLevel"));
+        card.put("jxfLevel", level(node, "jxfLevel"));
+        card.put("uedLevel", level(node, "uedLevel"));
         card.put("cityName", city(node));
         card.put("likeCount", node.path("likeCount").asInt(0));
         card.put("commentCount", node.path("commentCount").asInt(0));
@@ -132,6 +135,10 @@ public final class CommunityCards {
         card.put("videos", videos);
         card.put("match", match(node.path("matches")));
         card.put("hotComment", hot(node.path("topHighlightComment")));
+        card.put("highlightCommentCount", node.path("highlightCommentCount").asInt(0));
+        card.put("mentionUsers", mentions(node.path("mentionUsers")));
+        card.put("rewardCount", node.path("rewardCount").asInt(0));
+        card.put("rewardEnabled", enabled(node.get("rewardEnabled")));
         card.put("redPacket", packet(node.path("redPacket")));
         return card;
     }
@@ -147,6 +154,7 @@ public final class CommunityCards {
         circle.put("ownerName", text(node, "groupAdminNickname"));
         circle.put("ownerHead", repair(text(node, "groupAdminHead")));
         circle.put("topics", topics(node.path("topics"), true));
+        circle.put("announces", announces(node.path("announces")));
         return circle;
     }
 
@@ -156,14 +164,18 @@ public final class CommunityCards {
      * @return 审核未过时为空
      */
     public static Map<String, Object> comment(JsonNode node) {
+        return comment(node, "https://kzb001.net");
+    }
+
+    public static Map<String, Object> comment(JsonNode node, String baseUrl) {
         if (node == null || !node.path("commentId").canConvertToLong() || presentAndNot(node, "auditStatus", "1")) {
             return null;
         }
-        Map<String, Object> comment = person(node);
+        Map<String, Object> comment = person(node, baseUrl);
         comment.put("commentId", node.path("commentId").asLong());
         List<Map<String, Object>> replies = new ArrayList<>();
         for (JsonNode reply : node.path("replies")) {
-            Map<String, Object> mapped = reply(reply);
+            Map<String, Object> mapped = reply(reply, baseUrl);
             if (mapped != null) {
                 replies.add(mapped);
             }
@@ -173,28 +185,39 @@ public final class CommunityCards {
         return comment;
     }
 
-    private static Map<String, Object> reply(JsonNode node) {
+    public static Map<String, Object> reply(JsonNode node) {
+        return reply(node, "https://kzb001.net");
+    }
+
+    public static Map<String, Object> reply(JsonNode node, String baseUrl) {
         if (node == null || !node.path("replyId").canConvertToLong() || presentAndNot(node, "auditStatus", "1")) {
             return null;
         }
-        Map<String, Object> reply = person(node);
+        Map<String, Object> reply = person(node, baseUrl);
         reply.put("replyId", node.path("replyId").asLong());
         reply.put("replyToNickname", text(node, "replyToNickname"));
+        if (node.path("replyToUserId").canConvertToLong()) {
+            reply.put("replyToUserId", node.path("replyToUserId").asLong());
+        }
         return reply;
     }
 
-    private static Map<String, Object> person(JsonNode node) {
+    private static Map<String, Object> person(JsonNode node, String baseUrl) {
         Map<String, Object> person = new LinkedHashMap<>();
         person.put("userId", node.path("userId").canConvertToLong() ? node.path("userId").asLong() : null);
         person.put("nickname", text(node, "nickname"));
         person.put("head", repair(text(node, "head")));
         person.put("badgeName", text(node, "badgeName"));
         person.put("badgeLevel", node.path("badgeLevel").asInt(0));
+        person.put("badgeStyle", style(node));
         person.put("vipLevel", level(node, "uedLevel"));
+        person.put("jxfLevel", level(node, "jxfLevel"));
+        person.put("uedLevel", level(node, "uedLevel"));
         person.put("content", text(node, "content"));
         person.put("createTime", text(node, "createTime"));
         person.put("cityName", city(node));
         person.put("likeCount", node.path("likeCount").asInt(0));
+        person.put("imageUrls", imageUrls(node.path("imageUrls"), baseUrl));
         return person;
     }
 
@@ -206,7 +229,10 @@ public final class CommunityCards {
         if (node.path("commentId").canConvertToLong()) {
             hot.put("commentId", node.path("commentId").asLong());
         }
+        hot.put("userId", node.path("userId").canConvertToLong() ? node.path("userId").asLong() : null);
         hot.put("nickname", text(node, "nickname"));
+        hot.put("head", repair(text(node, "head")));
+        hot.put("createTime", text(node, "createTime"));
         hot.put("content", text(node, "content"));
         hot.put("likeCount", node.path("likeCount").asInt(0));
         hot.put("cityName", city(node));
@@ -287,6 +313,97 @@ public final class CommunityCards {
     private static String city(JsonNode node) {
         String city = text(node, "cityName");
         return city.isEmpty() ? text(node, "locationText") : city;
+    }
+
+    private static Integer style(JsonNode node) {
+        Integer value = level(node, "badgeStyle");
+        if (value == null || (value != 1 && value != 2)) {
+            return null;
+        }
+        return value;
+    }
+
+    private static boolean enabled(JsonNode value) {
+        if (value == null || value.isNull()) {
+            return false;
+        }
+        if (value.isBoolean()) {
+            return value.asBoolean();
+        }
+        String text = value.asText("");
+        return "1".equals(text) || "true".equalsIgnoreCase(text);
+    }
+
+    private static List<String> imageUrls(JsonNode nodes, String baseUrl) {
+        List<String> urls = new ArrayList<>();
+        if (!nodes.isArray()) {
+            return urls;
+        }
+        for (JsonNode node : nodes) {
+            String raw = node.isTextual() ? node.asText("") : text(node, "url");
+            String url = absolute(raw, baseUrl);
+            if (!url.isEmpty()) {
+                urls.add(url);
+            }
+        }
+        return urls;
+    }
+
+    private static List<Map<String, Object>> mentions(JsonNode nodes) {
+        List<Map<String, Object>> people = new ArrayList<>();
+        if (!nodes.isArray()) {
+            return people;
+        }
+        for (JsonNode node : nodes) {
+            if (!node.isObject()) {
+                continue;
+            }
+            Long userId = node.path("userId").canConvertToLong() ? node.path("userId").asLong() : null;
+            String nickname = text(node, "nickname");
+            if (nickname.isEmpty()) {
+                nickname = text(node, "nickName");
+            }
+            if (userId == null && nickname.isEmpty()) {
+                continue;
+            }
+            Map<String, Object> person = new LinkedHashMap<>();
+            person.put("userId", userId);
+            person.put("nickname", nickname);
+            people.add(person);
+        }
+        return people;
+    }
+
+    private static List<Map<String, Object>> announces(JsonNode nodes) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        if (!nodes.isArray()) {
+            return rows;
+        }
+        for (JsonNode node : nodes) {
+            if (!node.isObject()) {
+                continue;
+            }
+            String title = first(node, "title", "announceTitle", "name", "content");
+            String url = first(node, "url", "linkUrl", "link", "jumpUrl", "href");
+            if (title.isEmpty() && url.isEmpty()) {
+                continue;
+            }
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("title", title);
+            row.put("url", url);
+            rows.add(row);
+        }
+        return rows;
+    }
+
+    private static String first(JsonNode node, String... fields) {
+        for (String field : fields) {
+            String value = text(node, field);
+            if (!value.isEmpty()) {
+                return value;
+            }
+        }
+        return "";
     }
 
     private static Integer level(JsonNode node, String field) {

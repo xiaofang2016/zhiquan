@@ -28,6 +28,9 @@ public final class CommunityBoard {
         if (!document.path("comments").isObject()) {
             document.set("comments", json.createObjectNode());
         }
+        if (!document.path("replies").isObject()) {
+            document.set("replies", json.createObjectNode());
+        }
         for (String name : List.of("likes", "collects", "follows", "blocks")) {
             if (!document.path(name).isObject()) {
                 document.set(name, json.createObjectNode());
@@ -50,7 +53,10 @@ public final class CommunityBoard {
         post.put("lastReplyTime", "");
         post.put("badgeName", badge);
         post.put("badgeLevel", 0);
+        post.putNull("badgeStyle");
         post.putNull("vipLevel");
+        post.putNull("jxfLevel");
+        post.putNull("uedLevel");
         post.putNull("userId");
         post.put("cityName", "");
         post.put("likeCount", 0);
@@ -66,12 +72,20 @@ public final class CommunityBoard {
         post.putArray("videos");
         post.putNull("match");
         post.putNull("hotComment");
+        post.put("highlightCommentCount", 0);
+        post.putArray("mentionUsers");
+        post.put("rewardCount", 0);
+        post.put("rewardEnabled", false);
         post.putNull("redPacket");
         posts(board).add(post);
         return post;
     }
 
     public static ObjectNode addComment(ObjectMapper json, ObjectNode board, String postId, String nick, String head, String badge, String content) {
+        return addComment(json, board, postId, nick, head, badge, content, List.of());
+    }
+
+    public static ObjectNode addComment(ObjectMapper json, ObjectNode board, String postId, String nick, String head, String badge, String content, List<String> images) {
         ObjectNode comment = json.createObjectNode();
         comment.put("commentId", nextId());
         comment.putNull("userId");
@@ -79,15 +93,56 @@ public final class CommunityBoard {
         comment.put("head", head);
         comment.put("badgeName", badge);
         comment.put("badgeLevel", 0);
+        comment.putNull("badgeStyle");
         comment.putNull("vipLevel");
+        comment.putNull("jxfLevel");
+        comment.putNull("uedLevel");
         comment.put("content", content);
         comment.put("createTime", Instant.now().toString());
         comment.put("cityName", "");
         comment.put("likeCount", 0);
         comment.put("replyCount", 0);
         comment.putArray("replies");
+        writeImages(comment, images);
         comments(json, board, postId).add(comment);
+        touchReplyTime(board, postId, comment.path("createTime").asText());
         return comment;
+    }
+
+    /**
+     * 回复一条已经存在的评论。原站评论不在这份板上时，回复记在 replies 下，读的时候再拼回去。
+     */
+    public static ObjectNode addReply(ObjectMapper json, ObjectNode board, String postId, String commentId, String replyToUserId, String replyToNickname, String nick, String head, String badge, String content, List<String> images) {
+        ensure(json, board);
+        ObjectNode reply = json.createObjectNode();
+        reply.put("replyId", nextId());
+        reply.putNull("userId");
+        reply.put("nickname", nick);
+        reply.put("head", head);
+        reply.put("badgeName", badge);
+        reply.put("badgeLevel", 0);
+        reply.putNull("badgeStyle");
+        reply.putNull("vipLevel");
+        reply.putNull("jxfLevel");
+        reply.putNull("uedLevel");
+        reply.put("content", content);
+        reply.put("createTime", Instant.now().toString());
+        reply.put("cityName", "");
+        reply.put("likeCount", 0);
+        reply.put("replyToNickname", replyToNickname == null ? "" : replyToNickname);
+        if (replyToUserId != null && !replyToUserId.isBlank()) {
+            reply.put("replyToUserId", replyToUserId);
+        }
+        writeImages(reply, images);
+        ObjectNode parent = findComment(board.path("comments").path(postId), commentId);
+        if (parent != null) {
+            repliesOf(json, parent).add(reply);
+            parent.put("replyCount", parent.path("replyCount").asInt(0) + 1);
+        } else {
+            repliesOf(json, (ObjectNode) board.get("replies"), commentId).add(reply);
+        }
+        touchReplyTime(board, postId, reply.path("createTime").asText());
+        return reply;
     }
 
     public static ObjectNode feed(ObjectMapper json, JsonNode upstream, JsonNode board) {
@@ -130,6 +185,14 @@ public final class CommunityBoard {
      * viewer 是当前登录用户。关注只留这个人关注的作者或圈子，拉黑的作者不出现。
      */
     public static ObjectNode page(ObjectMapper json, ObjectNode feed, int page, int pageSize, Long circleId, String type, String before, JsonNode board, String viewer) {
+        return page(json, feed, page, pageSize, circleId, type, before, board, viewer, "publish");
+    }
+
+    /**
+     * sort 为 comment 时按最后回复时间，没有回复的用发布时间。publish 按发布时间。
+     */
+    public static ObjectNode page(ObjectMapper json, ObjectNode feed, int page, int pageSize, Long circleId, String type, String before, JsonNode board, String viewer, String sort) {
+        boolean byReply = "comment".equals(sort);
         long beforeMs = before == null || before.isBlank() ? 0 : time(before);
         List<JsonNode> picked = new ArrayList<>();
         for (JsonNode post : feed.path("posts")) {
@@ -145,10 +208,13 @@ public final class CommunityBoard {
             if (blocked(board, viewer, post.path("userId").asText(""))) {
                 continue;
             }
-            if (beforeMs > 0 && time(post) >= beforeMs) {
+            if (beforeMs > 0 && (byReply ? replyTime(post) : time(post)) >= beforeMs) {
                 continue;
             }
             picked.add(post);
+        }
+        if (byReply) {
+            picked.sort(Comparator.comparingLong(CommunityBoard::replyTime).reversed());
         }
         ObjectNode body = json.createObjectNode();
         body.set("circles", feed.path("circles").isArray() ? feed.get("circles") : json.createArrayNode());
@@ -218,32 +284,139 @@ public final class CommunityBoard {
     }
 
     public static ObjectNode comments(ObjectMapper json, JsonNode upstream, JsonNode board, String postId, int page, int pageSize, String viewer) {
-        ObjectNode body = json.createObjectNode();
-        ArrayNode gathered = json.createArrayNode();
-        Set<Long> seen = new LinkedHashSet<>();
-        appendComments(gathered, seen, upstream == null ? null : upstream.path("comments"));
-        appendComments(gathered, seen, board == null ? null : board.path("comments").path(postId));
+        return comments(json, upstream, board, postId, page, pageSize, viewer, "newest");
+    }
+
+    /**
+     * sort 是 newest、oldest 或 like。like 按点赞从高到低，相同再按时间新的在前。
+     */
+    public static ObjectNode comments(ObjectMapper json, JsonNode upstream, JsonNode board, String postId, int page, int pageSize, String viewer, String sort) {
+        List<ObjectNode> ordered = topComments(json, upstream, board, postId, viewer);
+        sortNotes(ordered, sort);
+        return pageNotes(json, "comments", ordered, page, pageSize, board, viewer);
+    }
+
+    /**
+     * 亮评是点赞不少于 2 的顶层评论，和原站 highlightCommentCount 对得上。一次给全，按点赞从高到低。
+     */
+    public static ObjectNode highlights(ObjectMapper json, JsonNode upstream, JsonNode board, String postId, String viewer) {
         List<ObjectNode> ordered = new ArrayList<>();
-        gathered.forEach(node -> {
-            if (node instanceof ObjectNode object) {
-                ordered.add(object);
-            }
-        });
-        ordered.sort(Comparator.comparingLong(CommunityBoard::stamp).reversed());
-        ordered.removeIf(comment -> blocked(board, viewer, comment.path("userId").asText("")));
-        int total = ordered.size();
-        int from = (page - 1) * pageSize;
-        ArrayNode comments = body.putArray("comments");
-        if (from < total) {
-            int to = Math.min(from + pageSize, total);
-            for (int i = from; i < to; i++) {
-                comments.add(ordered.get(i));
+        for (ObjectNode comment : topComments(json, upstream, board, postId, viewer)) {
+            if (comment.path("likeCount").asInt(0) >= 2) {
+                ordered.add(comment);
             }
         }
-        body.put("total", total);
-        body.put("page", page);
-        body.put("pages", total == 0 ? 0 : (total + pageSize - 1) / pageSize);
+        sortNotes(ordered, "like");
+        ObjectNode body = json.createObjectNode();
+        ArrayNode comments = body.putArray("comments");
+        for (ObjectNode comment : ordered) {
+            comments.add(withLocalReplies(json, comment, board, viewer));
+        }
+        body.put("total", ordered.size());
         return body;
+    }
+
+    /**
+     * 一条评论下的全部回复。fetched 是原站回复列表里没嵌进评论的那部分。
+     */
+    public static ObjectNode replies(ObjectMapper json, JsonNode upstream, JsonNode board, String postId, String commentId, JsonNode fetched, int page, int pageSize, String sort, String viewer) {
+        ObjectNode parent = findComment(upstream == null ? null : upstream.path("comments"), commentId);
+        if (parent == null && board != null) {
+            parent = findComment(board.path("comments").path(postId), commentId);
+        }
+        List<ObjectNode> ordered = new ArrayList<>();
+        Set<Long> seen = new LinkedHashSet<>();
+        if (parent != null) {
+            appendReplies(ordered, seen, parent.path("replies"), board, viewer);
+        }
+        appendReplies(ordered, seen, fetched, board, viewer);
+        if (board != null) {
+            appendReplies(ordered, seen, board.path("replies").path(commentId), board, viewer);
+        }
+        sortNotes(ordered, sort);
+        return pageNotes(json, "replies", ordered, page, pageSize, null, viewer);
+    }
+
+    public static ArrayNode essenceCircles(ObjectMapper json, JsonNode feed) {
+        Set<Long> ids = new LinkedHashSet<>();
+        if (feed != null) {
+            for (JsonNode post : feed.path("posts")) {
+                if (!post.path("essence").asBoolean(false)) {
+                    continue;
+                }
+                for (JsonNode id : post.path("circleIds")) {
+                    if (id.canConvertToLong()) {
+                        ids.add(id.asLong());
+                    }
+                }
+            }
+        }
+        ArrayNode circles = json.createArrayNode();
+        if (feed != null) {
+            for (JsonNode circle : feed.path("circles")) {
+                if (circle.path("id").canConvertToLong() && ids.contains(circle.path("id").asLong())) {
+                    circles.add(circle);
+                }
+            }
+        }
+        return circles;
+    }
+
+    /**
+     * @return 找不到这条评论时为空
+     */
+    public static String parentName(JsonNode upstream, JsonNode board, String postId, String commentId) {
+        ObjectNode parent = findComment(upstream == null ? null : upstream.path("comments"), commentId);
+        if (parent == null && board != null) {
+            parent = findComment(board.path("comments").path(postId), commentId);
+        }
+        if (parent == null) {
+            return null;
+        }
+        return parent.path("nickname").asText("");
+    }
+
+    /**
+     * @return 在这条评论和它的回复里找不到这个人时为空
+     */
+    public static String replyName(JsonNode upstream, JsonNode board, String postId, String commentId, String userId) {
+        ObjectNode parent = findComment(upstream == null ? null : upstream.path("comments"), commentId);
+        if (parent == null && board != null) {
+            parent = findComment(board.path("comments").path(postId), commentId);
+        }
+        if (parent == null) {
+            return null;
+        }
+        if (userId.equals(parent.path("userId").asText(""))) {
+            return parent.path("nickname").asText("");
+        }
+        for (JsonNode reply : parent.path("replies")) {
+            if (userId.equals(reply.path("userId").asText(""))) {
+                return reply.path("nickname").asText("");
+            }
+        }
+        if (board != null) {
+            for (JsonNode reply : board.path("replies").path(commentId)) {
+                if (userId.equals(reply.path("userId").asText(""))) {
+                    return reply.path("nickname").asText("");
+                }
+            }
+        }
+        return "";
+    }
+
+    public static String postOfComment(JsonNode board, String commentId) {
+        if (board == null || !(board.path("comments") instanceof ObjectNode comments)) {
+            return null;
+        }
+        var fields = comments.fields();
+        while (fields.hasNext()) {
+            var field = fields.next();
+            if (findComment(field.getValue(), commentId) != null) {
+                return field.getKey();
+            }
+        }
+        return null;
     }
 
     public static ObjectNode like(ObjectMapper json, ObjectNode board, String userId, String postId) {
@@ -324,6 +497,153 @@ public final class CommunityBoard {
             reports.remove(0);
         }
         return row;
+    }
+
+    private static List<ObjectNode> topComments(ObjectMapper json, JsonNode upstream, JsonNode board, String postId, String viewer) {
+        ArrayNode gathered = json.createArrayNode();
+        Set<Long> seen = new LinkedHashSet<>();
+        appendComments(gathered, seen, upstream == null ? null : upstream.path("comments"));
+        appendComments(gathered, seen, board == null ? null : board.path("comments").path(postId));
+        List<ObjectNode> ordered = new ArrayList<>();
+        gathered.forEach(node -> {
+            if (node instanceof ObjectNode object && !blocked(board, viewer, object.path("userId").asText(""))) {
+                ordered.add(object);
+            }
+        });
+        return ordered;
+    }
+
+    private static void sortNotes(List<ObjectNode> ordered, String sort) {
+        if ("oldest".equals(sort)) {
+            ordered.sort(Comparator.comparingLong(CommunityBoard::stamp));
+        } else if ("like".equals(sort)) {
+            ordered.sort(Comparator.comparingInt((ObjectNode node) -> node.path("likeCount").asInt(0)).reversed()
+                    .thenComparing(Comparator.comparingLong(CommunityBoard::stamp).reversed()));
+        } else {
+            ordered.sort(Comparator.comparingLong(CommunityBoard::stamp).reversed());
+        }
+    }
+
+    private static ObjectNode pageNotes(ObjectMapper json, String field, List<ObjectNode> ordered, int page, int pageSize, JsonNode board, String viewer) {
+        ObjectNode body = json.createObjectNode();
+        int total = ordered.size();
+        int from = (page - 1) * pageSize;
+        ArrayNode pageItems = body.putArray(field);
+        if (from < total) {
+            int to = Math.min(from + pageSize, total);
+            for (int i = from; i < to; i++) {
+                pageItems.add(board == null ? ordered.get(i) : withLocalReplies(json, ordered.get(i), board, viewer));
+            }
+        }
+        body.put("total", total);
+        body.put("page", page);
+        body.put("pages", total == 0 ? 0 : (total + pageSize - 1) / pageSize);
+        return body;
+    }
+
+    private static ObjectNode withLocalReplies(ObjectMapper json, ObjectNode comment, JsonNode board, String viewer) {
+        ObjectNode copy = comment.deepCopy();
+        if (board == null) {
+            return copy;
+        }
+        String commentId = copy.path("commentId").asText("");
+        JsonNode extra = board.path("replies").path(commentId);
+        if (!extra.isArray() || extra.isEmpty()) {
+            return copy;
+        }
+        ArrayNode replies = repliesOf(json, copy);
+        int added = 0;
+        Set<String> seen = new LinkedHashSet<>();
+        for (JsonNode reply : replies) {
+            if (reply.path("replyId").canConvertToLong()) {
+                seen.add(reply.path("replyId").asText());
+            }
+        }
+        for (JsonNode reply : extra) {
+            if (!reply.path("replyId").canConvertToLong() || !seen.add(reply.path("replyId").asText())) {
+                continue;
+            }
+            if (blocked(board, viewer, reply.path("userId").asText(""))) {
+                continue;
+            }
+            replies.add(reply);
+            added++;
+        }
+        if (added > 0) {
+            copy.put("replyCount", copy.path("replyCount").asInt(0) + added);
+        }
+        return copy;
+    }
+
+    private static void appendReplies(List<ObjectNode> ordered, Set<Long> seen, JsonNode incoming, JsonNode board, String viewer) {
+        if (incoming == null || !incoming.isArray()) {
+            return;
+        }
+        for (JsonNode node : incoming) {
+            if (!(node instanceof ObjectNode reply) || !reply.path("replyId").canConvertToLong()) {
+                continue;
+            }
+            if (!seen.add(reply.path("replyId").asLong())) {
+                continue;
+            }
+            if (blocked(board, viewer, reply.path("userId").asText(""))) {
+                continue;
+            }
+            ordered.add(reply);
+        }
+    }
+
+    private static ObjectNode findComment(JsonNode comments, String commentId) {
+        if (comments == null || !comments.isArray() || commentId == null) {
+            return null;
+        }
+        for (JsonNode node : comments) {
+            if (node instanceof ObjectNode comment && commentId.equals(comment.path("commentId").asText())) {
+                return comment;
+            }
+        }
+        return null;
+    }
+
+    private static ArrayNode repliesOf(ObjectMapper json, ObjectNode parent) {
+        JsonNode node = parent.get("replies");
+        if (node instanceof ArrayNode array) {
+            return array;
+        }
+        return parent.putArray("replies");
+    }
+
+    private static ArrayNode repliesOf(ObjectMapper json, ObjectNode parent, String commentId) {
+        JsonNode node = parent.get(commentId);
+        if (node instanceof ArrayNode array) {
+            return array;
+        }
+        return parent.putArray(commentId);
+    }
+
+    private static void writeImages(ObjectNode node, List<String> images) {
+        ArrayNode urls = node.putArray("imageUrls");
+        if (images == null) {
+            return;
+        }
+        for (String image : images) {
+            if (image != null && !image.isBlank()) {
+                urls.add(image);
+            }
+        }
+    }
+
+    private static void touchReplyTime(ObjectNode board, String postId, String time) {
+        for (JsonNode node : board.path("posts")) {
+            if (node instanceof ObjectNode post && postId.equals(post.path("postId").asText())) {
+                post.put("lastReplyTime", time);
+            }
+        }
+    }
+
+    private static long replyTime(JsonNode post) {
+        long reply = time(post.path("lastReplyTime").asText(""));
+        return reply > 0 ? reply : time(post);
     }
 
     private static void addPosts(ArrayNode target, Set<Long> seen, JsonNode incoming, JsonNode board) {

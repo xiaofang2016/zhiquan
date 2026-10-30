@@ -1,5 +1,8 @@
 package com.zhiquan.sport.api.speak;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public final class Voice {
 
     private Voice() {
@@ -35,6 +38,24 @@ public final class Voice {
             throw new IllegalArgumentException("正文应为 1 到 500 个字");
         }
         return content;
+    }
+
+    public static List<String> images(List<String> raw) {
+        List<String> images = new ArrayList<>();
+        if (raw == null) {
+            return images;
+        }
+        for (String item : raw) {
+            String url = trim(item);
+            if (url.isEmpty()) {
+                continue;
+            }
+            if (images.size() == 4 || url.length() > 500 || !(url.startsWith("https://") || url.startsWith("http://"))) {
+                throw new IllegalArgumentException("评论图片地址不正确");
+            }
+            images.add(url);
+        }
+        return images;
     }
 
     public static String comment(String raw) {

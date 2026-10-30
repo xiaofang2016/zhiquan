@@ -101,17 +101,20 @@ public class CommunityCrawlService {
                 }
             }
             Map<String, String> stamps = readStamps();
+            Map<String, String> commentIndex = readIndex();
+            Map<String, java.util.List<String>> commentUpdates = new LinkedHashMap<>();
             List<Map<String, Object>> posts = new ArrayList<>();
             for (JsonNode node : unique.values()) {
                 Map<String, Object> card = CommunityCards.post(node, properties.getBaseUrl());
                 card.put("head", heads.place(String.valueOf(card.get("head"))));
+                placeHotHead(card);
                 fillDuration(card, durations);
                 String id = node.path("postId").asText();
                 if (counts.containsKey(id)) {
                     card.put("commentCount", counts.get(id));
                 }
                 posts.add(card);
-                refreshPost(node, stamps, card, counts);
+                refreshPost(node, stamps, card, counts, commentUpdates);
             }
             Map<String, Object> feed = new LinkedHashMap<>();
             feed.put("circles", circles);
@@ -119,7 +122,9 @@ public class CommunityCrawlService {
             objects.put(key("feed.json"), json.writeValueAsBytes(feed));
             objects.put(key("stamps.json"), json.writeValueAsBytes(stamps));
             objects.put(key("video-durations.json"), json.writeValueAsBytes(durations));
+            applyIndex(commentIndex, commentUpdates);
             objects.put(key("comment-counts.json"), json.writeValueAsBytes(counts));
+            objects.put(key("comment-index.json"), json.writeValueAsBytes(commentIndex));
             log.info("社球帝写入 {} 帖", posts.size());
         } catch (Exception ex) {
             log.warn("社球帝抓取失败: {}", ex.getMessage());
@@ -153,7 +158,7 @@ public class CommunityCrawlService {
         return incoming;
     }
 
-    private void refreshPost(JsonNode post, Map<String, String> stamps, Map<String, Object> card, Map<String, Integer> counts) {
+    private void refreshPost(JsonNode post, Map<String, String> stamps, Map<String, Object> card, Map<String, Integer> counts, Map<String, java.util.List<String>> commentUpdates) {
         String id = post.path("postId").asText();
         if (!id.matches("[0-9]{1,18}")) {
             return;
@@ -164,6 +169,14 @@ public class CommunityCrawlService {
         }
         try {
             List<Map<String, Object>> comments = post.path("commentCount").asInt(0) > 0 ? loadComments(id) : List.of();
+            java.util.List<String> ids = new ArrayList<>();
+            for (Map<String, Object> comment : comments) {
+                Object commentId = comment.get("commentId");
+                if (commentId != null) {
+                    ids.add(String.valueOf(commentId));
+                }
+            }
+            commentUpdates.put(id, ids);
             int shown = CommunityCards.shown(comments);
             card.put("commentCount", shown);
             counts.put(id, shown);
@@ -187,9 +200,10 @@ public class CommunityCrawlService {
                 break;
             }
             for (JsonNode comment : list) {
-                Map<String, Object> mapped = CommunityCards.comment(comment);
+                Map<String, Object> mapped = CommunityCards.comment(comment, properties.getBaseUrl());
                 if (mapped != null) {
                     placeHeads(mapped);
+                    fillReplies(mapped);
                     comments.add(mapped);
                 }
             }
@@ -280,6 +294,79 @@ public class CommunityCrawlService {
         try {
             Map<String, Integer> saved = json.readValue(body, new TypeReference<Map<String, Integer>>() {
             });
+            return saved == null ? new LinkedHashMap<>() : new LinkedHashMap<>(saved);
+        } catch (Exception ex) {
+            return new LinkedHashMap<>();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void fillReplies(Map<String, Object> comment) {
+        Object raw = comment.get("replies");
+        if (!(raw instanceof List<?> list)) {
+            return;
+        }
+        int count = comment.get("replyCount") instanceof Number number ? number.intValue() : list.size();
+        if (count <= list.size()) {
+            return;
+        }
+        List<Map<String, Object>> replies = (List<Map<String, Object>>) list;
+        java.util.Set<String> seen = new java.util.LinkedHashSet<>();
+        for (Map<String, Object> reply : replies) {
+            if (reply.get("replyId") != null) {
+                seen.add(String.valueOf(reply.get("replyId")));
+            }
+        }
+        String id = String.valueOf(comment.get("commentId"));
+        try {
+            for (int page = 1; page <= 5; page++) {
+                JsonNode data = client.get("/comment/reply/list?commentId=" + id
+                        + "&sortRule=newest&pageNum=" + page + "&pageSize=50").path("data");
+                JsonNode rows = data.path("list");
+                if (!rows.isArray() || rows.isEmpty()) {
+                    break;
+                }
+                for (JsonNode row : rows) {
+                    Map<String, Object> mapped = CommunityCards.reply(row, properties.getBaseUrl());
+                    if (mapped == null || !seen.add(String.valueOf(mapped.get("replyId")))) {
+                        continue;
+                    }
+                    mapped.put("head", heads.place(String.valueOf(mapped.get("head"))));
+                    replies.add(mapped);
+                }
+                if (page >= data.path("pages").asInt(1)) {
+                    break;
+                }
+            }
+        } catch (Exception ex) {
+            log.warn("社球帝评论 {} 的回复没有补全: {}", id, ex.getMessage());
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void placeHotHead(Map<String, Object> card) {
+        Object hot = card.get("hotComment");
+        if (hot instanceof Map<?, ?> map) {
+            ((Map<String, Object>) map).put("head", heads.place(String.valueOf(map.get("head"))));
+        }
+    }
+
+    private void applyIndex(Map<String, String> index, Map<String, java.util.List<String>> updates) {
+        for (Map.Entry<String, java.util.List<String>> update : updates.entrySet()) {
+            index.entrySet().removeIf(entry -> update.getKey().equals(entry.getValue()));
+            for (String commentId : update.getValue()) {
+                index.put(commentId, update.getKey());
+            }
+        }
+    }
+
+    private Map<String, String> readIndex() {
+        byte[] body = objects.get(key("comment-index.json"));
+        if (body == null || body.length == 0) {
+            return new LinkedHashMap<>();
+        }
+        try {
+            Map<String, String> saved = json.readValue(body, STAMPS);
             return saved == null ? new LinkedHashMap<>() : new LinkedHashMap<>(saved);
         } catch (Exception ex) {
             return new LinkedHashMap<>();

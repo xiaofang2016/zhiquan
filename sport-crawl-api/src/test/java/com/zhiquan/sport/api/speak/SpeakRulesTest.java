@@ -147,6 +147,64 @@ class SpeakRulesTest {
     }
 
     @Test
+    void commentsSortAndRepliesStayWithThePost() throws Exception {
+        ObjectNode board = CommunityBoard.ensure(json, json.createObjectNode());
+        ObjectNode upstream = (ObjectNode) json.readTree("""
+                {"comments":[
+                  {"commentId":1,"nickname":"甲","content":"早","createTime":"2026-10-29T01:00:00.000+00:00","likeCount":3,"replyCount":1,
+                   "replies":[{"replyId":11,"nickname":"乙","content":"嵌进来的","createTime":"2026-10-29T01:01:00.000+00:00","likeCount":0}]},
+                  {"commentId":2,"nickname":"丙","content":"晚","createTime":"2026-10-29T03:00:00.000+00:00","likeCount":0,"replyCount":0,"replies":[]}
+                ]}
+                """);
+        ObjectNode newest = CommunityBoard.comments(json, upstream, board, "9", 1, 50, null, "newest");
+        assertEquals(2, newest.path("comments").get(0).path("commentId").asLong());
+        ObjectNode liked = CommunityBoard.comments(json, upstream, board, "9", 1, 50, null, "like");
+        assertEquals(1, liked.path("comments").get(0).path("commentId").asLong());
+        ObjectNode highlights = CommunityBoard.highlights(json, upstream, board, "9", null);
+        assertEquals(1, highlights.path("total").asInt());
+        assertEquals(1, highlights.path("comments").get(0).path("commentId").asLong());
+        ObjectNode extra = (ObjectNode) json.readTree("""
+                {"replyId":12,"nickname":"丁","content":"补上的","createTime":"2026-10-29T02:00:00.000+00:00","likeCount":0}
+                """);
+        ObjectNode replies = CommunityBoard.replies(json, upstream, board, "9", "1", json.createArrayNode().add(extra), 1, 50, "oldest", null);
+        assertEquals(2, replies.path("total").asInt());
+        assertEquals(11, replies.path("replies").get(0).path("replyId").asLong());
+        assertEquals(12, replies.path("replies").get(1).path("replyId").asLong());
+        ObjectNode spoken = CommunityBoard.addReply(json, board, "9", "1", null, "甲", "戊", "", "", "再回", java.util.List.of("https://img.example/a.jpg"));
+        assertEquals("甲", spoken.path("replyToNickname").asText());
+        assertEquals("https://img.example/a.jpg", spoken.path("imageUrls").get(0).asText());
+        ObjectNode again = CommunityBoard.replies(json, upstream, board, "9", "1", json.createArrayNode(), 1, 50, "newest", null);
+        assertEquals(spoken.path("replyId").asLong(), again.path("replies").get(0).path("replyId").asLong());
+        ObjectNode full = CommunityBoard.feed(json, json.readTree("""
+                {"circles":[{"id":14,"name":"足球"},{"id":22,"name":"闲聊"}],
+                 "posts":[
+                   {"postId":3,"title":"新发","content":"","createTime":"2026-10-29T03:00:00.000+00:00","lastReplyTime":"2026-10-29T03:10:00.000+00:00","circleIds":[14],"essence":true},
+                   {"postId":2,"title":"刚回","content":"","createTime":"2026-10-29T01:00:00.000+00:00","lastReplyTime":"2026-10-29T04:00:00.000+00:00","circleIds":[22],"essence":false}
+                 ]}
+                """), null);
+        ObjectNode byReply = CommunityBoard.page(json, full, 1, 60, null, null, null, null, null, "comment");
+        assertEquals(2, byReply.path("posts").get(0).path("postId").asLong());
+        assertEquals(1, CommunityBoard.essenceCircles(json, full).size());
+        assertEquals(14, CommunityBoard.essenceCircles(json, full).get(0).path("id").asLong());
+    }
+
+    @Test
+    void videoPlaylistPointsAtTheGateway() {
+        assertEquals("https://dgtplaoir00la.cloudfront.net/prod-api/community/video/387/index.m3u8",
+                CommunityVideo.playable("https://kzb001.net/comment-api/video/hls/m3u8?taskId=387", "https://dgtplaoir00la.cloudfront.net"));
+        String rewritten = CommunityVideo.rewrite("""
+                #EXT-X-KEY:METHOD=AES-128,URI="key?taskId=387"
+                https://commentfile.yc12315.com/community/video/media/a/video0.ts?auth_key=1
+                https://evil.example/secret.ts
+                """, "387", "https://dgtplaoir00la.cloudfront.net");
+        assertTrue(rewritten.contains("URI=\"https://dgtplaoir00la.cloudfront.net/prod-api/community/video/387/key\""));
+        assertTrue(rewritten.contains("/prod-api/community/video/media?src="));
+        assertTrue(rewritten.contains("https://evil.example/secret.ts"));
+        assertEquals("commentfile.yc12315.com", CommunityVideo.segment("https://commentfile.yc12315.com/community/video/media/a/video0.ts").getHost());
+        assertThrows(IllegalArgumentException.class, () -> CommunityVideo.segment("https://evil.example/community/video/a.ts"));
+    }
+
+    @Test
     void unknownNickIsAccepted() {
         assertEquals("路人甲", Voice.nick("路人甲"));
         assertThrows(IllegalArgumentException.class, () -> Voice.nick("  "));

@@ -27,7 +27,7 @@ class CommunityCardsTest {
                  "redPacket":{"amount":"88.00","num":8,"remainNum":5,"statusName":"领取中"}}
                 """);
         assertTrue(CommunityCards.visible(post));
-        assertEquals("2026-10-27T08:43:39.000+00:00|1|2|74|0|v2", CommunityCards.stamp(post));
+        assertEquals("2026-10-27T08:43:39.000+00:00|1|2|74|0|v3", CommunityCards.stamp(post));
         Map<String, Object> card = CommunityCards.post(post);
         assertEquals(5128L, card.get("postId"));
         assertEquals("百家荟", card.get("circleName"));
@@ -68,6 +68,11 @@ class CommunityCardsTest {
         assertEquals(12L, card.get("userId"));
         assertEquals(4, card.get("badgeLevel"));
         assertEquals(4, card.get("vipLevel"));
+        assertEquals(4, card.get("uedLevel"));
+        assertNull(card.get("jxfLevel"));
+        assertNull(card.get("badgeStyle"));
+        assertEquals(0, card.get("highlightCommentCount"));
+        assertEquals(false, card.get("rewardEnabled"));
         assertEquals(2, card.get("collectCount"));
         @SuppressWarnings("unchecked")
         Map<String, Object> picture = ((java.util.List<Map<String, Object>>) card.get("pictures")).get(0);
@@ -87,6 +92,8 @@ class CommunityCardsTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> hot = (Map<String, Object>) card.get("hotComment");
         assertEquals("亮一下", hot.get("content"));
+        assertNull(hot.get("userId"));
+        assertEquals("", hot.get("head"));
 
         var comment = json.readTree("""
                 {"commentId":9,"userId":8,"nickname":"丙","head":"","badgeName":"体验","badgeLevel":0,"uedLevel":"-1",
@@ -98,10 +105,12 @@ class CommunityCardsTest {
         Map<String, Object> mapped = CommunityCards.comment(comment);
         assertEquals(9L, mapped.get("commentId"));
         assertEquals(null, mapped.get("vipLevel"));
+        assertEquals(java.util.List.of(), mapped.get("imageUrls"));
         @SuppressWarnings("unchecked")
         Map<String, Object> reply = ((java.util.List<Map<String, Object>>) mapped.get("replies")).get(0);
         assertEquals("丙", reply.get("replyToNickname"));
         assertEquals(3, reply.get("vipLevel"));
+        assertEquals(3, reply.get("uedLevel"));
         assertNull(CommunityCards.comment(json.readTree("{\"commentId\":1,\"auditStatus\":\"2\",\"content\":\"不行\"}")));
 
         var circle = json.readTree("""
