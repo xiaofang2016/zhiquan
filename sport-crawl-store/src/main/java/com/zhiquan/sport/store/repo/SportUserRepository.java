@@ -223,6 +223,29 @@ public class SportUserRepository {
                 .build());
     }
 
+    /** 同一单号只扣一次。流水已存在时整笔取消。余额不够时也取消。 */
+    public void debit(String phone, long cents, Map<String, AttributeValue> ledger) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":amt", Attrs.n(cents));
+        Update balance = Update.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET balance_cent = balance_cent - :amt")
+                .conditionExpression("attribute_exists(pk) AND balance_cent >= :amt")
+                .expressionAttributeValues(values)
+                .build();
+        Put row = Put.builder()
+                .tableName(aws.getUserTable())
+                .item(ledger)
+                .conditionExpression("attribute_not_exists(pk)")
+                .build();
+        dynamo.transactWriteItems(TransactWriteItemsRequest.builder()
+                .transactItems(
+                        TransactWriteItem.builder().update(balance).build(),
+                        TransactWriteItem.builder().put(row).build())
+                .build());
+    }
+
     public boolean deduct(String phone, long cents) {
         try {
             dynamo.updateItem(balanceUpdate(phone, cents, "-"));

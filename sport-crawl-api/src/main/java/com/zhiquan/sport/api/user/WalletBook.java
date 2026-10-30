@@ -123,7 +123,8 @@ public class WalletBook {
         long cents = Attrs.lng(item, "amount_cent") == null ? 0 : Attrs.lng(item, "amount_cent");
         int status = Attrs.num(item, "status") == null ? 1 : Attrs.num(item, "status");
         long created = Attrs.lng(item, "created_at") == null ? 0 : Attrs.lng(item, "created_at");
-        long signed = "withdraw".equals(kind) ? -cents : cents;
+        boolean outgoing = "withdraw".equals(kind) || "debit".equals(Attrs.str(item, "direction"));
+        long signed = outgoing ? -Math.abs(cents) : Math.abs(cents);
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("tradeNo", Attrs.str(item, "trade_no"));
         row.put("kind", kind);

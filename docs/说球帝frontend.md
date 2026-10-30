@@ -257,6 +257,8 @@ POST /prod-api/community/posts/{postId}/redpacket
 
 成功时 `data` 仍是这篇帖子，`redPacket.mine` 有值。每天那份 588 元红包是另一条接口，和帖子红包互不相干。
 
+职圈群里发出去的红包也记在这份余额里。流水标题是「发红包」「群红包」「红包退回」。
+
 ## 播放
 
 详情先读原站，拿到 `data.matchinfo` 且 `id` 一致就用它。失败再从说球帝比赛列表里按 `id` 找今天、昨天、明天。
