@@ -88,6 +88,47 @@ UED 用同一套路径，把 `jxt` 换成 `ued`，商户号是 `10012`。验证�
 
 只清说球帝本地的绑定标记和吉祥令牌，不调用吉祥，也不删除吉祥账号。未绑定时 `msg` 是「还没有绑定吉祥账号」。
 
+### 把已绑定令牌交给职圈
+
+`POST /prod-api/user/bound-login`
+
+说球帝页面不要调用。浏览器拿不到签名密钥，也拿不到吉祥令牌。职圈服务器在用户打开吉祥体育时来取，再用返回的 `accessToken` 打开吉祥登录页。说球帝自己的页面不会因此变成吉祥的登录态。UED 把 `brand` 换成 `ued`。
+
+```json
+{
+  "userId": "32位小写编号",
+  "phone": "13800138000",
+  "brand": "jxt",
+  "timestamp": "1700000000",
+  "nonce": "16到64位字母或数字",
+  "signature": "64位小写十六进制"
+}
+```
+
+`userId` 是说球帝登录结果里的 32 位编号，必须小写。`phone` 是这个账号的手机号。`brand` 是 `jxt` 或 `ued`。`timestamp` 是当前秒级时间戳，10 位；13 位毫秒也可以，按秒比较。和服务器相差不能超过 300 秒。`nonce` 是 16 到 64 位字母或数字。请求体最长 2048 字节。
+
+签名和入账用同一套 HMAC-SHA256，密钥仍是 `prod/jxt-boxim` 的 `BOXIM_OUTBOUND_SECRET`。待签名字符串用换行接上，最后三段是用户编号、手机号、品牌，不是整段 JSON：
+
+```text
+{timestamp}
+{nonce}
+POST
+/prod-api/user/bound-login
+{userId}
+{phone}
+{brand}
+```
+
+签名放在 JSON 的 `signature` 里，小写十六进制。不放请求头。
+
+成功时 `data` 只有 `accessToken`，就是绑定时记下的吉祥或 UED 令牌。
+
+| `msg` | 含义 |
+|---|---|
+| 签名不正确 | 字段、时间、随机串或签名对不上。签名失败一律是这一句 |
+| 请先绑定吉祥账号 | 还没绑定，或手机号对不上这个用户编号。UED 把「吉祥」换成「UED」 |
+| 请重新验证吉祥账号 | 没有令牌，或令牌已过 30 天。UED 把「吉祥」换成「UED」 |
+
 ### 提现
 
 `POST /prod-api/user/jxt/withdraw`

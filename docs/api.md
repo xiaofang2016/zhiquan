@@ -13,6 +13,7 @@
 | `POST /prod-api/user/sms` `/register` `/login` `/session` | 账号 |
 | `POST /prod-api/user/jxt/status` `/sms` `/bind` `/unbind` `/withdraw` | 吉祥绑定和提现，见 [吉祥转账对接](jxt.md) |
 | `POST /prod-api/user/ued/status` `/sms` `/bind` `/unbind` `/withdraw` | UED 绑定和提现，商户号 `10012`，其余与吉祥相同 |
+| `POST /prod-api/user/bound-login` | 职圈取已绑定的吉祥或 UED 令牌。浏览器不要调用，见 [吉祥转账对接](jxt.md) |
 | `GET /prod-api/match/list/new2` | 即时比分 |
 | `GET /prod-api/database/`、`/prod-api/team/`、`/prod-api/player/` | 资料库 |
 | 其余 `GET /prod-api/`，例如联赛、日期、`/prod-api/match/list/new` | 比赛 |
