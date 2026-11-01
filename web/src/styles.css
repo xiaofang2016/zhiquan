@@ -880,3 +880,27 @@
   .cpacket { color: #e23b3b; }
   .ccomments { display: flex; flex-direction: column; gap: 10px; }
   .ccomment { padding: 12px 14px; border-radius: 12px; background: #fff; }
+  .chatdbg { display: flex; gap: 16px; align-items: flex-start; }
+  .chatdbg aside { width: 280px; flex: none; }
+  .chatdbg section { flex: 1; min-width: 0; }
+  .chatdbg aside .chatroom {
+    display: block;
+    width: 100%;
+    margin: 0 0 8px;
+    padding: 10px 12px;
+    border: 0;
+    border-radius: 12px;
+    background: #fff;
+    text-align: left;
+    box-shadow: var(--shadow);
+  }
+  .chatdbg aside .chatroom.on { outline: 2px solid #3ee0c5; }
+  .chatdbg aside b, .chatdbg aside small, .chatdbg aside em { display: block; }
+  .chatdbg aside small, .chatdbg aside em { color: var(--muted); font-style: normal; font-size: 12px; }
+  .chatdbg aside em { margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .chatdbg .dbbar button { width: auto; padding: 0 10px; font-size: 13px; }
+  .chatdbg article { margin: 0 0 8px; padding: 12px 14px; border-radius: 12px; background: #fff; box-shadow: var(--shadow); }
+  .chatdbg article header { display: flex; align-items: center; gap: 8px; color: #667; font-size: 12px; }
+  .chatdbg article header b { color: #222; font-size: 14px; }
+  .chatdbg article header em { margin-left: auto; font-style: normal; }
+  .chatdbg article p { margin: 6px 0 0; white-space: pre-wrap; line-height: 1.5; }

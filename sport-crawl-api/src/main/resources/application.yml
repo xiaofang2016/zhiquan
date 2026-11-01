@@ -19,6 +19,8 @@ sport:
     db-table: sport_db_doc
     community-prefix: community/
     user-table: sport_user
+    zhiquan-chat-table: zhiquan_chat
+    zhiquan-chat-partition: apk#5739998
   community:
     base-url: https://kzb001.net
     public-base: https://dgtplaoir00la.cloudfront.net

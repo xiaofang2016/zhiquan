@@ -18,7 +18,7 @@ public class ApiExceptionHandler implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/prod-api/user/**").allowedOrigins("*").allowedMethods("POST", "OPTIONS").allowedHeaders("*");
-        registry.addMapping("/prod-api/chat/**").allowedOrigins("*").allowedMethods("POST", "OPTIONS").allowedHeaders("*");
+        registry.addMapping("/prod-api/chat/**").allowedOrigins("*").allowedMethods("GET", "POST", "OPTIONS").allowedHeaders("*");
         registry.addMapping("/prod-api/community/**").allowedOrigins("*").allowedMethods("GET", "POST", "OPTIONS").allowedHeaders("*");
         registry.addMapping("/prod-api/admin/**").allowedOrigins("*").allowedMethods("POST", "OPTIONS").allowedHeaders("*");
         registry.addMapping("/api/**").allowedOrigins("*").allowedMethods("GET");

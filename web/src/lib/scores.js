@@ -1,6 +1,7 @@
 import { API, state, toast } from "../state.js";
 import { phase, visibleMatches } from "./match.js";
 import { stopPlayback, stopRoomChat, stopDetailRoom } from "./detail.js";
+import { loadChatGroups } from "./chat.js";
 
 let scoreCursor = 0;
 let matchAudio = null;
@@ -160,6 +161,7 @@ export function selectTab(id) {
   }
   state.tab = id;
   if (id === "live" && !state.liveLoaded && !state.loading) loadLive();
+  if (id === "chat" && !state.chatGroups.length && !state.chatLoading) loadChatGroups();
 }
 
 export function liveRows() {

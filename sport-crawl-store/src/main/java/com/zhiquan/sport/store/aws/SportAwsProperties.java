@@ -23,4 +23,8 @@ public class SportAwsProperties {
     private String dbTable = "sport_db_doc";
     /** 说球帝自己的账号。不放 IM 用户，也不和 im 的用户表关联。 */
     private String userTable = "sport_user";
+    /** 职圈抓取写进来的群和消息。调试页只读这一份。 */
+    private String zhiquanChatTable = "zhiquan_chat";
+    /** 当前抓取把最新群和消息写在 apk#{uid}。 */
+    private String zhiquanChatPartition = "apk#5739998";
 }
