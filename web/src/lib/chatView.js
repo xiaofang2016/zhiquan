@@ -1,4 +1,7 @@
+import { FACE_SRC } from "./faces.js";
+
 const FALLBACK_IMAGE_BASE = "https://oss.imnono.net";
+const FACE_TOKEN = /\[\/[^\]]+\]/g;
 
 export function present(message, imageBase) {
   const type = String((message && message.type) || "");
@@ -18,21 +21,44 @@ export function present(message, imageBase) {
   if (type === "13" || (data && Array.isArray(data.files) && data.files.length)) {
     const images = data.files.map((file) => imageSrc(file, imageBase)).filter(Boolean);
     if (images.length) {
-      return { kind: "image", text: String(data.text || "").trim(), images };
+      const text = String(data.text || "").trim();
+      return { kind: "image", text, parts: textParts(text), images };
     }
   }
   if (type === "1" && content && !content.startsWith("{") && !content.startsWith("[")) {
     const src = imageSrc({ fileMd5: content }, imageBase);
     if (src) return { kind: "image", text: "", images: [src] };
   }
-  return { kind: "text", text: textOf(type, content, data) };
+  if (type === "91" || isRevoke(data)) {
+    return { kind: "revoke", text: revokeLine(data, message) };
+  }
+  const text = textOf(type, content, data);
+  return { kind: "text", text, parts: textParts(text) };
 }
 
 export function previewText(message, imageBase) {
   const view = present(message, imageBase);
   if (view.kind === "image") return view.text || "[图片]";
   if (view.kind === "pack") return view.title || "[红包]";
+  if (view.kind === "revoke") return view.text || "撤回了一条消息";
   return String(view.text || "").replace(/\s+/g, " ").trim();
+}
+
+export function textParts(text) {
+  const value = String(text || "");
+  const parts = [];
+  let last = 0;
+  for (const match of value.matchAll(FACE_TOKEN)) {
+    const token = match[0];
+    const src = FACE_SRC[token];
+    if (!src) continue;
+    if (match.index > last) parts.push({ kind: "text", text: value.slice(last, match.index) });
+    parts.push({ kind: "face", src, alt: token });
+    last = match.index + token.length;
+  }
+  if (!parts.length) return [{ kind: "text", text: value }];
+  if (last < value.length) parts.push({ kind: "text", text: value.slice(last) });
+  return parts;
 }
 
 export function poolDigits(raw) {
@@ -48,6 +74,20 @@ export function imageSrc(file, imageBase) {
   if (/^https?:\/\//i.test(name)) return name;
   if (name.includes("?")) return host + "/message/" + name;
   return host + "/message/" + name + "?imageView2/2/w/640/h/640&imageMogr2/format/webp";
+}
+
+function isRevoke(data) {
+  return !!(data && data.fpForMessage && (data.uid || data.nickName) && !data.walletId && !data.files);
+}
+
+function revokeLine(data, message) {
+  const nick = String((data && data.nickName) || (message && message.nick) || "").trim();
+  const beNick = String((data && data.beNickName) || "").trim();
+  const beUid = String((data && data.beUid) || "").trim();
+  const uid = String((data && data.uid) || "").trim();
+  if (nick && beNick && beUid && beUid !== uid) return nick + "撤回了\"" + beNick + "\"的一条消息";
+  if (nick) return "\"" + nick + "\" 撤回了一条消息";
+  return "撤回了一条消息";
 }
 
 function parse(content) {

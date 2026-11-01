@@ -1010,6 +1010,9 @@
   .im-log .shot.miss::before { content: "图片"; position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: #9aa0a8; font-size: 13px; }
   .im-log article.image .shot em { position: absolute; right: 8px; bottom: 6px; margin: 0; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, .55); }
   .im-log article.image p { margin: 6px 2px 0; }
+  .im-log article.revoke { justify-content: center; }
+  .im-log article.revoke > p { max-width: 86%; margin: 2px 0 6px; padding: 3px 12px; border-radius: 12px; background: #eaecf0; color: #979ca6; font-size: 13px; font-weight: 400; line-height: 18px; text-align: center; }
+  .im-log .face { width: 22px; height: 22px; margin: 0 1px; vertical-align: -5px; }
   .im-pack { margin-top: 4px; border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #ffb24a 0%, #ff8d1f 46%, #ff7a12 46%, #ff9a32 100%); color: #fff; }
   .im-pack.done { filter: grayscale(.35); }
   .im-pack-top { display: flex; gap: 10px; align-items: center; padding: 12px 12px 8px; }

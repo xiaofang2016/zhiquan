@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { imageSrc, poolDigits, present, previewText } from "./chatView.js";
+import { imageSrc, poolDigits, present, previewText, textParts } from "./chatView.js";
 
 test("red packet card uses the rain title and padded pool", () => {
   const view = present({
@@ -32,6 +32,28 @@ test("image message becomes a picture url", () => {
   assert.equal(view.text, "赢钱不给出款");
   assert.equal(view.images[0], "https://cdn.example.com/message/1793518706579.jpg?imageView2/2/w/640/h/640&imageMogr2/format/webp");
   assert.equal(imageSrc({ fileMd5: "a.gif?imageMogr2/format/jpeg" }, "https://cdn.example.com"), "https://cdn.example.com/message/a.gif?imageMogr2/format/jpeg");
+});
+
+test("revoke json becomes a system line and faces split out of text", () => {
+  const view = present({
+    type: "91",
+    nick: "莉莉",
+    content: JSON.stringify({
+      uid: "400275",
+      nickName: "吉祥/UED高级专属 莉莉",
+      beUid: "5647573",
+      beNickName: "安亿十",
+      fpForMessage: "499799df-2a0a-4525-a615-3aebc8937d03",
+      originalContent: null
+    })
+  });
+  assert.equal(view.kind, "revoke");
+  assert.equal(view.text, "吉祥/UED高级专属 莉莉撤回了\"安亿十\"的一条消息");
+  const own = present({ type: "0", content: JSON.stringify({ uid: "1", nickName: "佩奇", fpForMessage: "abc" }) });
+  assert.equal(own.text, "\"佩奇\" 撤回了一条消息");
+  const parts = textParts("你好[/发呆]呀[/不是表情]");
+  assert.deepEqual(parts.map((part) => part.kind === "face" ? part.src : part.text), ["你好", "/face/1f633.png", "呀[/不是表情]"]);
+  assert.equal(previewText({ type: "0", content: "[/发呆]" }), "[/发呆]");
 });
 
 test("mention and preview do not dump raw json", () => {

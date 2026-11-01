@@ -31,14 +31,15 @@
         <div v-else-if="state.chatError && !state.chatMessages.length" class="im-empty">{{ state.chatError }}</div>
         <div v-else-if="!messages.length" class="im-empty">这个群还没有消息</div>
         <article v-for="(message, index) in messages" :key="message.time + '-' + index" :class="message.view.kind">
-          <div>
+          <p v-if="message.view.kind === 'revoke'">{{ message.view.text }}</p>
+          <div v-else>
             <b>{{ message.nick || message.sendUid || "用户" }}</b>
             <template v-if="message.view.kind === 'image'">
               <a v-for="(src, imageIndex) in message.view.images" :key="imageIndex" class="shot" :href="src" target="_blank" rel="noopener">
                 <img :src="src" alt="" @error="markMiss" />
                 <em v-if="imageIndex === message.view.images.length - 1">{{ chatTime(message.time) }}</em>
               </a>
-              <p v-if="message.view.text">{{ message.view.text }}</p>
+              <p v-if="message.view.text"><RichText :parts="message.view.parts" :text="message.view.text" /></p>
             </template>
             <div v-else-if="message.view.kind === 'pack'" class="im-pack" :class="{ done: message.view.done }">
               <div class="im-pack-top">
@@ -53,7 +54,7 @@
                 <em>奖池 <strong>{{ message.view.pool }}</strong></em>
               </div>
             </div>
-            <p v-else>{{ message.view.text }}</p>
+            <p v-else><RichText :parts="message.view.parts" :text="message.view.text" /></p>
             <em v-if="message.view.kind !== 'image'">{{ chatTime(message.time) }}</em>
           </div>
         </article>
@@ -73,6 +74,7 @@ import { computed, ref, watch } from "vue";
 import { state } from "../state.js";
 import { chatTime, loadChatGroups, openChatGroup } from "../lib/chat.js";
 import { present, previewText } from "../lib/chatView.js";
+import RichText from "../components/RichText.vue";
 
 const current = computed(() => state.chatGroups.find((group) => group.id === state.chatGroupId) || null);
 const noticeOpen = ref(false);
