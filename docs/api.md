@@ -733,13 +733,15 @@ GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
 | `time` | 毫秒 |
 | `nick` | 发送人昵称 |
 | `sendUid` | 发送人编号 |
-| `type` | 原站 `msgType`。`0` 文字，`1` 单图文件名，`10` 红包 JSON，`11` 回复，`12` @，`13` 多图，`90` 系统提示，`91` 撤回 |
+| `type` | 字符串。`0` 文字，不要写成空字符串。`1` 单图文件名，`10` 红包 JSON，`11` 回复，`12` @，`13` 多图，`90` 系统提示，`91` 撤回 |
 | `content` | 原文，最长 2000 字 |
-| `id` | 排序键，翻页和去重都用它 |
+| `id` | 排序键，翻页和去重都用它。推送里的 `groupId` 是群的数字 `id`，不是这条排序键 |
 
 群头像：`{imageBase}/head/{avatar}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。消息图片：`{imageBase}/message/{fileMd5}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。文件名已经带 `?` 或本身是 `http` 地址时不再追加参数。
 
-红包 `content` 是 JSON。页面用 `description` 做标题，去掉 🧧。`status` 为 `1` 待领取、`2` 已领取、`3` 已领完。奖池把 `dbAmountPool` 的数字去掉末两位再补齐 6 位。这一页不调用领取接口。
+红包 `content` 是 JSON，字段有 `description`、`title`、`nickname`、`nickName`、`status`、`dbAmountPool`、`num`、`remainNum`、`walletId`。`status` 为 `1` 待领取、`2` 已领取、`3` 已领完。奖池把 `dbAmountPool` 的数字去掉末两位再补齐 6 位。这一页不调用领取接口。
+
+回复和 @ 的 `content` 可能是 JSON，正文在 `origin_text`、`to.text`、`text` 或 `from.text`。多图是 `{ "text": "", "files": [{ "fileMd5": "", "fileName": "" }] }`。单图的 `content` 就是文件名。表情原文是 `[/微笑]` 这种，对照页里的 `web/src/lib/faces.js`。`[视频小程序] 名字，` 只取名字。
 
 撤回 `content` 含 `uid`、`nickName`、`beUid`、`beNickName`、`fpForMessage`。`beUid` 和发送人不同，显示 `{nickName}撤回了"{beNickName}"的一条消息`；否则 `"{nickName}" 撤回了一条消息`。
 
@@ -757,7 +759,7 @@ wss://ix1ui9ljn6.execute-api.ap-northeast-1.amazonaws.com/prod
 
 新出现的群推送 `{ "group": { "id": 0, "gid": "", "name": "", "ownerName": "", "notice": "", "avatar": "" } }`。未读数不在接口里，由页面按推送在本地累加，点开该群后清掉，没有上限。
 
-数据在 DynamoDB `zhiquan_chat`。抓取进程把账号已加入的群和消息写进去，新群下一轮就会出现。账号没加入的群不会出现。
+数据在 DynamoDB `zhiquan_chat`。抓取挂着原站长连接，消息到达后由上面的函数推给已连接的浏览器，页面不用为了新消息轮询这两个 GET。抓取断线会先补离线再重连，补上的新行也会推。群列表大约每分钟重读，账号新加入的群在这一轮写入后推送。账号没加入的群不会出现。
 
 ## 聊天室
 

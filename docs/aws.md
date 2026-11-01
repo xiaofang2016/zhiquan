@@ -126,6 +126,6 @@ CodeDeploy 按 `appspec.yml` 盖到 `/var/local/sport-crawl`，钩子以 root �
 | 职圈群抓取 | `3.112.56.84` 上的 `zhiquan-chat-scraper`，代码在 `/var/local/zhiquan-chat-scraper/bin/scraper.py`。改完要单独拷上去再重启，不随 `main` 流水线 |
 | 职圈群实时 | API Gateway WebSocket `ix1ui9ljn6`，函数 `sport-crawl-chat-live`。页面订阅和推送逻辑在仓库 `chat-live/`。改函数要单独更新代码，推 `main` 只换页面和 Java |
 
-职圈群存在 DynamoDB `zhiquan_chat`，分区 `apk#5739998`。抓取每轮重读账号已经加入的群；新群写入后，由函数推给正在打开聊天页的浏览器。图片域名优先用原站返回的地址，`oss.imnono.net` 不用，改用 `https://imfile.dtthsp.com`。
+职圈群存在 DynamoDB `zhiquan_chat`，分区 `apk#5739998`。抓取挂着原站长连接，消息到达就写入并推给正在打开聊天页的浏览器。断线后先补一次离线再重新挂上。群列表大约每分钟重读，用来发现新加入的群。图片域名优先用原站返回的地址，`oss.imnono.net` 不用，改用 `https://imfile.dtthsp.com`。
 
 读接口挂在内网 `172.31.5.227:8892`，给网关当源站。抓取、资料库、动画桥只听本机，CloudFront 和网关够不着它们的管理口。

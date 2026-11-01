@@ -347,22 +347,55 @@ POST /prod-api/community/posts/{postId}/redpacket
 
 站点「聊天」这一屏，看的是职圈群，不是比赛播放页的聊天室。只读，不登录也能看。点开红包只在本页展示，不领取，不把抓取账号的钱从奖池里划走。
 
-列表是 `GET /prod-api/chat/groups`。每群有 `id`、`gid`、`name`、`ownerName`、`notice`、`avatar`、`latest`。`avatar` 是文件名，拼在 `imageBase` 上：`{imageBase}/head/{文件名}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。`imageBase` 为空，或是打不开的 `oss.imnono.net` 时，用 `https://imfile.dtthsp.com`。没有文件名，或图片加载失败，显示群名首字。公告 `enabled` 为 `0` 时不展示。关掉公告后 24 小时内不再出现，记在 `kzb-notice:{群id}:{公告}`。
+新消息不要轮询 HTTP。打开页面拉一次列表和当前群的最新 100 条，之后只接 WebSocket。抓取挂着原站长连接，消息到达就会推过来。页面这条 socket 断了，1 秒后重连，之后加倍，最长 30 秒，连上再从 1 秒算。抓取自己断线会先补离线再推。新加入的群大约一分钟内出现。
 
-点进群取 `GET /prod-api/chat/groups/{id}/messages`，最新 100 条，停在底部。往上滑到顶再请求 `?before={上一条的 id}`，`id` 是库里的排序键。新的一页插到上面，滚动位置不动。`older` 为空就到头了。单条「谁领了红包」不显示；「等N/M人已领取了红包」留下。
+列表是 `GET /prod-api/chat/groups`，按 `latest.time` 从新到旧。每群有 `id`、`gid`、`name`、`ownerName`、`notice`、`avatar`、`latest`。路由和未读都用数字 `id`，不要用可能补零的 `gid`。`avatar` 是文件名，拼在 `imageBase` 上：`{imageBase}/head/{文件名}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。`imageBase` 为空，或是打不开的 `oss.imnono.net` 时，用 `https://imfile.dtthsp.com`。文件名已经是 `http` 地址就直接用；已经带 `?` 就不要再追加参数。没有文件名，或这一页里图片加载失败，显示群名里第一个汉字、字母或数字，没有就显示「群」。刷新页面后再试一次图片。
 
-消息按 `type` 画：
+列表右侧预览：图片没有配文时是 `[图片]`，红包用标题，撤回用那句系统字。谁领了红包的单条预览留空。有昵称时写成 `{昵称} {预览}`。时间用 `latest.time`，上海时区，格式 `MM-DD HH:mm`。没有消息显示「没有消息」。
+
+公告 `enabled` 为 `0` 时接口给的就是空字符串，不要展示。有公告时黄条可关，关掉后 24 小时内不再出现，键名 `kzb-notice:{群id}:{公告}`。公告文字变了，键对不上，会再出现。
+
+点进群取 `GET /prod-api/chat/groups/{id}/messages`，最新 100 条，从旧到新，停在底部。请求还没回来时如果 socket 已经推了更新的，接在这 100 条后面，同一 `id` 只留一条。往上滑到顶（距顶 8px 内）再请求 `?before={上一条的 id}`，`id` 是库里的排序键。新的一页插到上面，滚动位置不动。连着几页都是已经有的，就停。`older` 为空就到头了。距底部 120px 以内，新消息才把列表滚下去；人在看上面的历史时不要拽回底部。
+
+单条内容正好是「领取了红包」「已领取了红包」或以此结尾的不显示。正文里含有「人已领取」的留下，例如「等12/200人已领取了红包」。
+
+`type` 是字符串。`0` 就是文字，不要当成空。
 
 | `type` | 页面 |
 |---|---|
-| `0` 文字、`11` 回复、`12` @ | 正文。`[/发呆]` 这类原站表情画成 `/face/` 里的图，认不出的括号仍是文字 |
-| `1`、`13` | 图片。地址 `{imageBase}/message/{文件名}?imageView2/2/w/640/h/640&imageMogr2/format/webp` |
-| `10` | 红包卡片。待领取先出封面，点「开」看奖池和剩余个数；已领取、已领完直接看详情。奖池取 `dbAmountPool` 的数字，去掉末两位，补成 6 位 |
-| `91` 或撤回 JSON | 居中灰字。撤回别人的是 `{昵称}撤回了"{对方}"的一条消息`，撤回自己的是 `"{昵称}" 撤回了一条消息` |
+| `0` 文字、`90` 系统提示 | 普通气泡。`90` 不居中 |
+| `11` 回复、`12` @ | 普通气泡，不另画引用条。正文按 `origin_text`、`to.text`、`text`、回复的 `from.text` 取第一段非空文字 |
+| `1` | 一张图。`content` 本身就是文件名，不是 JSON |
+| `13` | `content` 是 `{ "text": "", "files": [{ "fileMd5": "", "fileName": "" }] }`。每张图用 `fileMd5`，没有再用 `fileName`。`text` 画在图下面，里面的表情同样要换 |
+| `10` | 红包卡片。见下面 |
+| `91` 或撤回 JSON | 居中灰字，没有头像昵称。撤回别人的是 `{昵称}撤回了"{对方}"的一条消息`，撤回自己的是 `"{昵称}" 撤回了一条消息` |
 
-打开聊天页就连 WebSocket，发送 `{ "action": "subscribe", "groupId": "all" }`。每 4 分钟发 `{ "action": "ping" }`。服务端推来的 `message` 按 `id` 去重：当前群接在底部，人已经在底部才跟着往下滚；别的群只更新列表上的最后一条。`group` 是新抓到的群，列表里没有就加进去。
+`[/发呆]` 这类括号对照 `web/src/lib/faces.js` 换成 `/face/` 里的图。表里没有的整段留在文字里。`[视频小程序] 名字，后面还有别的` 只显示名字。
 
-未读数只在本机，键名 `kzb-chat-unread`。当前没打开的群每来一条加 1，没有上限，数字标在头像右上角。点进该群后清掉。刷新页面后数字还在，直到点开。
+图片地址 `{imageBase}/message/{文件名}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。打不开时那一块显示「图片」。
+
+红包 `content` 是 JSON。这一页不调用领取接口。
+
+| 字段 | 页面 |
+|---|---|
+| `description`，没有就用 `title` | 卡片标题，去掉 🧧。都没有就写「红包」 |
+| `nickname` 或 `nickName`，再没有用消息的 `nick` | 封面第一行 `{名字}的红包` |
+| `status` | `1` 待领取，`2` 已领取，`3` 已领完。后两种直接看详情 |
+| `dbAmountPool` | 只留数字，去掉末两位，左侧补 0 到 6 位。这是奖池，不是领到的金额 |
+| `num`、`remainNum` | 两个都有写 `剩余 {remainNum}/{num}`。只有 `num` 写 `共 {num} 个` |
+| 卡片底栏 | 固定文案「职圈3.0红包」，不是接口字段 |
+
+待领取先出封面，点「开」才看奖池和剩余个数。已领取、已领完点开就是详情。
+
+打开聊天页就连 WebSocket，发送 `{ "action": "subscribe", "groupId": "all" }`。每 4 分钟发 `{ "action": "ping" }`。推送：
+
+```json
+{ "groupId": 8447, "message": { "time": 0, "nick": "", "sendUid": "", "type": "0", "content": "", "id": "" } }
+```
+
+`groupId` 等于列表里的数字 `id`。`message` 和 HTTP 那一行一样，按 `id` 去重。当前群接进底部；别的群只改列表上的最后一条，并给未读加 1。新群是另一条 `{ "group": { "id": 0, "gid": "", "name": "", "ownerName": "", "notice": "", "avatar": "" } }`，列表里没有就加进去。
+
+未读只在本机。`localStorage` 键名 `kzb-chat-unread`，值是 `{ "8447": 3 }` 这种，群 `id` 对条数。没有 99 的上限，数字原样标在头像右上角，红底 `#f74c31`、白字。点进该群后删掉这一项。刷新后还在，直到点开。窄屏点进群只留消息，返回再出列表。
 
 ## 播放
 
