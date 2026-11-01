@@ -880,27 +880,138 @@
   .cpacket { color: #e23b3b; }
   .ccomments { display: flex; flex-direction: column; gap: 10px; }
   .ccomment { padding: 12px 14px; border-radius: 12px; background: #fff; }
-  .chatdbg { display: flex; gap: 16px; align-items: flex-start; }
-  .chatdbg aside { width: 280px; flex: none; }
-  .chatdbg section { flex: 1; min-width: 0; }
-  .chatdbg aside .chatroom {
-    display: block;
+  .main-chat { display: flex; padding: 0; height: calc(100vh - 64px); min-height: 0; overflow: hidden; }
+  .im { display: flex; flex: 1; min-width: 0; min-height: 0; height: 100%; background: #fff; }
+  .im aside { width: 280px; flex: none; border-right: 1px solid #f2f3f5; overflow: auto; background: #fff; }
+  .im aside button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
     width: 100%;
-    margin: 0 0 8px;
-    padding: 10px 12px;
+    height: 72px;
+    padding: 0 14px;
     border: 0;
-    border-radius: 12px;
+    border-bottom: 1px solid #f6f7f8;
     background: #fff;
     text-align: left;
-    box-shadow: var(--shadow);
   }
-  .chatdbg aside .chatroom.on { outline: 2px solid #3ee0c5; }
-  .chatdbg aside b, .chatdbg aside small, .chatdbg aside em { display: block; }
-  .chatdbg aside small, .chatdbg aside em { color: var(--muted); font-style: normal; font-size: 12px; }
-  .chatdbg aside em { margin-top: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .chatdbg .dbbar button { width: auto; padding: 0 10px; font-size: 13px; }
-  .chatdbg article { margin: 0 0 8px; padding: 12px 14px; border-radius: 12px; background: #fff; box-shadow: var(--shadow); }
-  .chatdbg article header { display: flex; align-items: center; gap: 8px; color: #667; font-size: 12px; }
-  .chatdbg article header b { color: #222; font-size: 14px; }
-  .chatdbg article header em { margin-left: auto; font-style: normal; }
-  .chatdbg article p { margin: 6px 0 0; white-space: pre-wrap; line-height: 1.5; }
+  .im aside button.on { background: #f3f5f7; }
+  .im aside i {
+    flex: none;
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    background: #dfeeff;
+    color: #507cb8;
+    font-style: normal;
+    font-size: 18px;
+    font-weight: 600;
+    line-height: 44px;
+    text-align: center;
+  }
+  .im aside span { flex: 1; min-width: 0; }
+  .im aside b, .im aside em { display: block; }
+  .im aside b { color: #222; font-size: 15px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .im aside em { margin-top: 4px; color: #98a0aa; font-style: normal; font-size: 12px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .im aside small { flex: none; align-self: flex-start; margin-top: 16px; color: #c7c9cc; font-size: 11px; }
+  .im section { flex: 1; min-width: 0; display: flex; flex-direction: column; background: #ededed; }
+  .im section > header {
+    display: flex;
+    align-items: center;
+    height: 44px;
+    padding: 0 16px;
+    background: #fff;
+    border-bottom: 1px solid #f2f3f5;
+  }
+  .im section > header b { flex: 1; min-width: 0; color: #222; font-size: 16px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .im section > header button { border: 0; background: transparent; color: #98a0aa; font-size: 13px; }
+  .im-back { display: none; width: 32px; color: #222 !important; font-size: 28px !important; line-height: 32px; }
+  @media (max-width: 860px) {
+    .im { position: relative; }
+    .im aside { width: 100%; }
+    .im section { display: none; }
+    .im.open section { display: flex; position: absolute; inset: 0; z-index: 2; }
+    .im.open aside { visibility: hidden; }
+    .im.open .im-back { display: block; }
+  }
+  .im-notice {
+    position: relative;
+    flex: 0 0 36px;
+    height: 36px;
+    background: #fff6ca;
+    overflow: hidden;
+  }
+  .im-notice i {
+    position: absolute;
+    left: 11px;
+    top: 10px;
+    width: 16px;
+    height: 16px;
+    background: #ffb800;
+    -webkit-mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M3 10v4h4l5 4V6L7 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4.03v8.06A4.5 4.5 0 0 0 16.5 12z'/></svg>") center / contain no-repeat;
+    mask: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path fill='black' d='M3 10v4h4l5 4V6L7 10H3zm13.5 2a4.5 4.5 0 0 0-2.5-4.03v8.06A4.5 4.5 0 0 0 16.5 12z'/></svg>") center / contain no-repeat;
+  }
+  .im-notice span {
+    position: absolute;
+    left: 29px;
+    top: 10px;
+    color: #ffb800;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 17px;
+  }
+  .im-notice p {
+    position: absolute;
+    left: 84px;
+    right: 39px;
+    top: 10px;
+    margin: 0;
+    color: #333;
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 17px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    cursor: pointer;
+  }
+  .im-notice button {
+    position: absolute;
+    right: 12px;
+    top: 6px;
+    width: 24px;
+    height: 24px;
+    border: 0;
+    background: transparent;
+    color: #bfc1c4;
+    font-size: 18px;
+    line-height: 24px;
+  }
+  .im-log { flex: 1; min-height: 0; overflow: auto; padding: 15px 10px 16px; }
+  .im-empty { padding: 48px 16px; color: #9aa0a8; text-align: center; }
+  .im-log article { display: flex; margin: 0 0 8px; }
+  .im-log article > div {
+    display: block;
+    width: fit-content;
+    max-width: min(261px, 100%);
+    padding: 8px 10px 6px;
+    border-radius: 0 12px 12px 12px;
+    background: #fff;
+    box-sizing: border-box;
+  }
+  .im-log b { display: block; color: #7a8fb0; font-size: 10px; font-weight: 500; line-height: 14px; }
+  .im-log p { display: block; margin: 4px 0 0; color: #333; font-size: 14px; font-weight: 500; line-height: 20px; white-space: pre-wrap; word-break: break-word; }
+  .im-log em { display: block; margin: 2px 0 0; color: #c7c9cc; font-style: normal; font-size: 10px; line-height: 16px; text-align: right; }
+  .im-dialog {
+    position: fixed;
+    inset: 0;
+    z-index: 80;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(0, 0, 0, .35);
+  }
+  .im-dialog > div { width: 280px; padding: 18px 16px 12px; border-radius: 12px; background: #fff; }
+  .im-dialog b { display: block; margin-bottom: 10px; text-align: center; font-size: 16px; }
+  .im-dialog p { margin: 0 0 14px; max-height: 240px; overflow: auto; color: #333; font-size: 14px; line-height: 1.5; white-space: pre-wrap; }
+  .im-dialog button { display: block; width: 100%; height: 36px; border: 0; background: transparent; color: #20b7c8; font-size: 16px; }

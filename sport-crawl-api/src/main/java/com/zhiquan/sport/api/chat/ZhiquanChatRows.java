@@ -3,17 +3,20 @@ package com.zhiquan.sport.api.chat;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 import java.util.Map;
+import java.util.regex.Pattern;
 
 /** 把 zhiquan_chat 的一行收成调试页要用的字段。 */
 public final class ZhiquanChatRows {
 
     static final int MESSAGE_LIMIT = 100;
     private static final int CONTENT_LIMIT = 2000;
+    private static final int NOTICE_LIMIT = 1024;
+    private static final Pattern NOTICE_DISABLED = Pattern.compile("\"enabled\"\\s*:\\s*0");
 
     private ZhiquanChatRows() {
     }
 
-    public record GroupRow(long id, String gid, String name, String ownerName, long updatedAt, MessageRow latest) {
+    public record GroupRow(long id, String gid, String name, String ownerName, long updatedAt, String notice, MessageRow latest) {
     }
 
     public record MessageRow(long time, String nick, String sendUid, String type, String content) {
@@ -29,7 +32,27 @@ public final class ZhiquanChatRows {
             return null;
         }
         return new GroupRow(id, gid, text(item.get("name")), text(item.get("ownerName")),
-                millis(number(item.get("updatedAt"))), null);
+                millis(number(item.get("updatedAt"))), notice(item), null);
+    }
+
+    /**
+     * 原站群公告在 g_notice。enabled=0 时不展示。
+     */
+    static String notice(Map<String, AttributeValue> item) {
+        Map<String, AttributeValue> raw = map(item.get("raw"));
+        String notice = first(
+                text(item.get("notice")),
+                text(item.get("g_notice")),
+                text(raw.get("g_notice")),
+                text(raw.get("notice")));
+        if (notice.isEmpty()) {
+            return "";
+        }
+        String config = first(text(item.get("g_notice_show_config")), text(raw.get("g_notice_show_config")));
+        if (NOTICE_DISABLED.matcher(config).find()) {
+            return "";
+        }
+        return notice.length() <= NOTICE_LIMIT ? notice : notice.substring(0, NOTICE_LIMIT);
     }
 
     public static MessageRow message(Map<String, AttributeValue> item) {
@@ -92,6 +115,19 @@ public final class ZhiquanChatRows {
         } catch (NumberFormatException ignored) {
             return null;
         }
+    }
+
+    private static Map<String, AttributeValue> map(AttributeValue value) {
+        return value != null && value.hasM() ? value.m() : Map.of();
+    }
+
+    private static String first(String... values) {
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return value.trim();
+            }
+        }
+        return "";
     }
 
     private static String text(AttributeValue value) {

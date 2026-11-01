@@ -23,6 +23,21 @@ class ZhiquanChatRowsTest {
         assertEquals("0000000390", row.gid());
         assertEquals("红包收米群", row.name());
         assertEquals(1_730_000_000_000L, row.updatedAt());
+        assertEquals("", row.notice());
+
+        var announced = ZhiquanChatRows.group(Map.of(
+                "gid", AttributeValue.fromS("0000008448"),
+                "name", AttributeValue.fromS("戒赌吧"),
+                "raw", AttributeValue.fromM(Map.of(
+                        "g_notice", AttributeValue.fromS("不要通过微信转账"),
+                        "g_notice_show_config", AttributeValue.fromS("{\"enabled\":1,\"allowClose\":1}")))));
+        assertEquals("不要通过微信转账", announced.notice());
+
+        var hidden = ZhiquanChatRows.group(Map.of(
+                "gid", AttributeValue.fromS("0000008448"),
+                "g_notice", AttributeValue.fromS("不要通过微信转账"),
+                "g_notice_show_config", AttributeValue.fromS("{\"enabled\":0}")));
+        assertEquals("", hidden.notice());
     }
 
     @Test

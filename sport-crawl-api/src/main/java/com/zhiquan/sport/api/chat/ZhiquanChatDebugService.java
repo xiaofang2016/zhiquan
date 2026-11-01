@@ -32,7 +32,7 @@ public class ZhiquanChatDebugService {
         List<GroupRow> rows = new ArrayList<>();
         for (GroupRow group : loadGroups().values()) {
             MessageRow latest = latest(group.gid(), 1).stream().findFirst().orElse(null);
-            rows.add(new GroupRow(group.id(), group.gid(), group.name(), group.ownerName(), group.updatedAt(), latest));
+            rows.add(new GroupRow(group.id(), group.gid(), group.name(), group.ownerName(), group.updatedAt(), group.notice(), latest));
         }
         rows.sort(Comparator.comparingLong((GroupRow row) -> row.latest() == null ? 0 : row.latest().time()).reversed());
         return new GroupPage(aws.getZhiquanChatPartition(), rows);

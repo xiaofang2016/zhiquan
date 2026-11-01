@@ -1,44 +1,120 @@
 <template>
-  <div class="chatdbg">
+  <div class="im" :class="{ open: !!current }">
     <aside>
-      <div class="dbbar">
-        <b>群</b>
-        <span>{{ state.chatGroups.length }}</span>
-        <button type="button" @click="loadChatGroups">刷新</button>
-      </div>
-      <div v-if="state.chatLoading && !state.chatGroups.length" class="empty">正在读取群</div>
-      <div v-else-if="state.chatError && !state.chatGroups.length" class="empty">{{ state.chatError }}</div>
-      <div v-else-if="!state.chatGroups.length" class="empty">还没有群</div>
-      <button v-for="group in state.chatGroups" :key="group.id" class="chatroom" type="button" :class="{ on: state.chatGroupId === group.id }" @click="openChatGroup(group)">
-        <b>{{ group.name || group.gid }}</b>
-        <small>{{ group.latest ? chatTime(group.latest.time) : "没有消息" }}</small>
-        <em v-if="group.latest">{{ group.latest.nick }} {{ group.latest.content }}</em>
+      <div v-if="state.chatLoading && !state.chatGroups.length" class="im-empty">正在读取群</div>
+      <div v-else-if="state.chatError && !state.chatGroups.length" class="im-empty">{{ state.chatError }}</div>
+      <div v-else-if="!state.chatGroups.length" class="im-empty">还没有群</div>
+      <button v-for="group in state.chatGroups" :key="group.id" type="button" :class="{ on: state.chatGroupId === group.id }" @click="openChatGroup(group)">
+        <i>{{ mark(group.name) }}</i>
+        <span>
+          <b>{{ group.name || group.gid }}</b>
+          <em>{{ group.latest ? preview(group.latest) : "没有消息" }}</em>
+        </span>
+        <small v-if="group.latest">{{ chatTime(group.latest.time) }}</small>
       </button>
     </aside>
     <section>
-      <div class="dbbar">
+      <header>
+        <button v-if="current" class="im-back" type="button" aria-label="返回" @click="back">‹</button>
         <b>{{ current ? (current.name || current.gid) : "选择一个群" }}</b>
-        <span v-if="current">最新 {{ state.chatMessages.length }} 条</span>
+        <button type="button" @click="loadChatGroups">刷新</button>
+      </header>
+      <div v-if="noticeVisible" class="im-notice">
+        <i aria-hidden="true"></i>
+        <span>群公告：</span>
+        <p @click="noticeOpen = true">{{ current.notice }}</p>
+        <button type="button" aria-label="关闭公告" @click="hideNotice">×</button>
       </div>
-      <div v-if="!current" class="empty">点左边的群，看这个群最新的 100 条</div>
-      <div v-else-if="state.chatLoading && !state.chatMessages.length" class="empty">正在读取消息</div>
-      <div v-else-if="state.chatError && !state.chatMessages.length" class="empty">{{ state.chatError }}</div>
-      <div v-else-if="!state.chatMessages.length" class="empty">这个群还没有消息</div>
-      <article v-for="(message, index) in state.chatMessages" :key="message.time + '-' + index">
-        <header>
-          <b>{{ message.nick || message.sendUid || "用户" }}</b>
-          <span v-if="message.type">{{ message.type }}</span>
-          <em>{{ chatTime(message.time) }}</em>
-        </header>
-        <p>{{ message.content }}</p>
-      </article>
+      <div class="im-log">
+        <div v-if="!current" class="im-empty">点左边的群看聊天</div>
+        <div v-else-if="state.chatLoading && !state.chatMessages.length" class="im-empty">正在读取消息</div>
+        <div v-else-if="state.chatError && !state.chatMessages.length" class="im-empty">{{ state.chatError }}</div>
+        <div v-else-if="!messages.length" class="im-empty">这个群还没有消息</div>
+        <article v-for="(message, index) in messages" :key="message.time + '-' + index">
+          <div>
+            <b>{{ message.nick || message.sendUid || "用户" }}</b>
+            <p>{{ plain(message.content) }}</p>
+            <em>{{ chatTime(message.time) }}</em>
+          </div>
+        </article>
+      </div>
     </section>
+    <div v-if="noticeOpen && current" class="im-dialog" @click.self="noticeOpen = false">
+      <div>
+        <b>群公告</b>
+        <p>{{ current.notice }}</p>
+        <button type="button" @click="noticeOpen = false">确定</button>
+      </div>
+    </div>
   </div>
 </template>
 <script setup>
-import { computed } from "vue";
+import { computed, ref, watch } from "vue";
 import { state } from "../state.js";
 import { chatTime, loadChatGroups, openChatGroup } from "../lib/chat.js";
 
 const current = computed(() => state.chatGroups.find((group) => group.id === state.chatGroupId) || null);
+const noticeOpen = ref(false);
+const noticeTick = ref(0);
+
+const messages = computed(() => state.chatMessages.filter((message) => !claimNotice(message.content)));
+const noticeVisible = computed(() => {
+  noticeTick.value;
+  const group = current.value;
+  if (!group || !group.notice) return false;
+  const until = Number(localStorage.getItem(noticeKey(group)) || 0);
+  return !until || Date.now() >= until;
+});
+
+watch(() => current.value && current.value.id, () => {
+  noticeOpen.value = false;
+});
+
+function mark(name) {
+  const letter = [...String(name || "")].find((ch) => /[\u4e00-\u9fffA-Za-z0-9]/.test(ch));
+  return letter || "群";
+}
+
+function plain(content) {
+  let text = String(content || "").trim();
+  if (text.startsWith("{")) {
+    try {
+      const data = JSON.parse(text);
+      if (data && typeof data.text === "string") text = data.text.trim();
+    } catch (error) {
+      /* 普通文本 */
+    }
+  }
+  const mini = text.match(/^\[视频小程序\]\s*([^,，]+)/);
+  if (mini) return mini[1].trim();
+  return text;
+}
+
+function preview(latest) {
+  const text = plain(latest.content).replace(/\s+/g, " ").trim();
+  if (!text || claimNotice(text)) return " ";
+  return latest.nick ? latest.nick + " " + text : text;
+}
+
+function back() {
+  state.chatGroupId = 0;
+  state.chatMessages = [];
+}
+
+function noticeKey(group) {
+  return "kzb-notice:" + group.id + ":" + group.notice;
+}
+
+function hideNotice() {
+  const group = current.value;
+  if (!group || !group.notice) return;
+  localStorage.setItem(noticeKey(group), String(Date.now() + 24 * 60 * 60 * 1000));
+  noticeTick.value += 1;
+}
+
+function claimNotice(content) {
+  const text = String(content || "").trim();
+  if (!text || text.includes("人已领取")) return false;
+  return text === "领取了红包" || text === "已领取了红包" || text.endsWith("已领取了红包");
+}
 </script>

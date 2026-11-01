@@ -34,7 +34,7 @@
         </button>
       </template>
     </aside>
-    <main :class="state.detail ? 'main detail-main' : 'main'">
+    <main :class="mainClass">
       <DetailPage v-if="state.detail && state.tab === 'match'" />
       <MatchPage v-else-if="state.tab === 'match'" />
       <LivePage v-else-if="state.tab === 'live'" />
@@ -131,6 +131,11 @@ const tabs = [
 ].map(([id, label, icon]) => ({ id, label, icon }));
 
 const showSide = computed(() => state.tab !== "live" && state.tab !== "chat" && !(state.detail && state.tab === "match"));
+const mainClass = computed(() => {
+  if (state.detail && state.tab === "match") return "main detail-main";
+  if (state.tab === "chat") return "main main-chat";
+  return "main";
+});
 const fixed = computed(() => [
   ["hot", "热门", state.hot && !state.resultOnly],
   ["football", "足球", state.type === 1 && !state.cid && !state.hot && !state.resultOnly],
