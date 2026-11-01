@@ -1,5 +1,5 @@
 import { get } from "./api.js";
-import { state, toast } from "../state.js";
+import { CHAT_WS, state, toast } from "../state.js";
 
 export function chatTime(value) {
   const date = new Date(Number(value));
@@ -41,6 +41,7 @@ export async function loadChatGroups() {
 
 export async function openChatGroup(group) {
   if (!group) return;
+  const epoch = ++openEpoch;
   state.chatGroupId = group.id;
   state.chatMessages = [];
   state.chatOlder = "";
@@ -49,18 +50,20 @@ export async function openChatGroup(group) {
   state.chatError = "";
   try {
     const data = await get("/prod-api/chat/groups/" + group.id + "/messages");
-    if (state.chatGroupId === group.id) {
-      state.chatMessages = (data && data.messages) || [];
-      state.chatOlder = (data && data.older) || "";
-      if (data && data.imageBase) state.chatImageBase = data.imageBase;
-    }
+    if (state.chatGroupId !== group.id || epoch !== openEpoch) return;
+    const incoming = (data && data.messages) || [];
+    const seen = new Set(incoming.map((message) => message.id).filter(Boolean));
+    const raced = state.chatMessages.filter((message) => message.id && !seen.has(message.id));
+    state.chatMessages = incoming.concat(raced);
+    state.chatOlder = (data && data.older) || "";
+    if (data && data.imageBase) state.chatImageBase = data.imageBase;
   } catch (error) {
     if (state.chatGroupId === group.id) {
       state.chatError = error.message || "这个群的消息没有拿到";
       toast(state.chatError);
     }
   } finally {
-    if (state.chatGroupId === group.id) state.chatLoading = false;
+    if (state.chatGroupId === group.id && epoch === openEpoch) state.chatLoading = false;
   }
 }
 
@@ -84,4 +87,77 @@ export async function loadOlderMessages() {
   } finally {
     if (state.chatGroupId === groupId) state.chatPaging = false;
   }
+}
+
+let openEpoch = 0;
+let socket = null;
+let liveTimer = 0;
+let liveStopped = true;
+let liveRetry = 1000;
+
+export function startChatLive() {
+  liveStopped = false;
+  connectChatLive();
+}
+
+export function stopChatLive() {
+  liveStopped = true;
+  clearInterval(liveTimer);
+  liveTimer = 0;
+  if (!socket) return;
+  socket.onclose = null;
+  socket.close();
+  socket = null;
+}
+
+export function subscribeChatLive() {
+  sendLive({ action: "subscribe", groupId: state.chatGroupId || 0 });
+}
+
+function connectChatLive() {
+  if (liveStopped || !CHAT_WS || (socket && socket.readyState < 2)) return;
+  const ws = new WebSocket(CHAT_WS);
+  socket = ws;
+  ws.onopen = () => {
+    liveRetry = 1000;
+    subscribeChatLive();
+    clearInterval(liveTimer);
+    liveTimer = setInterval(() => sendLive({ action: "ping" }), 240000);
+  };
+  ws.onmessage = (event) => {
+    let body;
+    try {
+      body = JSON.parse(event.data);
+    } catch {
+      return;
+    }
+    if (body && body.message) acceptLive(body.groupId, body.message);
+  };
+  ws.onclose = () => {
+    clearInterval(liveTimer);
+    liveTimer = 0;
+    if (socket === ws) socket = null;
+    if (liveStopped) return;
+    setTimeout(connectChatLive, liveRetry);
+    liveRetry = Math.min(liveRetry * 2, 30000);
+  };
+}
+
+function sendLive(body) {
+  if (!socket || socket.readyState !== 1) return;
+  socket.send(JSON.stringify(body));
+}
+
+function acceptLive(groupId, message) {
+  const id = Number(groupId);
+  if (!id || !message || !message.id) return;
+  const group = state.chatGroups.find((item) => item.id === id);
+  if (group && (!group.latest || Number(message.time) >= Number(group.latest.time))) {
+    group.latest = message;
+    state.chatGroups.sort((a, b) => ((b.latest && b.latest.time) || 0) - ((a.latest && a.latest.time) || 0));
+  }
+  if (id !== state.chatGroupId) return;
+  if (state.chatMessages.some((item) => item.id === message.id)) return;
+  state.chatMessages.push(message);
+  state.chatLiveSeq += 1;
 }

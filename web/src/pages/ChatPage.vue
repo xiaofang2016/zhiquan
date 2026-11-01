@@ -87,9 +87,9 @@
   </div>
 </template>
 <script setup>
-import { computed, nextTick, reactive, ref, watch } from "vue";
+import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { state } from "../state.js";
-import { chatTime, loadChatGroups, loadOlderMessages, openChatGroup } from "../lib/chat.js";
+import { chatTime, loadChatGroups, loadOlderMessages, openChatGroup, startChatLive, stopChatLive, subscribeChatLive } from "../lib/chat.js";
 import { groupAvatar, present, previewText } from "../lib/chatView.js";
 import RichText from "../components/RichText.vue";
 
@@ -119,6 +119,18 @@ watch(() => current.value && current.value.id, () => {
 watch(() => state.chatLoading, (loading) => {
   if (!loading && state.chatGroupId) nextTick(stickBottom);
 });
+
+watch(() => state.chatGroupId, () => subscribeChatLive());
+
+watch(() => state.chatLiveSeq, (seq) => {
+  if (!seq) return;
+  const el = logEl.value;
+  if (!el || el.scrollHeight - el.scrollTop - el.clientHeight > 120) return;
+  nextTick(stickBottom);
+});
+
+onMounted(startChatLive);
+onUnmounted(stopChatLive);
 
 async function onLogScroll(event) {
   const el = event.target;

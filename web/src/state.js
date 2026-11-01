@@ -1,6 +1,7 @@
 import { reactive } from "vue";
 
 export const API = "https://dgtplaoir00la.cloudfront.net";
+export const CHAT_WS = "wss://ix1ui9ljn6.execute-api.ap-northeast-1.amazonaws.com/prod";
 export const SPORTS_API = "https://sports-api.ued2sport.com";
 export const DB_PAGE_SIZE = 20;
 export const WEEK = ["星期日", "星期一", "星期二", "星期三", "星期四", "星期五", "星期六"];
@@ -51,6 +52,7 @@ export const state = reactive({
   chatPaging: false,
   chatLoading: false,
   chatError: "",
+  chatLiveSeq: 0,
   detail: null,
   detailTab: "live",
   detailLoading: false,
