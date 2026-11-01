@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { imageSrc, poolDigits, present, previewText, textParts } from "./chatView.js";
+import { groupAvatar, imageSrc, poolDigits, present, previewText, textParts } from "./chatView.js";
 
 test("red packet card uses the rain title and padded pool", () => {
   const view = present({
@@ -54,6 +54,15 @@ test("revoke json becomes a system line and faces split out of text", () => {
   const parts = textParts("你好[/发呆]呀[/不是表情]");
   assert.deepEqual(parts.map((part) => part.kind === "face" ? part.src : part.text), ["你好", "/face/1f633.png", "呀[/不是表情]"]);
   assert.equal(previewText({ type: "0", content: "[/发呆]" }), "[/发呆]");
+});
+
+test("group avatar uses the head path", () => {
+  assert.equal(
+    groupAvatar("01c47016f1acca765c4ef6312ebcf104", "https://imfile.dtthsp.com/"),
+    "https://imfile.dtthsp.com/head/01c47016f1acca765c4ef6312ebcf104?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp"
+  );
+  assert.equal(groupAvatar("https://cdn.example.com/a.jpg", ""), "https://cdn.example.com/a.jpg");
+  assert.equal(groupAvatar("", "https://imfile.dtthsp.com"), "");
 });
 
 test("mention and preview do not dump raw json", () => {

@@ -38,10 +38,10 @@ public class ZhiquanChatDebugService {
         List<GroupRow> rows = new ArrayList<>();
         for (GroupRow group : loadGroups().values()) {
             MessageRow latest = latest(group.gid(), 1).stream().findFirst().orElse(null);
-            rows.add(new GroupRow(group.id(), group.gid(), group.name(), group.ownerName(), group.updatedAt(), group.notice(), latest));
+            rows.add(new GroupRow(group.id(), group.gid(), group.name(), group.ownerName(), group.updatedAt(), group.notice(), group.avatar(), latest));
         }
         rows.sort(Comparator.comparingLong((GroupRow row) -> row.latest() == null ? 0 : row.latest().time()).reversed());
-        return new GroupPage(aws.getZhiquanChatPartition(), rows);
+        return new GroupPage(aws.getZhiquanChatPartition(), rows, imageBase());
     }
 
     public MessagePage messages(long groupId) {
@@ -158,7 +158,7 @@ public class ZhiquanChatDebugService {
         return "https://anobs9bb.cyou";
     }
 
-    public record GroupPage(String partition, List<GroupRow> groups) {
+    public record GroupPage(String partition, List<GroupRow> groups, String imageBase) {
     }
 
     public record MessagePage(long id, String gid, String name, List<MessageRow> messages, String imageBase) {

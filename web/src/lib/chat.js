@@ -22,6 +22,7 @@ export async function loadChatGroups() {
     const data = await get("/prod-api/chat/groups");
     state.chatPartition = (data && data.partition) || "";
     state.chatGroups = (data && data.groups) || [];
+    if (data && data.imageBase) state.chatImageBase = data.imageBase;
     const current = state.chatGroups.find((group) => group.id === state.chatGroupId);
     if (!current) {
       state.chatGroupId = 0;

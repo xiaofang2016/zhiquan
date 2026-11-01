@@ -40,6 +40,12 @@ class ZhiquanChatRowsTest {
                 "g_notice", AttributeValue.fromS("不要通过微信转账"),
                 "g_notice_show_config", AttributeValue.fromS("{\"enabled\":0}")));
         assertEquals("", hidden.notice());
+
+        var avatar = ZhiquanChatRows.group(Map.of(
+                "gid", AttributeValue.fromS("0000008447"),
+                "raw", AttributeValue.fromM(Map.of(
+                        "group_avatar_file_name", AttributeValue.fromS("01c47016f1acca765c4ef6312ebcf104")))));
+        assertEquals("01c47016f1acca765c4ef6312ebcf104", avatar.avatar());
     }
 
     @Test

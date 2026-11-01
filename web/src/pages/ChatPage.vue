@@ -5,7 +5,10 @@
       <div v-else-if="state.chatError && !state.chatGroups.length" class="im-empty">{{ state.chatError }}</div>
       <div v-else-if="!state.chatGroups.length" class="im-empty">还没有群</div>
       <button v-for="group in state.chatGroups" :key="group.id" type="button" :class="{ on: state.chatGroupId === group.id }" @click="openChatGroup(group)">
-        <i>{{ mark(group.name) }}</i>
+        <i>
+          <img v-if="showAvatar(group)" :src="groupAvatar(group.avatar, state.chatImageBase)" alt="" @error="hideAvatar(group.id)" />
+          <template v-else>{{ mark(group.name) }}</template>
+        </i>
         <span>
           <b>{{ group.name || group.gid }}</b>
           <em>{{ group.latest ? preview(group.latest) : "没有消息" }}</em>
@@ -70,13 +73,14 @@
   </div>
 </template>
 <script setup>
-import { computed, ref, watch } from "vue";
+import { computed, reactive, ref, watch } from "vue";
 import { state } from "../state.js";
 import { chatTime, loadChatGroups, openChatGroup } from "../lib/chat.js";
-import { present, previewText } from "../lib/chatView.js";
+import { groupAvatar, present, previewText } from "../lib/chatView.js";
 import RichText from "../components/RichText.vue";
 
 const current = computed(() => state.chatGroups.find((group) => group.id === state.chatGroupId) || null);
+const hiddenAvatars = reactive({});
 const noticeOpen = ref(false);
 const noticeTick = ref(0);
 
@@ -98,6 +102,14 @@ watch(() => current.value && current.value.id, () => {
 function markMiss(event) {
   const shot = event.target && event.target.closest(".shot");
   if (shot) shot.classList.add("miss");
+}
+
+function showAvatar(group) {
+  return !!(group && group.avatar && !hiddenAvatars[group.id]);
+}
+
+function hideAvatar(id) {
+  hiddenAvatars[id] = true;
 }
 
 function mark(name) {

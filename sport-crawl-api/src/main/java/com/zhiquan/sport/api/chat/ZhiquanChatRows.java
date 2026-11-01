@@ -16,7 +16,7 @@ public final class ZhiquanChatRows {
     private ZhiquanChatRows() {
     }
 
-    public record GroupRow(long id, String gid, String name, String ownerName, long updatedAt, String notice, MessageRow latest) {
+    public record GroupRow(long id, String gid, String name, String ownerName, long updatedAt, String notice, String avatar, MessageRow latest) {
     }
 
     public record MessageRow(long time, String nick, String sendUid, String type, String content) {
@@ -32,7 +32,7 @@ public final class ZhiquanChatRows {
             return null;
         }
         return new GroupRow(id, gid, text(item.get("name")), text(item.get("ownerName")),
-                millis(number(item.get("updatedAt"))), notice(item), null);
+                millis(number(item.get("updatedAt"))), notice(item), avatar(item), null);
     }
 
     /**
@@ -53,6 +53,16 @@ public final class ZhiquanChatRows {
             return "";
         }
         return notice.length() <= NOTICE_LIMIT ? notice : notice.substring(0, NOTICE_LIMIT);
+    }
+
+    /** 原站群头像文件名在 group_avatar_file_name，偶发直接给 headUrl。 */
+    static String avatar(Map<String, AttributeValue> item) {
+        Map<String, AttributeValue> raw = map(item.get("raw"));
+        return first(
+                text(item.get("group_avatar_file_name")),
+                text(raw.get("group_avatar_file_name")),
+                text(item.get("headUrl")),
+                text(raw.get("headUrl")));
     }
 
     public static MessageRow message(Map<String, AttributeValue> item) {

@@ -67,6 +67,15 @@ export function poolDigits(raw) {
   return cut.padStart(6, "0");
 }
 
+export function groupAvatar(file, imageBase) {
+  const name = String(file || "").trim();
+  if (!name) return "";
+  if (/^https?:\/\//i.test(name)) return name;
+  const host = String(imageBase || FALLBACK_IMAGE_BASE).replace(/\/+$/, "");
+  if (name.includes("?")) return host + "/head/" + name;
+  return host + "/head/" + name + "?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp";
+}
+
 export function imageSrc(file, imageBase) {
   const host = String(imageBase || FALLBACK_IMAGE_BASE).replace(/\/+$/, "");
   let name = String((file && (file.fileMd5 || file.fileName)) || "").trim();
