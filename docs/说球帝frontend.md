@@ -6,6 +6,7 @@
 |---|---|
 | 比赛、即时比分、社球帝、登录、音浪、红包、提现、提示音 | `https://dgtplaoir00la.cloudfront.net` |
 | 资料库 | `https://sports-api.ued2sport.com` |
+| 职圈群聊天 | `https://dgtplaoir00la.cloudfront.net`，实时用 `wss://ix1ui9ljn6.execute-api.ap-northeast-1.amazonaws.com/prod` |
 | 播放页聊天 | `https://chat.kzbzcq.com/chat` |
 | 播放页直播、指数、数据、预测 | `https://live.kzbzcq.com/live`、`https://index.kzbzcq.com/index`、`https://data.kzbzcq.com/data`、`https://tip.kzbzcq.com/tip` |
 | 动画 | `https://player.kzbzcq.com/anim` |
@@ -341,6 +342,27 @@ POST /prod-api/community/posts/{postId}/redpacket
 成功时 `data` 仍是这篇帖子，`redPacket.mine` 有值。每天那份 588 元红包是另一条接口，和帖子红包互不相干。
 
 职圈群里发出去的红包也记在这份余额里。流水标题是「发红包」「群红包」「红包退回」。
+
+## 职圈群聊天
+
+站点「聊天」这一屏，看的是职圈群，不是比赛播放页的聊天室。只读，不登录也能看。点开红包只在本页展示，不领取，不把抓取账号的钱从奖池里划走。
+
+列表是 `GET /prod-api/chat/groups`。每群有 `id`、`gid`、`name`、`ownerName`、`notice`、`avatar`、`latest`。`avatar` 是文件名，拼在 `imageBase` 上：`{imageBase}/head/{文件名}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。`imageBase` 为空，或是打不开的 `oss.imnono.net` 时，用 `https://imfile.dtthsp.com`。没有文件名，或图片加载失败，显示群名首字。公告 `enabled` 为 `0` 时不展示。关掉公告后 24 小时内不再出现，记在 `kzb-notice:{群id}:{公告}`。
+
+点进群取 `GET /prod-api/chat/groups/{id}/messages`，最新 100 条，停在底部。往上滑到顶再请求 `?before={上一条的 id}`，`id` 是库里的排序键。新的一页插到上面，滚动位置不动。`older` 为空就到头了。单条「谁领了红包」不显示；「等N/M人已领取了红包」留下。
+
+消息按 `type` 画：
+
+| `type` | 页面 |
+|---|---|
+| `0` 文字、`11` 回复、`12` @ | 正文。`[/发呆]` 这类原站表情画成 `/face/` 里的图，认不出的括号仍是文字 |
+| `1`、`13` | 图片。地址 `{imageBase}/message/{文件名}?imageView2/2/w/640/h/640&imageMogr2/format/webp` |
+| `10` | 红包卡片。待领取先出封面，点「开」看奖池和剩余个数；已领取、已领完直接看详情。奖池取 `dbAmountPool` 的数字，去掉末两位，补成 6 位 |
+| `91` 或撤回 JSON | 居中灰字。撤回别人的是 `{昵称}撤回了"{对方}"的一条消息`，撤回自己的是 `"{昵称}" 撤回了一条消息` |
+
+打开聊天页就连 WebSocket，发送 `{ "action": "subscribe", "groupId": "all" }`。每 4 分钟发 `{ "action": "ping" }`。服务端推来的 `message` 按 `id` 去重：当前群接在底部，人已经在底部才跟着往下滚；别的群只更新列表上的最后一条。`group` 是新抓到的群，列表里没有就加进去。
+
+未读数只在本机，键名 `kzb-chat-unread`。当前没打开的群每来一条加 1，没有上限，数字标在头像右上角。点进该群后清掉。刷新页面后数字还在，直到点开。
 
 ## 播放
 

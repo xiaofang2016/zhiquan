@@ -123,5 +123,9 @@ CodeDeploy 按 `appspec.yml` 盖到 `/var/local/sport-crawl`，钩子以 root �
 | `web/` 页面和三个 Java 包 | 推 `main`。CodeBuild 更新 Lambda `sport-crawl-web`，`scripts/start.sh` 把 `site/web/` 拷进站点目录 |
 | `score-lambda`、`chat-lambda`、`detail-lambda` | 各自打 zip，更新对应函数。比分循环在新代码起来之后的下一轮自我调用里换上 |
 | 动画桥 | 改 `3.112.56.84` 上的 `anim-bridge`，CloudFront 仍指这台机器的 80 端口 |
+| 职圈群抓取 | `3.112.56.84` 上的 `zhiquan-chat-scraper`，代码在 `/var/local/zhiquan-chat-scraper/bin/scraper.py`。改完要单独拷上去再重启，不随 `main` 流水线 |
+| 职圈群实时 | API Gateway WebSocket `ix1ui9ljn6`，函数 `sport-crawl-chat-live`。页面订阅和推送逻辑在仓库 `chat-live/`。改函数要单独更新代码，推 `main` 只换页面和 Java |
+
+职圈群存在 DynamoDB `zhiquan_chat`，分区 `apk#5739998`。抓取每轮重读账号已经加入的群；新群写入后，由函数推给正在打开聊天页的浏览器。图片域名优先用原站返回的地址，`oss.imnono.net` 不用，改用 `https://imfile.dtthsp.com`。
 
 读接口挂在内网 `172.31.5.227:8892`，给网关当源站。抓取、资料库、动画桥只听本机，CloudFront 和网关够不着它们的管理口。

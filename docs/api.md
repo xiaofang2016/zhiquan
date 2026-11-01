@@ -17,7 +17,8 @@
 | `GET /prod-api/match/list/new2` | 即时比分 |
 | `GET /prod-api/database/`、`/prod-api/team/`、`/prod-api/player/` | 资料库 |
 | 其余 `GET /prod-api/`，例如联赛、日期、`/prod-api/match/list/new` | 比赛 |
-| `GET https://chat.kzbzcq.com/chat` | 聊天室 |
+| `GET /prod-api/chat/groups`、`/prod-api/chat/groups/{id}/messages` | 职圈群聊天，只读 |
+| `GET https://chat.kzbzcq.com/chat` | 播放页聊天室 |
 | `GET https://live.kzbzcq.com/live` | 直播 |
 | `GET https://index.kzbzcq.com/index` | 指数 |
 | `GET https://data.kzbzcq.com/data` | 数据 |
@@ -700,6 +701,63 @@ CBA（`id=3`、`type=2`）：
 | `/prod-api/player/` 开头 | 球员页 |
 
 参数照原站传。`type` 或 `sportsType` 要和球队、球员所在的运动一致。
+
+## 职圈群聊天
+
+站点「聊天」读职圈群，走上面的网关，不是播放页聊天室。只读，不需要登录。响应 `cache-control: no-store`。
+
+```text
+GET /prod-api/chat/groups
+GET /prod-api/chat/groups/{groupId}/messages
+GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
+```
+
+`groupId` 是 1 到 18 位数字。`before` 必须是这个群自己的消息排序键，形如 `group#{gid}#msg#...`，否则当作从最新一页开始。
+
+群列表 `data`：
+
+| 字段 | 说明 |
+|---|---|
+| `partition` | 库里的分区，例如 `apk#5739998` |
+| `imageBase` | 图片根地址。空或 `oss.imnono.net` 时页面改用 `https://imfile.dtthsp.com` |
+| `groups` | 按最新一条消息的时间从新到旧 |
+
+每个群有 `id`、`gid`、`name`、`ownerName`、`updatedAt`、`notice`、`avatar`、`latest`。`avatar` 是群头像文件名，没有则为空。`notice` 在原站 `enabled` 为 `0` 时是空字符串。`latest` 没有消息时为 `null`，否则和下面的消息行一样。
+
+消息页 `data` 有 `id`、`gid`、`name`、`imageBase`、`messages`、`older`。`messages` 从旧到新，最多 100 条。扫到头时 `older` 为空；否则把 `older` 当作下一次的 `before`。单条内容正好是「领取了红包」「已领取了红包」或以此结尾的不返回。「等12/200人已领取了红包」这种汇总会返回。
+
+一条消息：
+
+| 字段 | 说明 |
+|---|---|
+| `time` | 毫秒 |
+| `nick` | 发送人昵称 |
+| `sendUid` | 发送人编号 |
+| `type` | 原站 `msgType`。`0` 文字，`1` 单图文件名，`10` 红包 JSON，`11` 回复，`12` @，`13` 多图，`90` 系统提示，`91` 撤回 |
+| `content` | 原文，最长 2000 字 |
+| `id` | 排序键，翻页和去重都用它 |
+
+群头像：`{imageBase}/head/{avatar}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。消息图片：`{imageBase}/message/{fileMd5}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。文件名已经带 `?` 或本身是 `http` 地址时不再追加参数。
+
+红包 `content` 是 JSON。页面用 `description` 做标题，去掉 🧧。`status` 为 `1` 待领取、`2` 已领取、`3` 已领完。奖池把 `dbAmountPool` 的数字去掉末两位再补齐 6 位。这一页不调用领取接口。
+
+撤回 `content` 含 `uid`、`nickName`、`beUid`、`beNickName`、`fpForMessage`。`beUid` 和发送人不同，显示 `{nickName}撤回了"{beNickName}"的一条消息`；否则 `"{nickName}" 撤回了一条消息`。
+
+实时不走这条 HTTP。浏览器连接：
+
+```text
+wss://ix1ui9ljn6.execute-api.ap-northeast-1.amazonaws.com/prod
+```
+
+连上后发送 `{ "action": "subscribe", "groupId": "all" }`。保活发送 `{ "action": "ping" }`。新消息推送：
+
+```json
+{ "groupId": 8447, "message": { "time": 0, "nick": "", "sendUid": "", "type": "0", "content": "", "id": "" } }
+```
+
+新出现的群推送 `{ "group": { "id": 0, "gid": "", "name": "", "ownerName": "", "notice": "", "avatar": "" } }`。未读数不在接口里，由页面按推送在本地累加，点开该群后清掉，没有上限。
+
+数据在 DynamoDB `zhiquan_chat`。抓取进程把账号已加入的群和消息写进去，新群下一轮就会出现。账号没加入的群不会出现。
 
 ## 聊天室
 
