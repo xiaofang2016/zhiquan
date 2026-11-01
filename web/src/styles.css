@@ -1016,7 +1016,20 @@
   .im-log article.revoke { justify-content: center; }
   .im-log article.revoke > p { max-width: 86%; margin: 2px 0 6px; padding: 3px 12px; border-radius: 12px; background: #eaecf0; color: #979ca6; font-size: 13px; font-weight: 400; line-height: 18px; text-align: center; }
   .im-log .face { width: 22px; height: 22px; margin: 0 1px; vertical-align: -5px; }
-  .im-pack { margin-top: 4px; border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #ffb24a 0%, #ff8d1f 46%, #ff7a12 46%, #ff9a32 100%); color: #fff; }
+  button.im-pack { display: block; width: 100%; margin-top: 4px; padding: 0; border: 0; font: inherit; text-align: left; cursor: pointer; }
+  .im-pack { border-radius: 8px; overflow: hidden; background: linear-gradient(180deg, #ffb24a 0%, #ff8d1f 46%, #ff7a12 46%, #ff9a32 100%); color: #fff; }
+  .im-red { position: fixed; inset: 0; z-index: 90; display: flex; flex-direction: column; align-items: center; justify-content: center; background: rgba(0, 0, 0, .55); }
+  .im-red-card { display: flex; flex-direction: column; align-items: center; width: 280px; height: 420px; padding: 78px 18px 28px; box-sizing: border-box; border-radius: 12px; background: linear-gradient(180deg, #f7c56b 0 92px, #e23b32 92px, #c81f24 100%); color: #ffe8b4; text-align: center; }
+  .im-red-card.detail { background: linear-gradient(180deg, #fff6e4 0 210px, #e23b32 210px, #c81f24 100%); }
+  .im-red-card b { color: #ffe8b4; font-size: 14px; font-weight: 500; line-height: 20px; }
+  .im-red-card.detail b { color: #b88c52; }
+  .im-red-card p { margin: 16px 0 0; color: #ffe8b4; font-size: 22px; font-weight: 700; line-height: 30px; }
+  .im-red-open { width: 90px; height: 90px; margin-top: auto; border: 0; border-radius: 50%; background: #f6d48a; color: #c45a12; font-size: 36px; font-weight: 700; cursor: pointer; }
+  .im-red-detail { display: flex; flex-direction: column; align-items: center; margin-top: 18px; color: #b88c52; }
+  .im-red-detail strong { color: #b88c52; font-size: 42px; font-weight: 700; line-height: 48px; letter-spacing: 1px; }
+  .im-red-detail span { margin-top: 2px; font-size: 13px; }
+  .im-red-detail em { margin-top: 120px; color: #ffe8b4; font-style: normal; font-size: 14px; }
+  .im-red-close { width: 40px; height: 40px; margin-top: 28px; border: 1px solid rgba(255, 255, 255, .8); border-radius: 50%; background: transparent; color: #fff; font-size: 26px; line-height: 36px; cursor: pointer; }
   .im-pack.done { filter: grayscale(.35); }
   .im-pack-top { display: flex; gap: 10px; align-items: center; padding: 12px 12px 8px; }
   .im-pack-top i { flex: none; width: 36px; height: 36px; border-radius: 50%; background: #ffe08a; color: #f08a12; font-style: normal; font-weight: 700; line-height: 36px; text-align: center; }

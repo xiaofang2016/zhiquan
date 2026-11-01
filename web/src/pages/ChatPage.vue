@@ -45,7 +45,7 @@
               </a>
               <p v-if="message.view.text"><RichText :parts="message.view.parts" :text="message.view.text" /></p>
             </template>
-            <div v-else-if="message.view.kind === 'pack'" class="im-pack" :class="{ done: message.view.done }">
+            <button v-else-if="message.view.kind === 'pack'" type="button" class="im-pack" :class="{ done: message.view.done }" @click="openRed(message)">
               <div class="im-pack-top">
                 <i>¥</i>
                 <span>
@@ -57,13 +57,26 @@
                 <span>职圈3.0红包</span>
                 <em>奖池 <strong>{{ message.view.pool }}</strong></em>
               </div>
-            </div>
+            </button>
             <p v-else><RichText :parts="message.view.parts" :text="message.view.text" /></p>
             <em v-if="message.view.kind !== 'image'">{{ chatTime(message.time) }}</em>
           </div>
         </article>
       </div>
     </section>
+    <div v-if="red" class="im-red" @click.self="red = null">
+      <div class="im-red-card" :class="red.face">
+        <b>{{ (red.from || "用户") + "的红包" }}</b>
+        <p>{{ red.title }}</p>
+        <button v-if="red.face === 'cover'" class="im-red-open" type="button" @click="red.face = 'detail'">开</button>
+        <div v-else class="im-red-detail">
+          <strong>{{ red.pool }}</strong>
+          <span>奖池</span>
+          <em>{{ red.status }}<template v-if="red.count"> · {{ red.count }}</template></em>
+        </div>
+      </div>
+      <button type="button" class="im-red-close" aria-label="关闭" @click="red = null">×</button>
+    </div>
     <div v-if="noticeOpen && current" class="im-dialog" @click.self="noticeOpen = false">
       <div>
         <b>群公告</b>
@@ -82,6 +95,7 @@ import RichText from "../components/RichText.vue";
 
 const current = computed(() => state.chatGroups.find((group) => group.id === state.chatGroupId) || null);
 const logEl = ref(null);
+const red = ref(null);
 const hiddenAvatars = reactive({});
 let pulling = false;
 const noticeOpen = ref(false);
@@ -133,6 +147,18 @@ function stickBottom() {
 function markMiss(event) {
   const shot = event.target && event.target.closest(".shot");
   if (shot) shot.classList.add("miss");
+}
+
+function openRed(message) {
+  const view = message.view;
+  red.value = {
+    from: view.from || message.nick || "用户",
+    title: view.title,
+    status: view.status,
+    pool: view.pool,
+    count: view.count,
+    face: view.done ? "detail" : "cover"
+  };
 }
 
 function showAvatar(group) {

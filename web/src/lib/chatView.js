@@ -13,9 +13,11 @@ export function present(message, imageBase) {
     return {
       kind: "pack",
       title,
+      from: String(data.nickname || data.nickName || (message && message.nick) || "").trim(),
       status: status === "2" ? "已领取" : status === "3" ? "已领完" : "待领取",
       done: status === "2" || status === "3",
-      pool: poolDigits(data.dbAmountPool)
+      pool: poolDigits(data.dbAmountPool),
+      count: packCount(data)
     };
   }
   if (type === "13" || (data && Array.isArray(data.files) && data.files.length)) {
@@ -59,6 +61,14 @@ export function textParts(text) {
   if (!parts.length) return [{ kind: "text", text: value }];
   if (last < value.length) parts.push({ kind: "text", text: value.slice(last) });
   return parts;
+}
+
+function packCount(data) {
+  const num = String(data.num || "").replace(/\D/g, "");
+  const remain = String(data.remainNum == null ? "" : data.remainNum).replace(/\D/g, "");
+  if (num && remain) return "剩余 " + remain + "/" + num;
+  if (num) return "共 " + num + " 个";
+  return "";
 }
 
 export function poolDigits(raw) {
