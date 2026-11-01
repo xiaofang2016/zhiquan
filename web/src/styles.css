@@ -896,6 +896,30 @@
     text-align: left;
   }
   .im aside button.on { background: #f3f5f7; }
+  .im aside .im-face { position: relative; flex: none; width: 44px; height: 44px; }
+  .im aside .im-face i { display: block; width: 44px; height: 44px; }
+  .im aside .im-badge {
+    position: absolute;
+    z-index: 1;
+    top: -4px;
+    right: -6px;
+    display: block;
+    min-width: 18px;
+    height: 18px;
+    margin: 0;
+    padding: 0 5px;
+    border-radius: 9px;
+    background: #f74c31;
+    color: #fff;
+    font-size: 12px;
+    font-style: normal;
+    font-weight: 500;
+    line-height: 18px;
+    text-align: center;
+    white-space: nowrap;
+    overflow: visible;
+    text-overflow: clip;
+  }
   .im aside i {
     flex: none;
     width: 44px;

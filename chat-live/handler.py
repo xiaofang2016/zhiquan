@@ -1,4 +1,4 @@
-"""页面通过 WebSocket 订阅一个群。zhiquan_chat 新写入的群消息推给正在看的连接。"""
+"""页面连上后接收全部群。新消息推给正在看的连接，新群也推过去。"""
 
 import json
 import os
@@ -14,13 +14,23 @@ _mgmt = None
 def handler(event, context):
     if event.get("requestContext"):
         return socket_event(event)
+    handled = False
+    groups = event.get("groups")
+    if isinstance(groups, list):
+        handled = True
+        for group in groups:
+            row = live_group(group)
+            if row:
+                push({"group": row})
     items = event.get("items")
     if isinstance(items, list):
+        handled = True
         for item in items:
             if isinstance(item, dict):
                 payload = live_payload(item)
                 if payload:
                     push(payload)
+    if handled:
         return {"ok": True}
     for record in event.get("Records") or []:
         deliver(record)
@@ -42,7 +52,7 @@ def socket_event(event):
         return {"statusCode": 200}
     if action != "subscribe":
         return {"statusCode": 400}
-    move_connection(connection_id, group_number(body.get("groupId")))
+    move_connection(connection_id, target_of(body.get("groupId")))
     return {"statusCode": 200}
 
 
@@ -96,6 +106,43 @@ def group_of(item):
     if len(parts) >= 3 and parts[0] == "group" and parts[2] == "msg":
         return group_number(parts[1])
     return ""
+
+
+def target_of(value):
+    if str(value or "").strip() == "all":
+        return "all"
+    return group_number(value)
+
+
+def fanout_keys(payload):
+    if not isinstance(payload, dict):
+        return []
+    if payload.get("group") and "message" not in payload:
+        return ["all"]
+    group_id = payload.get("groupId")
+    if group_id in (None, "", 0, "0"):
+        return []
+    text = str(group_id).strip()
+    if not text.isdigit():
+        return []
+    return [str(int(text)), "all"]
+
+
+def live_group(group):
+    if not isinstance(group, dict):
+        return None
+    gid = group_number(group.get("id") if group.get("id") not in (None, "") else group.get("gid"))
+    name = str(group.get("name") or "").strip()
+    if not gid or not name:
+        return None
+    return {
+        "id": int(gid),
+        "gid": str(group.get("gid") or gid)[:32],
+        "name": name[:80],
+        "ownerName": str(group.get("ownerName") or "").strip()[:40],
+        "notice": str(group.get("notice") or "")[:1024],
+        "avatar": str(group.get("avatar") or "").strip()[:128],
+    }
 
 
 def group_number(value):
@@ -185,22 +232,30 @@ def drop_connection(connection_id):
 def push(payload):
     if not WS_ENDPOINT:
         return
+    keys = fanout_keys(payload)
+    if not keys:
+        return
     data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
-    start = None
-    while True:
-        kwargs = {
-            "KeyConditionExpression": "pk = :pk AND begins_with(sk, :sk)",
-            "ExpressionAttributeValues": {":pk": "live#" + str(payload["groupId"]), ":sk": "conn#"},
-        }
-        if start:
-            kwargs["ExclusiveStartKey"] = start
-        found = table().query(**kwargs)
-        for item in found.get("Items") or []:
-            connection_id = item.get("connectionId") or str(item.get("sk") or "")[5:]
-            post(connection_id, data)
-        start = found.get("LastEvaluatedKey")
-        if not start:
-            return
+    sent = set()
+    for key in keys:
+        start = None
+        while True:
+            kwargs = {
+                "KeyConditionExpression": "pk = :pk AND begins_with(sk, :sk)",
+                "ExpressionAttributeValues": {":pk": "live#" + key, ":sk": "conn#"},
+            }
+            if start:
+                kwargs["ExclusiveStartKey"] = start
+            found = table().query(**kwargs)
+            for item in found.get("Items") or []:
+                connection_id = item.get("connectionId") or str(item.get("sk") or "")[5:]
+                if not connection_id or connection_id in sent:
+                    continue
+                sent.add(connection_id)
+                post(connection_id, data)
+            start = found.get("LastEvaluatedKey")
+            if not start:
+                break
 
 
 def post(connection_id, data):

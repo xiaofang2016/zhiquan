@@ -53,6 +53,7 @@ export const state = reactive({
   chatLoading: false,
   chatError: "",
   chatLiveSeq: 0,
+  chatUnreadRev: 0,
   detail: null,
   detailTab: "live",
   detailLoading: false,

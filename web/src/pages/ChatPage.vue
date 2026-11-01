@@ -5,10 +5,13 @@
       <div v-else-if="state.chatError && !state.chatGroups.length" class="im-empty">{{ state.chatError }}</div>
       <div v-else-if="!state.chatGroups.length" class="im-empty">还没有群</div>
       <button v-for="group in state.chatGroups" :key="group.id" type="button" :class="{ on: state.chatGroupId === group.id }" @click="openChatGroup(group)">
-        <i>
-          <img v-if="showAvatar(group)" :src="groupAvatar(group.avatar, state.chatImageBase)" alt="" @error="hideAvatar(group.id)" />
-          <template v-else>{{ mark(group.name) }}</template>
-        </i>
+        <span class="im-face">
+          <i>
+            <img v-if="showAvatar(group)" :src="groupAvatar(group.avatar, state.chatImageBase)" alt="" @error="hideAvatar(group.id)" />
+            <template v-else>{{ mark(group.name) }}</template>
+          </i>
+          <em v-if="unread(group)" class="im-badge">{{ unread(group) }}</em>
+        </span>
         <span>
           <b>{{ group.name || group.gid }}</b>
           <em>{{ group.latest ? preview(group.latest) : "没有消息" }}</em>
@@ -89,7 +92,7 @@
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
 import { state } from "../state.js";
-import { chatTime, loadChatGroups, loadOlderMessages, openChatGroup, startChatLive, stopChatLive, subscribeChatLive } from "../lib/chat.js";
+import { chatTime, chatUnread, loadChatGroups, loadOlderMessages, openChatGroup, startChatLive, stopChatLive, subscribeChatLive } from "../lib/chat.js";
 import { groupAvatar, present, previewText } from "../lib/chatView.js";
 import RichText from "../components/RichText.vue";
 
@@ -171,6 +174,10 @@ function openRed(message) {
     count: view.count,
     face: view.done ? "detail" : "cover"
   };
+}
+
+function unread(group) {
+  return chatUnread(group && group.id);
 }
 
 function showAvatar(group) {

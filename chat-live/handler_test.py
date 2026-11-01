@@ -72,6 +72,17 @@ class LivePayloadTest(unittest.TestCase):
         self.assertEqual("0", payload["message"]["type"])
         self.assertEqual(8447, payload["groupId"])
 
+    def test_messages_fan_out_to_the_group_and_everyone(self):
+        from handler import fanout_keys, live_group, target_of
+        self.assertEqual(["8447", "all"], fanout_keys({"groupId": 8447, "message": {"id": "a"}}))
+        self.assertEqual(["all"], fanout_keys({"group": {"id": 9, "name": "新群"}}))
+        self.assertEqual("all", target_of("all"))
+        self.assertEqual("390", target_of("0000000390"))
+        card = live_group({"id": 390, "gid": "0000000390", "name": "红包收米群", "avatar": "abc"})
+        self.assertEqual(390, card["id"])
+        self.assertEqual("红包收米群", card["name"])
+        self.assertIsNone(live_group({"id": 1, "name": ""}))
+
 
 if __name__ == "__main__":
     unittest.main()

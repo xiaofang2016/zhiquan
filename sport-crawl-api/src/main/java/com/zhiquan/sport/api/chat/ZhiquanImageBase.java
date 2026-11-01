@@ -11,7 +11,7 @@ import java.util.regex.Pattern;
 /** 原站图片域名会换。1018/28/40 返回当前资源根地址。 */
 public final class ZhiquanImageBase {
 
-    static final String FALLBACK = "https://oss.imnono.net";
+    static final String FALLBACK = "https://imfile.dtthsp.com";
     private static final Pattern URL = Pattern.compile("https?://[^\\s\"'\\\\<>]+");
     private static final HttpClient HTTP = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(3))

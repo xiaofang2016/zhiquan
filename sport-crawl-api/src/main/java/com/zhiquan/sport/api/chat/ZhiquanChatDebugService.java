@@ -171,16 +171,20 @@ public class ZhiquanChatDebugService {
 
     private String imageBase() {
         long now = System.currentTimeMillis();
-        if (!imageBase.isBlank() && now - imageBaseAt < IMAGE_BASE_TTL_MS) {
+        if (usable(imageBase) && now - imageBaseAt < IMAGE_BASE_TTL_MS) {
             return imageBase;
         }
         String fetched = ZhiquanImageBase.fetch(imBase());
-        if (!fetched.isBlank()) {
+        if (usable(fetched)) {
             imageBase = fetched;
             imageBaseAt = now;
             return fetched;
         }
-        return imageBase.isBlank() ? ZhiquanImageBase.FALLBACK : imageBase;
+        return usable(imageBase) ? imageBase : ZhiquanImageBase.FALLBACK;
+    }
+
+    private static boolean usable(String host) {
+        return host != null && !host.isBlank() && !host.contains("oss.imnono.net");
     }
 
     private String imBase() {

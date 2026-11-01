@@ -43,6 +43,7 @@ export async function openChatGroup(group) {
   if (!group) return;
   const epoch = ++openEpoch;
   state.chatGroupId = group.id;
+  clearUnread(group.id);
   state.chatMessages = [];
   state.chatOlder = "";
   state.chatPaging = false;
@@ -111,7 +112,7 @@ export function stopChatLive() {
 }
 
 export function subscribeChatLive() {
-  sendLive({ action: "subscribe", groupId: state.chatGroupId || 0 });
+  sendLive({ action: "subscribe", groupId: "all" });
 }
 
 function connectChatLive() {
@@ -131,6 +132,7 @@ function connectChatLive() {
     } catch {
       return;
     }
+    if (body && body.group) acceptGroup(body.group);
     if (body && body.message) acceptLive(body.groupId, body.message);
   };
   ws.onclose = () => {
@@ -148,16 +150,96 @@ function sendLive(body) {
   socket.send(JSON.stringify(body));
 }
 
+const seenLive = new Set();
+const UNREAD_KEY = "kzb-chat-unread";
+
+function readUnread() {
+  try {
+    const map = JSON.parse(localStorage.getItem(UNREAD_KEY) || "{}");
+    return map && typeof map === "object" ? map : {};
+  } catch {
+    return {};
+  }
+}
+
+function writeUnread(map) {
+  localStorage.setItem(UNREAD_KEY, JSON.stringify(map));
+  state.chatUnreadRev += 1;
+}
+
+export function chatUnread(groupId) {
+  state.chatUnreadRev;
+  const n = Math.floor(Number(readUnread()[groupId] || 0));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
+function addUnread(groupId) {
+  const map = readUnread();
+  map[groupId] = chatUnread(groupId) + 1;
+  writeUnread(map);
+}
+
+function clearUnread(groupId) {
+  const map = readUnread();
+  if (!map[groupId]) return;
+  delete map[groupId];
+  writeUnread(map);
+}
+
+function rememberLive(id) {
+  if (seenLive.has(id)) return false;
+  seenLive.add(id);
+  if (seenLive.size > 800) seenLive.delete(seenLive.values().next().value);
+  return true;
+}
+
+function sortGroups() {
+  state.chatGroups.sort((a, b) => ((b.latest && b.latest.time) || 0) - ((a.latest && a.latest.time) || 0));
+}
+
+function acceptGroup(group) {
+  const id = Number(group && group.id);
+  if (!id) return;
+  let row = state.chatGroups.find((item) => item.id === id);
+  if (!row) {
+    row = {
+      id,
+      gid: String(group.gid || id),
+      name: "",
+      ownerName: "",
+      notice: "",
+      avatar: "",
+      latest: null,
+      updatedAt: Date.now()
+    };
+    state.chatGroups.push(row);
+  }
+  if (group.name) row.name = group.name;
+  if (group.gid) row.gid = String(group.gid);
+  if (group.ownerName) row.ownerName = group.ownerName;
+  if (group.notice) row.notice = group.notice;
+  if (group.avatar) row.avatar = group.avatar;
+  sortGroups();
+}
+
 function acceptLive(groupId, message) {
   const id = Number(groupId);
-  if (!id || !message || !message.id) return;
-  const group = state.chatGroups.find((item) => item.id === id);
-  if (group && (!group.latest || Number(message.time) >= Number(group.latest.time))) {
-    group.latest = message;
-    state.chatGroups.sort((a, b) => ((b.latest && b.latest.time) || 0) - ((a.latest && a.latest.time) || 0));
+  if (!id || !message || !message.id || !rememberLive(message.id)) return;
+  let group = state.chatGroups.find((item) => item.id === id);
+  if (!group) {
+    group = { id, gid: String(id), name: "", ownerName: "", notice: "", avatar: "", latest: null, updatedAt: Date.now() };
+    state.chatGroups.push(group);
   }
-  if (id !== state.chatGroupId) return;
-  if (state.chatMessages.some((item) => item.id === message.id)) return;
-  state.chatMessages.push(message);
-  state.chatLiveSeq += 1;
+  if (!group.latest || Number(message.time) >= Number(group.latest.time)) {
+    group.latest = message;
+    sortGroups();
+  }
+  if (id === state.chatGroupId) {
+    clearUnread(id);
+    if (state.chatMessages.some((item) => item.id === message.id)) return;
+    state.chatMessages.push(message);
+    state.chatLiveSeq += 1;
+    return;
+  }
+  addUnread(id);
 }

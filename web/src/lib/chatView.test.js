@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { groupAvatar, imageSrc, poolDigits, present, previewText, textParts } from "./chatView.js";
+import { badgeCount, groupAvatar, imageSrc, poolDigits, present, previewText, textParts } from "./chatView.js";
 
 test("red packet card uses the rain title and padded pool", () => {
   const view = present({
@@ -65,6 +65,14 @@ test("revoke json becomes a system line and faces split out of text", () => {
   assert.equal(previewText({ type: "0", content: "[/发呆]" }), "[/发呆]");
 });
 
+test("unread badge shows the full count", () => {
+  assert.equal(badgeCount(1), 1);
+  assert.equal(badgeCount(99), 99);
+  assert.equal(badgeCount(100), 100);
+  assert.equal(badgeCount(10000), 10000);
+  assert.equal(badgeCount(0), 0);
+});
+
 test("group avatar uses the head path", () => {
   assert.equal(
     groupAvatar("01c47016f1acca765c4ef6312ebcf104", "https://imfile.dtthsp.com/"),
@@ -72,6 +80,7 @@ test("group avatar uses the head path", () => {
   );
   assert.equal(groupAvatar("https://cdn.example.com/a.jpg", ""), "https://cdn.example.com/a.jpg");
   assert.equal(groupAvatar("", "https://imfile.dtthsp.com"), "");
+  assert.match(groupAvatar("01c47016f1acca765c4ef6312ebcf104", "https://oss.imnono.net"), /^https:\/\/imfile\.dtthsp\.com\/head\//);
 });
 
 test("mention and preview do not dump raw json", () => {

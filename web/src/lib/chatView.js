@@ -1,6 +1,6 @@
 import { FACE_SRC } from "./faces.js";
 
-const FALLBACK_IMAGE_BASE = "https://oss.imnono.net";
+const FALLBACK_IMAGE_BASE = "https://imfile.dtthsp.com";
 const FACE_TOKEN = /\[\/[^\]]+\]/g;
 
 export function present(message, imageBase) {
@@ -77,17 +77,28 @@ export function poolDigits(raw) {
   return cut.padStart(6, "0");
 }
 
+function imageHost(imageBase) {
+  const host = String(imageBase || "").trim().replace(/\/+$/, "");
+  if (!host || host.includes("oss.imnono.net")) return FALLBACK_IMAGE_BASE;
+  return host;
+}
+
+export function badgeCount(count) {
+  const n = Math.floor(Number(count));
+  return Number.isFinite(n) && n > 0 ? n : 0;
+}
+
 export function groupAvatar(file, imageBase) {
   const name = String(file || "").trim();
   if (!name) return "";
   if (/^https?:\/\//i.test(name)) return name;
-  const host = String(imageBase || FALLBACK_IMAGE_BASE).replace(/\/+$/, "");
+  const host = imageHost(imageBase);
   if (name.includes("?")) return host + "/head/" + name;
   return host + "/head/" + name + "?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp";
 }
 
 export function imageSrc(file, imageBase) {
-  const host = String(imageBase || FALLBACK_IMAGE_BASE).replace(/\/+$/, "");
+  const host = imageHost(imageBase);
   let name = String((file && (file.fileMd5 || file.fileName)) || "").trim();
   if (!name) return "";
   if (/^https?:\/\//i.test(name)) return name;
