@@ -60,9 +60,9 @@ public final class ZhiquanChatRows {
         if (time <= 0) {
             time = millis(number(item.get("sendTime")));
         }
-        String type = text(item.get("msgType"));
+        String type = field(item.get("msgType"));
         if (type.isEmpty()) {
-            type = text(item.get("type"));
+            type = field(item.get("type"));
         }
         String nick = text(item.get("nickName"));
         if (nick.isEmpty()) {
@@ -73,6 +73,18 @@ public final class ZhiquanChatRows {
             sendUid = text(item.get("sendId"));
         }
         return new MessageRow(time, nick, sendUid, type, clip(text(item.get("content"))));
+    }
+
+    /** 原站点名「谁领了红包」不进聊天。人数汇总「等12/200人已领取了红包」保留。 */
+    public static boolean isClaimNotice(String content) {
+        if (content == null) {
+            return false;
+        }
+        String text = content.trim();
+        if (text.isEmpty() || text.contains("人已领取")) {
+            return false;
+        }
+        return "领取了红包".equals(text) || "已领取了红包".equals(text) || text.endsWith("已领取了红包");
     }
 
     static String gidFromSortKey(String sk) {
@@ -135,5 +147,19 @@ public final class ZhiquanChatRows {
             return "";
         }
         return value.s();
+    }
+
+    /** 抓取侧把 msgType 存成数字，字符串和数字都要读出来。 */
+    private static String field(AttributeValue value) {
+        String text = text(value);
+        if (!text.isBlank()) {
+            return text.trim();
+        }
+        if (value == null || value.n() == null || value.n().isBlank()) {
+            return "";
+        }
+        String number = value.n().trim();
+        int dot = number.indexOf('.');
+        return dot < 0 ? number : number.substring(0, dot);
     }
 }

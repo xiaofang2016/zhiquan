@@ -30,11 +30,31 @@
         <div v-else-if="state.chatLoading && !state.chatMessages.length" class="im-empty">正在读取消息</div>
         <div v-else-if="state.chatError && !state.chatMessages.length" class="im-empty">{{ state.chatError }}</div>
         <div v-else-if="!messages.length" class="im-empty">这个群还没有消息</div>
-        <article v-for="(message, index) in messages" :key="message.time + '-' + index">
+        <article v-for="(message, index) in messages" :key="message.time + '-' + index" :class="message.view.kind">
           <div>
             <b>{{ message.nick || message.sendUid || "用户" }}</b>
-            <p>{{ plain(message.content) }}</p>
-            <em>{{ chatTime(message.time) }}</em>
+            <template v-if="message.view.kind === 'image'">
+              <a v-for="(src, imageIndex) in message.view.images" :key="imageIndex" class="shot" :href="src" target="_blank" rel="noopener">
+                <img :src="src" alt="" @error="markMiss" />
+                <em v-if="imageIndex === message.view.images.length - 1">{{ chatTime(message.time) }}</em>
+              </a>
+              <p v-if="message.view.text">{{ message.view.text }}</p>
+            </template>
+            <div v-else-if="message.view.kind === 'pack'" class="im-pack" :class="{ done: message.view.done }">
+              <div class="im-pack-top">
+                <i>¥</i>
+                <span>
+                  <b>{{ message.view.title }}</b>
+                  <small>{{ message.view.status }}</small>
+                </span>
+              </div>
+              <div class="im-pack-bottom">
+                <span>职圈3.0红包</span>
+                <em>奖池 <strong>{{ message.view.pool }}</strong></em>
+              </div>
+            </div>
+            <p v-else>{{ message.view.text }}</p>
+            <em v-if="message.view.kind !== 'image'">{{ chatTime(message.time) }}</em>
           </div>
         </article>
       </div>
@@ -52,12 +72,15 @@
 import { computed, ref, watch } from "vue";
 import { state } from "../state.js";
 import { chatTime, loadChatGroups, openChatGroup } from "../lib/chat.js";
+import { present, previewText } from "../lib/chatView.js";
 
 const current = computed(() => state.chatGroups.find((group) => group.id === state.chatGroupId) || null);
 const noticeOpen = ref(false);
 const noticeTick = ref(0);
 
-const messages = computed(() => state.chatMessages.filter((message) => !claimNotice(message.content)));
+const messages = computed(() => state.chatMessages
+  .filter((message) => !claimNotice(message.content))
+  .map((message) => ({ ...message, view: present(message, state.chatImageBase) })));
 const noticeVisible = computed(() => {
   noticeTick.value;
   const group = current.value;
@@ -70,28 +93,18 @@ watch(() => current.value && current.value.id, () => {
   noticeOpen.value = false;
 });
 
+function markMiss(event) {
+  const shot = event.target && event.target.closest(".shot");
+  if (shot) shot.classList.add("miss");
+}
+
 function mark(name) {
   const letter = [...String(name || "")].find((ch) => /[\u4e00-\u9fffA-Za-z0-9]/.test(ch));
   return letter || "群";
 }
 
-function plain(content) {
-  let text = String(content || "").trim();
-  if (text.startsWith("{")) {
-    try {
-      const data = JSON.parse(text);
-      if (data && typeof data.text === "string") text = data.text.trim();
-    } catch (error) {
-      /* 普通文本 */
-    }
-  }
-  const mini = text.match(/^\[视频小程序\]\s*([^,，]+)/);
-  if (mini) return mini[1].trim();
-  return text;
-}
-
 function preview(latest) {
-  const text = plain(latest.content).replace(/\s+/g, " ").trim();
+  const text = previewText(latest, state.chatImageBase);
   if (!text || claimNotice(text)) return " ";
   return latest.nick ? latest.nick + " " + text : text;
 }

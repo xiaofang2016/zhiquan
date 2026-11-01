@@ -6,7 +6,9 @@ import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ZhiquanChatRowsTest {
 
@@ -53,6 +55,25 @@ class ZhiquanChatRowsTest {
         assertEquals("6584908", row.sendUid());
         assertEquals("90", row.type());
         assertEquals("在", row.content());
+
+        var image = ZhiquanChatRows.message(Map.of(
+                "time", AttributeValue.fromN("1793518706579"),
+                "nickName", AttributeValue.fromS("吴彦祖"),
+                "msgType", AttributeValue.fromN("13"),
+                "content", AttributeValue.fromS("{\"files\":[{\"fileMd5\":\"1793518706579.jpg\"}]}")));
+        assertEquals("13", image.type());
+
+        var packet = ZhiquanChatRows.message(Map.of(
+                "time", AttributeValue.fromN("1793521136005"),
+                "msgType", AttributeValue.fromN("10"),
+                "content", AttributeValue.fromS("{\"description\":\"每晚22:30开启红包雨\"}")));
+        assertEquals("10", packet.type());
+        assertTrue(ZhiquanChatRows.isClaimNotice("独自孤单已领取了红包"));
+        assertTrue(ZhiquanChatRows.isClaimNotice("领取了红包"));
+        assertFalse(ZhiquanChatRows.isClaimNotice("似有似无，等171/200人已领取了红包"));
+        assertEquals("https://cdn.example.com", ZhiquanImageBase.fromResponse(
+                "{\"success\":true,\"returnValue\":\"https://cdn.example.com/\"}"));
+        assertEquals("", ZhiquanImageBase.fromResponse("{\"success\":false}"));
     }
 
     @Test

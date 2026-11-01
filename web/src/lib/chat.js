@@ -47,6 +47,7 @@ export async function openChatGroup(group) {
     const data = await get("/prod-api/chat/groups/" + group.id + "/messages");
     if (state.chatGroupId === group.id) {
       state.chatMessages = (data && data.messages) || [];
+      if (data && data.imageBase) state.chatImageBase = data.imageBase;
     }
   } catch (error) {
     if (state.chatGroupId === group.id) {
