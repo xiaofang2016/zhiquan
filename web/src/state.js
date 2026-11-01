@@ -47,6 +47,8 @@ export const state = reactive({
   chatGroupId: 0,
   chatMessages: [],
   chatImageBase: "",
+  chatOlder: "",
+  chatPaging: false,
   chatLoading: false,
   chatError: "",
   detail: null,

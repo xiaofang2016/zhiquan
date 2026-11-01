@@ -27,6 +27,7 @@ export async function loadChatGroups() {
     if (!current) {
       state.chatGroupId = 0;
       state.chatMessages = [];
+      state.chatOlder = "";
     }
   } catch (error) {
     state.chatError = error.message || "聊天数据没有拿到";
@@ -42,12 +43,15 @@ export async function openChatGroup(group) {
   if (!group) return;
   state.chatGroupId = group.id;
   state.chatMessages = [];
+  state.chatOlder = "";
+  state.chatPaging = false;
   state.chatLoading = true;
   state.chatError = "";
   try {
     const data = await get("/prod-api/chat/groups/" + group.id + "/messages");
     if (state.chatGroupId === group.id) {
       state.chatMessages = (data && data.messages) || [];
+      state.chatOlder = (data && data.older) || "";
       if (data && data.imageBase) state.chatImageBase = data.imageBase;
     }
   } catch (error) {
@@ -57,5 +61,27 @@ export async function openChatGroup(group) {
     }
   } finally {
     if (state.chatGroupId === group.id) state.chatLoading = false;
+  }
+}
+
+export async function loadOlderMessages() {
+  const groupId = state.chatGroupId;
+  const before = state.chatOlder;
+  if (!groupId || !before || state.chatPaging || state.chatLoading) return 0;
+  state.chatPaging = true;
+  try {
+    const data = await get("/prod-api/chat/groups/" + groupId + "/messages?before=" + encodeURIComponent(before));
+    if (state.chatGroupId !== groupId) return 0;
+    const older = (data && data.messages) || [];
+    const seen = new Set(state.chatMessages.map((message) => message.id).filter(Boolean));
+    const fresh = older.filter((message) => !message.id || !seen.has(message.id));
+    state.chatMessages = fresh.concat(state.chatMessages);
+    state.chatOlder = (data && data.older) || "";
+    return fresh.length;
+  } catch (error) {
+    if (state.chatGroupId === groupId) toast(error.message || "更早的消息没有拿到");
+    return -1;
+  } finally {
+    if (state.chatGroupId === groupId) state.chatPaging = false;
   }
 }

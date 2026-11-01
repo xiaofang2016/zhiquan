@@ -990,6 +990,7 @@
     line-height: 24px;
   }
   .im-log { flex: 1; min-height: 0; overflow: auto; padding: 15px 10px 16px; }
+  .im-more { margin: 0 0 8px; color: #979ca6; font-size: 12px; line-height: 18px; text-align: center; }
   .im-empty { padding: 48px 16px; color: #9aa0a8; text-align: center; }
   .im-log article { display: flex; margin: 0 0 8px; }
   .im-log article > div {

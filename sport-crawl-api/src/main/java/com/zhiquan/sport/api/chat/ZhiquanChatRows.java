@@ -19,7 +19,7 @@ public final class ZhiquanChatRows {
     public record GroupRow(long id, String gid, String name, String ownerName, long updatedAt, String notice, String avatar, MessageRow latest) {
     }
 
-    public record MessageRow(long time, String nick, String sendUid, String type, String content) {
+    public record MessageRow(long time, String nick, String sendUid, String type, String content, String id) {
     }
 
     public static GroupRow group(Map<String, AttributeValue> item) {
@@ -82,7 +82,16 @@ public final class ZhiquanChatRows {
         if (sendUid.isEmpty()) {
             sendUid = text(item.get("sendId"));
         }
-        return new MessageRow(time, nick, sendUid, type, clip(text(item.get("content"))));
+        return new MessageRow(time, nick, sendUid, type, clip(text(item.get("content"))), text(item.get("sk")));
+    }
+
+    /** 翻页游标必须是这个群自己的消息排序键，避免串到别的群。 */
+    public static boolean olderCursor(String gid, String before) {
+        if (gid == null || gid.isBlank() || before == null) {
+            return false;
+        }
+        String prefix = "group#" + gid + "#msg#";
+        return before.startsWith(prefix) && before.length() > prefix.length() && before.length() <= 180;
     }
 
     /** 原站点名「谁领了红包」不进聊天。人数汇总「等12/200人已领取了红包」保留。 */

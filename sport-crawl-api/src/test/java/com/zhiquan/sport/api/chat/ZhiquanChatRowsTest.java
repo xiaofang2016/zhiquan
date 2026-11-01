@@ -46,6 +46,9 @@ class ZhiquanChatRowsTest {
                 "raw", AttributeValue.fromM(Map.of(
                         "group_avatar_file_name", AttributeValue.fromS("01c47016f1acca765c4ef6312ebcf104")))));
         assertEquals("01c47016f1acca765c4ef6312ebcf104", avatar.avatar());
+        assertTrue(ZhiquanChatRows.olderCursor("0000008447", "group#0000008447#msg#0001793492389481#abcdef"));
+        assertFalse(ZhiquanChatRows.olderCursor("0000008447", "group#0000000390#msg#0001793492389481#abcdef"));
+        assertFalse(ZhiquanChatRows.olderCursor("0000008447", "group#0000008447#msg#"));
     }
 
     @Test
@@ -61,6 +64,10 @@ class ZhiquanChatRowsTest {
         assertEquals("6584908", row.sendUid());
         assertEquals("90", row.type());
         assertEquals("在", row.content());
+        assertEquals("group#0000008447#msg#1", ZhiquanChatRows.message(Map.of(
+                "time", AttributeValue.fromN("1"),
+                "content", AttributeValue.fromS("在"),
+                "sk", AttributeValue.fromS("group#0000008447#msg#1"))).id());
 
         var image = ZhiquanChatRows.message(Map.of(
                 "time", AttributeValue.fromN("1793518706579"),

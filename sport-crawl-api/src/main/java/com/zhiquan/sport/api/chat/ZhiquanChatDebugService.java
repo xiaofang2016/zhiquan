@@ -12,6 +12,7 @@ import software.amazon.awssdk.services.dynamodb.model.QueryRequest;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -44,12 +45,13 @@ public class ZhiquanChatDebugService {
         return new GroupPage(aws.getZhiquanChatPartition(), rows, imageBase());
     }
 
-    public MessagePage messages(long groupId) {
+    public MessagePage messages(long groupId, String before) {
         GroupRow group = loadGroups().get(groupId);
         if (group == null) {
-            return new MessagePage(groupId, "", "", List.of(), "");
+            return new MessagePage(groupId, "", "", List.of(), "", "");
         }
-        return new MessagePage(group.id(), group.gid(), group.name(), latest(group.gid(), ZhiquanChatRows.MESSAGE_LIMIT), imageBase());
+        MessageSlice slice = page(group.gid(), ZhiquanChatRows.MESSAGE_LIMIT, before);
+        return new MessagePage(group.id(), group.gid(), group.name(), slice.messages(), imageBase(), slice.older());
     }
 
     private Map<Long, GroupRow> loadGroups() {
@@ -82,17 +84,38 @@ public class ZhiquanChatDebugService {
     }
 
     private List<MessageRow> latest(String gid, int limit) {
+        return page(gid, limit, null).messages();
+    }
+
+    /**
+     * 从新到旧取一页。before 是上一页最老一条的排序键，没有就从最新开始。
+     * 领取提示跳过，但不算进这一页的条数。扫到头了 older 为空。
+     */
+    private MessageSlice page(String gid, int limit, String before) {
         int cap = limit <= 1 ? 40 : 1600;
+        String prefix = "group#" + gid + "#msg#";
+        boolean ranged = ZhiquanChatRows.olderCursor(gid, before);
         List<MessageRow> newest = new ArrayList<>();
         Map<String, AttributeValue> start = null;
+        String boundary = "";
+        boolean more = false;
         int scanned = 0;
         while (newest.size() < limit && scanned < cap) {
+            Map<String, AttributeValue> values = new HashMap<>();
+            values.put(":pk", AttributeValue.fromS(aws.getZhiquanChatPartition()));
+            String keyExpr;
+            if (ranged) {
+                keyExpr = "pk = :pk AND sk BETWEEN :start AND :end";
+                values.put(":start", AttributeValue.fromS(prefix));
+                values.put(":end", AttributeValue.fromS(before));
+            } else {
+                keyExpr = "pk = :pk AND begins_with(sk, :prefix)";
+                values.put(":prefix", AttributeValue.fromS(prefix));
+            }
             QueryRequest.Builder builder = QueryRequest.builder()
                     .tableName(aws.getZhiquanChatTable())
-                    .keyConditionExpression("pk = :pk AND begins_with(sk, :prefix)")
-                    .expressionAttributeValues(Map.of(
-                            ":pk", AttributeValue.fromS(aws.getZhiquanChatPartition()),
-                            ":prefix", AttributeValue.fromS("group#" + gid + "#msg#")))
+                    .keyConditionExpression(keyExpr)
+                    .expressionAttributeValues(values)
                     .scanIndexForward(false)
                     .limit(Math.min(100, cap - scanned));
             if (start != null) {
@@ -101,26 +124,49 @@ public class ZhiquanChatDebugService {
             var response = dynamo.query(builder.build());
             List<Map<String, AttributeValue>> items = response.items();
             if (items.isEmpty()) {
+                more = false;
                 break;
             }
             scanned += items.size();
-            for (Map<String, AttributeValue> item : items) {
+            boolean filled = false;
+            for (int i = 0; i < items.size(); i++) {
+                Map<String, AttributeValue> item = items.get(i);
+                AttributeValue skValue = item.get("sk");
+                String sk = skValue == null || skValue.s() == null ? "" : skValue.s();
+                if (ranged && !sk.isEmpty() && sk.compareTo(before) >= 0) {
+                    continue;
+                }
+                if (!sk.isEmpty()) {
+                    boundary = sk;
+                }
                 MessageRow row = ZhiquanChatRows.message(item);
                 if (row.content().isBlank() || ZhiquanChatRows.isClaimNotice(row.content())) {
                     continue;
                 }
                 newest.add(row);
                 if (newest.size() >= limit) {
+                    boolean tail = i == items.size() - 1;
+                    boolean continued = response.hasLastEvaluatedKey() && !response.lastEvaluatedKey().isEmpty();
+                    more = !tail || continued;
+                    filled = true;
                     break;
                 }
             }
+            if (filled) {
+                break;
+            }
             if (!response.hasLastEvaluatedKey() || response.lastEvaluatedKey().isEmpty()) {
+                more = false;
                 break;
             }
             start = response.lastEvaluatedKey();
+            if (scanned >= cap) {
+                more = true;
+                break;
+            }
         }
         Collections.reverse(newest);
-        return newest;
+        return new MessageSlice(newest, more && !boundary.isEmpty() ? boundary : "");
     }
 
     private String imageBase() {
@@ -161,6 +207,9 @@ public class ZhiquanChatDebugService {
     public record GroupPage(String partition, List<GroupRow> groups, String imageBase) {
     }
 
-    public record MessagePage(long id, String gid, String name, List<MessageRow> messages, String imageBase) {
+    public record MessagePage(long id, String gid, String name, List<MessageRow> messages, String imageBase, String older) {
+    }
+
+    private record MessageSlice(List<MessageRow> messages, String older) {
     }
 }

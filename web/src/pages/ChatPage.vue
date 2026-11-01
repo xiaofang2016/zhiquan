@@ -28,12 +28,13 @@
         <p @click="noticeOpen = true">{{ current.notice }}</p>
         <button type="button" aria-label="关闭公告" @click="hideNotice">×</button>
       </div>
-      <div class="im-log">
+      <div ref="logEl" class="im-log" @scroll="onLogScroll">
+        <p v-if="state.chatPaging" class="im-more">正在读取更早的消息</p>
         <div v-if="!current" class="im-empty">点左边的群看聊天</div>
         <div v-else-if="state.chatLoading && !state.chatMessages.length" class="im-empty">正在读取消息</div>
         <div v-else-if="state.chatError && !state.chatMessages.length" class="im-empty">{{ state.chatError }}</div>
         <div v-else-if="!messages.length" class="im-empty">这个群还没有消息</div>
-        <article v-for="(message, index) in messages" :key="message.time + '-' + index" :class="message.view.kind">
+        <article v-for="(message, index) in messages" :key="message.id || (message.time + '-' + index)" :class="message.view.kind">
           <p v-if="message.view.kind === 'revoke'">{{ message.view.text }}</p>
           <div v-else>
             <b>{{ message.nick || message.sendUid || "用户" }}</b>
@@ -73,14 +74,16 @@
   </div>
 </template>
 <script setup>
-import { computed, reactive, ref, watch } from "vue";
+import { computed, nextTick, reactive, ref, watch } from "vue";
 import { state } from "../state.js";
-import { chatTime, loadChatGroups, openChatGroup } from "../lib/chat.js";
+import { chatTime, loadChatGroups, loadOlderMessages, openChatGroup } from "../lib/chat.js";
 import { groupAvatar, present, previewText } from "../lib/chatView.js";
 import RichText from "../components/RichText.vue";
 
 const current = computed(() => state.chatGroups.find((group) => group.id === state.chatGroupId) || null);
+const logEl = ref(null);
 const hiddenAvatars = reactive({});
+let pulling = false;
 const noticeOpen = ref(false);
 const noticeTick = ref(0);
 
@@ -98,6 +101,34 @@ const noticeVisible = computed(() => {
 watch(() => current.value && current.value.id, () => {
   noticeOpen.value = false;
 });
+
+watch(() => state.chatLoading, (loading) => {
+  if (!loading && state.chatGroupId) nextTick(stickBottom);
+});
+
+async function onLogScroll(event) {
+  const el = event.target;
+  if (pulling || state.chatPaging || !state.chatOlder || el.scrollTop > 8) return;
+  pulling = true;
+  const height = el.scrollHeight;
+  try {
+    let added = 0;
+    let guard = 0;
+    while (guard++ < 5 && state.chatOlder && added === 0) {
+      added = await loadOlderMessages();
+      if (state.chatGroupId !== (current.value && current.value.id)) return;
+    }
+    await nextTick();
+    if (added > 0 && logEl.value) logEl.value.scrollTop = logEl.value.scrollHeight - height;
+  } finally {
+    pulling = false;
+  }
+}
+
+function stickBottom() {
+  const el = logEl.value;
+  if (el) el.scrollTop = el.scrollHeight;
+}
 
 function markMiss(event) {
   const shot = event.target && event.target.closest(".shot");
@@ -126,6 +157,7 @@ function preview(latest) {
 function back() {
   state.chatGroupId = 0;
   state.chatMessages = [];
+  state.chatOlder = "";
 }
 
 function noticeKey(group) {
