@@ -522,6 +522,46 @@ public class SportUserRepository {
         }
     }
 
+    /** 群红包领取金额区间，单位分。没有配置时用调用方给的默认值。 */
+    public int[] chatRedpackRange(int defaultMin, int defaultMax) {
+        Map<String, AttributeValue> item = dynamo.getItem(GetItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key("chat-redpack", "config"))
+                .build()).item();
+        if (item == null || item.isEmpty()) {
+            return new int[] {defaultMin, defaultMax};
+        }
+        Long min = Attrs.lng(item, "min_cent");
+        Long max = Attrs.lng(item, "max_cent");
+        if (min == null || max == null) {
+            return new int[] {defaultMin, defaultMax};
+        }
+        return new int[] {min.intValue(), max.intValue()};
+    }
+
+    public void saveChatRedpackRange(int minCent, int maxCent) {
+        Map<String, AttributeValue> item = new HashMap<>();
+        item.put("pk", Attrs.s("chat-redpack"));
+        item.put("sk", Attrs.s("config"));
+        item.put("min_cent", Attrs.n(minCent));
+        item.put("max_cent", Attrs.n(maxCent));
+        item.put("updated_at", Attrs.n(System.currentTimeMillis()));
+        dynamo.putItem(PutItemRequest.builder().tableName(aws.getUserTable()).item(item).build());
+    }
+
+    /** 这个单号已经入过账时返回当时的分。 */
+    public Optional<Long> orderCent(String phone, String tradeNo) {
+        Map<String, AttributeValue> item = dynamo.getItem(GetItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, "tx#order#" + tradeNo))
+                .build()).item();
+        if (item == null || item.isEmpty()) {
+            return Optional.empty();
+        }
+        Long cents = Attrs.lng(item, "amount_cent");
+        return cents == null ? Optional.empty() : Optional.of(cents);
+    }
+
     private static Map<String, AttributeValue> key(String phone, String sort) {
         return Map.of("pk", Attrs.s(phone), "sk", Attrs.s(sort));
     }

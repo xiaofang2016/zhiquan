@@ -24,6 +24,7 @@ test("red packet card uses the rain title and padded pool", () => {
     content: JSON.stringify({ walletId: "1", description: "西甲赞助商", dbAmountPool: "123500", status: "1", num: "200", remainNum: "171" })
   });
   assert.equal(named.from, "UED-红包达人");
+  assert.equal(named.walletId, "1");
   assert.equal(named.count, "剩余 171/200");
   assert.equal(named.pool, "001235");
   assert.equal(poolDigits("118800"), "001188");

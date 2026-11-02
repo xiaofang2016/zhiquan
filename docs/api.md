@@ -739,9 +739,28 @@ GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
 
 群头像：`{imageBase}/head/{avatar}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。消息图片：`{imageBase}/message/{fileMd5}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。文件名已经带 `?` 或本身是 `http` 地址时不再追加参数。
 
-红包 `content` 是 JSON，字段有 `description`、`title`、`nickname`、`nickName`、`status`、`dbAmountPool`、`num`、`remainNum`、`walletId`。`status` 为 `1` 待领取、`2` 已领取、`3` 已领完。奖池把 `dbAmountPool` 的数字去掉末两位再补齐 6 位。这一页不调用领取接口。
+红包 `content` 仍是 JSON，字段有 `description`、`title`、`nickname`、`nickName`、`status`、`dbAmountPool`、`num`、`remainNum`、`walletId`。`status` 为 `1` 待领取、`2` 已领取、`3` 已领完。奖池把 `dbAmountPool` 的数字去掉末两位再补齐 6 位。
 
-回复和 @ 的 `content` 可能是 JSON，正文在 `origin_text`、`to.text`、`text` 或 `from.text`。多图是 `{ "text": "", "files": [{ "fileMd5": "", "fileName": "" }] }`。单图的 `content` 就是文件名。表情原文是 `[/微笑]` 这种，对照页里的 `web/src/lib/faces.js`。`[视频小程序] 名字，` 只取名字。
+`status` 为 `1` 且 `remainNum` 不是 `0` 时可以领。登录后：
+
+```text
+POST /prod-api/chat/groups/{groupId}/redpacket
+{ "token": "", "id": "group#{gid}#msg#..." }
+```
+
+`id` 必须是这个群自己的消息排序键。成功 `data` 有 `amount`（元）、`balance`、`status`（已领取）。金额在后台区间内随机，记入说球帝余额，流水标题「群红包」。同一个用户、同一个 `walletId` 只入账一次。原站已领完时 `msg` 是「红包已领完」。不调用原站领取接口。
+
+区间默认 1 到 100 分。修改：
+
+```text
+POST /prod-api/admin/chat-redpack
+X-Admin-Key
+{ "minCent": 10, "maxCent": 200 }
+```
+
+`minCent` 至少 1，`maxCent` 至多 200000，且不能小于 `minCent`。
+
+带 `origin_text`、又不是红包或图片的 JSON，`content` 改成那句正文再返回。`type` 仍是原来的值。多图是 `{ "text": "", "files": [{ "fileMd5": "", "fileName": "" }] }`。单图的 `content` 就是文件名。表情原文是 `[/微笑]` 这种，对照页里的 `web/src/lib/faces.js`。`[视频小程序] 名字，` 只取名字。
 
 撤回 `content` 含 `uid`、`nickName`、`beUid`、`beNickName`、`fpForMessage`。`beUid` 和发送人不同，显示 `{nickName}撤回了"{beNickName}"的一条消息`；否则 `"{nickName}" 撤回了一条消息`。
 
@@ -756,6 +775,8 @@ wss://ix1ui9ljn6.execute-api.ap-northeast-1.amazonaws.com/prod
 ```json
 { "groupId": 8447, "message": { "time": 0, "nick": "", "sendUid": "", "type": "0", "content": "", "id": "" } }
 ```
+
+推送里的 `content` 和上面的 HTTP 一样：带 `origin_text` 的 @ 已经换成正文，红包和图片仍是 JSON。
 
 新出现的群推送 `{ "group": { "id": 0, "gid": "", "name": "", "ownerName": "", "notice": "", "avatar": "" } }`。未读数不在接口里，由页面按推送在本地累加，点开该群后清掉，没有上限。
 

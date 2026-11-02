@@ -1,5 +1,7 @@
 package com.zhiquan.sport.api.chat;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 import java.util.Map;
@@ -12,6 +14,7 @@ public final class ZhiquanChatRows {
     private static final int CONTENT_LIMIT = 2000;
     private static final int NOTICE_LIMIT = 1024;
     private static final Pattern NOTICE_DISABLED = Pattern.compile("\"enabled\"\\s*:\\s*0");
+    private static final ObjectMapper JSON = new ObjectMapper();
 
     private ZhiquanChatRows() {
     }
@@ -82,7 +85,30 @@ public final class ZhiquanChatRows {
         if (sendUid.isEmpty()) {
             sendUid = text(item.get("sendId"));
         }
-        return new MessageRow(time, nick, sendUid, type, clip(text(item.get("content"))), text(item.get("sk")));
+        return new MessageRow(time, nick, sendUid, type, shown(text(item.get("content"))), text(item.get("sk")));
+    }
+
+    /**
+     * @ 消息的正文在 origin_text。红包和图片仍把 JSON 原样交给页面。
+     */
+    static String shown(String content) {
+        String text = content == null ? "" : content.trim();
+        if (!text.startsWith("{")) {
+            return clip(text);
+        }
+        try {
+            JsonNode node = JSON.readTree(text);
+            if (node.hasNonNull("walletId") || node.has("files")) {
+                return clip(text);
+            }
+            String origin = node.path("origin_text").asText("").trim();
+            if (!origin.isEmpty()) {
+                return clip(origin);
+            }
+        } catch (Exception ignored) {
+            return clip(text);
+        }
+        return clip(text);
     }
 
     /** 翻页游标必须是这个群自己的消息排序键，避免串到别的群。 */

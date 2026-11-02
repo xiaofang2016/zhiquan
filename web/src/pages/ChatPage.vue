@@ -71,11 +71,11 @@
       <div class="im-red-card" :class="red.face">
         <b>{{ (red.from || "用户") + "的红包" }}</b>
         <p>{{ red.title }}</p>
-        <button v-if="red.face === 'cover'" class="im-red-open" type="button" @click="red.face = 'detail'">开</button>
+        <button v-if="red.face === 'cover'" class="im-red-open" type="button" :disabled="taking" @click="takeRed">开</button>
         <div v-else class="im-red-detail">
-          <strong>{{ red.pool }}</strong>
-          <span>奖池</span>
-          <em>{{ red.status }}<template v-if="red.count"> · {{ red.count }}</template></em>
+          <strong>{{ red.mine || red.pool }}</strong>
+          <span>{{ red.mine ? "已领取" : "奖池" }}</span>
+          <em>{{ red.status }}<template v-if="red.count && !red.mine"> · {{ red.count }}</template></em>
         </div>
       </div>
       <button type="button" class="im-red-close" aria-label="关闭" @click="red = null">×</button>
@@ -91,14 +91,18 @@
 </template>
 <script setup>
 import { computed, nextTick, onMounted, onUnmounted, reactive, ref, watch } from "vue";
-import { state } from "../state.js";
+import { state, toast } from "../state.js";
 import { chatTime, chatUnread, loadChatGroups, loadOlderMessages, openChatGroup, startChatLive, stopChatLive, subscribeChatLive } from "../lib/chat.js";
+import { postAccount } from "../lib/api.js";
+import { openAccount } from "../lib/session.js";
 import { groupAvatar, present, previewText } from "../lib/chatView.js";
 import RichText from "../components/RichText.vue";
 
 const current = computed(() => state.chatGroups.find((group) => group.id === state.chatGroupId) || null);
 const logEl = ref(null);
 const red = ref(null);
+const taking = ref(false);
+const CLAIM_KEY = "kzb-chat-claimed";
 const hiddenAvatars = reactive({});
 let pulling = false;
 const noticeOpen = ref(false);
@@ -164,16 +168,65 @@ function markMiss(event) {
   if (shot) shot.classList.add("miss");
 }
 
+function savedClaim(walletId) {
+  if (!walletId) return "";
+  try {
+    const map = JSON.parse(localStorage.getItem(CLAIM_KEY) || "{}");
+    return map && map[walletId] ? String(map[walletId]) : "";
+  } catch {
+    return "";
+  }
+}
+
+function rememberClaim(walletId, amount) {
+  if (!walletId || !amount) return;
+  let map = {};
+  try {
+    map = JSON.parse(localStorage.getItem(CLAIM_KEY) || "{}") || {};
+  } catch {
+    map = {};
+  }
+  map[walletId] = amount;
+  localStorage.setItem(CLAIM_KEY, JSON.stringify(map));
+}
+
 function openRed(message) {
   const view = message.view;
+  const mine = savedClaim(view.walletId);
   red.value = {
     from: view.from || message.nick || "用户",
     title: view.title,
-    status: view.status,
+    status: mine ? "已领取" : view.status,
     pool: view.pool,
     count: view.count,
-    face: view.done ? "detail" : "cover"
+    mine,
+    walletId: view.walletId,
+    id: message.id,
+    face: view.done || mine ? "detail" : "cover"
   };
+}
+
+async function takeRed() {
+  const currentRed = red.value;
+  if (!currentRed || currentRed.face !== "cover" || taking.value) return;
+  if (!state.user || !state.user.token) {
+    openAccount("login");
+    return;
+  }
+  taking.value = true;
+  try {
+    const data = await postAccount("/prod-api/chat/groups/" + state.chatGroupId + "/redpacket", {
+      token: state.user.token,
+      id: currentRed.id
+    });
+    const amount = data && data.amount ? String(data.amount) : "";
+    rememberClaim(currentRed.walletId, amount);
+    red.value = { ...currentRed, face: "detail", status: "已领取", mine: amount };
+  } catch (error) {
+    toast(error.message || "领取失败");
+  } finally {
+    taking.value = false;
+  }
 }
 
 function unread(group) {

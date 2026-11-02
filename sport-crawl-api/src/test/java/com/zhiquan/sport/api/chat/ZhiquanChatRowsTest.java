@@ -81,6 +81,15 @@ class ZhiquanChatRowsTest {
                 "msgType", AttributeValue.fromN("10"),
                 "content", AttributeValue.fromS("{\"description\":\"每晚22:30开启红包雨\"}")));
         assertEquals("10", packet.type());
+        assertTrue(packet.content().contains("每晚22:30开启红包雨"));
+
+        var mention = ZhiquanChatRows.message(Map.of(
+                "time", AttributeValue.fromN("1793521136005"),
+                "msgType", AttributeValue.fromN("12"),
+                "content", AttributeValue.fromS(
+                        "{\"gid\":\"00000001042\",\"origin_text\":\"@包包揣金豆爱你\",\"select_obj\":[{\"nickname\":\"包包揣金豆\",\"user_uid\":\"2310686\"}]}")));
+        assertEquals("@包包揣金豆爱你", mention.content());
+        assertEquals("12", mention.type());
         assertTrue(ZhiquanChatRows.isClaimNotice("独自孤单已领取了红包"));
         assertTrue(ZhiquanChatRows.isClaimNotice("领取了红包"));
         assertFalse(ZhiquanChatRows.isClaimNotice("似有似无，等171/200人已领取了红包"));

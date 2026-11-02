@@ -345,7 +345,7 @@ POST /prod-api/community/posts/{postId}/redpacket
 
 ## 职圈群聊天
 
-站点「聊天」这一屏，看的是职圈群，不是比赛播放页的聊天室。只读，不登录也能看。点开红包只在本页展示，不领取，不把抓取账号的钱从奖池里划走。
+站点「聊天」这一屏，看的是职圈群，不是比赛播放页的聊天室。看消息不登录。红包在原站还是待领取时，登录后可以在这里领，钱进说球帝余额。不要写「原站红包，这里只能查看」。不要用抓取账号去原站领。
 
 新消息不要轮询 HTTP。打开页面拉一次列表和当前群的最新 100 条，之后只接 WebSocket。抓取挂着原站长连接，消息到达就会推过来。页面这条 socket 断了，1 秒后重连，之后加倍，最长 30 秒，连上再从 1 秒算。抓取自己断线会先补离线再推。新加入的群大约一分钟内出现。
 
@@ -364,17 +364,17 @@ POST /prod-api/community/posts/{postId}/redpacket
 | `type` | 页面 |
 |---|---|
 | `0` 文字、`90` 系统提示 | 普通气泡。`90` 不居中 |
-| `11` 回复、`12` @ | 普通气泡，不另画引用条。正文按 `origin_text`、`to.text`、`text`、回复的 `from.text` 取第一段非空文字 |
+| `11` 回复、`12` @ | 普通气泡。`12` 的 `@` JSON 接口已经换成正文，例如 `@包包揣金豆爱你`，直接画 `content`，不要再解析那串 JSON。万一还是 JSON，取 `origin_text`。里面的 `[/吐]` 按表情画 |
 | `1` | 一张图。`content` 本身就是文件名，不是 JSON |
 | `13` | `content` 是 `{ "text": "", "files": [{ "fileMd5": "", "fileName": "" }] }`。每张图用 `fileMd5`，没有再用 `fileName`。`text` 画在图下面，里面的表情同样要换 |
-| `10` | 红包卡片。见下面 |
+| `10` | 红包卡片。见下面。`content` 仍是 JSON |
 | `91` 或撤回 JSON | 居中灰字，没有头像昵称。撤回别人的是 `{昵称}撤回了"{对方}"的一条消息`，撤回自己的是 `"{昵称}" 撤回了一条消息` |
 
 `[/发呆]` 这类括号对照 `web/src/lib/faces.js` 换成 `/face/` 里的图。表里没有的整段留在文字里。`[视频小程序] 名字，后面还有别的` 只显示名字。
 
 图片地址 `{imageBase}/message/{文件名}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。打不开时那一块显示「图片」。
 
-红包 `content` 是 JSON。这一页不调用领取接口。
+红包 `content` 是 JSON。原站 `status` 不是 `2`、`3`，并且 `remainNum` 不是 `0`，才算还能领。待领取先出封面，点「开」领取。已领取、已领完直接看详情，不能再领。
 
 | 字段 | 页面 |
 |---|---|
@@ -385,7 +385,22 @@ POST /prod-api/community/posts/{postId}/redpacket
 | `num`、`remainNum` | 两个都有写 `剩余 {remainNum}/{num}`。只有 `num` 写 `共 {num} 个` |
 | 卡片底栏 | 固定文案「职圈3.0红包」，不是接口字段 |
 
-待领取先出封面，点「开」才看奖池和剩余个数。已领取、已领完点开就是详情。
+点「开」时要已登录，否则去登录页。请求：
+
+```text
+POST /prod-api/chat/groups/{群id}/redpacket
+{ "token": "登录令牌", "id": "这条消息的 id" }
+```
+
+成功时 `data.amount` 是领到的元，`data.balance` 是领完后的余额，`data.status` 是「已领取」。同一个人同一个 `walletId` 再点，返回上次的金额，不会再入账。原站已领完返回「红包已领完」。金额在后台配置的区间里随机，单位是分，默认 1 到 100 分。页面把 `amount` 展示成领到的钱，不要再显示奖池那 6 位当领取结果。本机可记下 `kzb-chat-claimed`，值是 `{ "钱包编号": "0.88" }`，下次打开直接显示已领取。
+
+改区间要后台密钥，浏览器不要调用：
+
+```text
+POST /prod-api/admin/chat-redpack
+X-Admin-Key: 后台密钥
+{ "minCent": 10, "maxCent": 200 }
+```
 
 打开聊天页就连 WebSocket，发送 `{ "action": "subscribe", "groupId": "all" }`。每 4 分钟发 `{ "action": "ping" }`。推送：
 
@@ -393,7 +408,7 @@ POST /prod-api/community/posts/{postId}/redpacket
 { "groupId": 8447, "message": { "time": 0, "nick": "", "sendUid": "", "type": "0", "content": "", "id": "" } }
 ```
 
-`groupId` 等于列表里的数字 `id`。`message` 和 HTTP 那一行一样，按 `id` 去重。当前群接进底部；别的群只改列表上的最后一条，并给未读加 1。新群是另一条 `{ "group": { "id": 0, "gid": "", "name": "", "ownerName": "", "notice": "", "avatar": "" } }`，列表里没有就加进去。
+`groupId` 等于列表里的数字 `id`。`message` 和 HTTP 那一行一样，@ 的 JSON 在推送里已经换成正文。按 `id` 去重。当前群接进底部；别的群只改列表上的最后一条，并给未读加 1。新群是另一条 `{ "group": { "id": 0, "gid": "", "name": "", "ownerName": "", "notice": "", "avatar": "" } }`，列表里没有就加进去。
 
 未读只在本机。`localStorage` 键名 `kzb-chat-unread`，值是 `{ "8447": 3 }` 这种，群 `id` 对条数。没有 99 的上限，数字原样标在头像右上角，红底 `#f74c31`、白字。点进该群后删掉这一项。刷新后还在，直到点开。窄屏点进群只留消息，返回再出列表。
 

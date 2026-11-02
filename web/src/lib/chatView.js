@@ -17,7 +17,8 @@ export function present(message, imageBase) {
       status: status === "2" ? "已领取" : status === "3" ? "已领完" : "待领取",
       done: status === "2" || status === "3",
       pool: poolDigits(data.dbAmountPool),
-      count: packCount(data)
+      count: packCount(data),
+      walletId: String(data.walletId || "").trim()
     };
   }
   if (type === "13" || (data && Array.isArray(data.files) && data.files.length)) {

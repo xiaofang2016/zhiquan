@@ -70,7 +70,7 @@ def live_payload(item):
     if str(item.get("kind") or "") != "group_msg":
         return None
     group_id = group_of(item)
-    content = str(item.get("content") or "")
+    content = shown_content(str(item.get("content") or ""))
     if not group_id or not content.strip() or is_claim(content):
         return None
     sk = str(item.get("sk") or "")
@@ -89,6 +89,23 @@ def live_payload(item):
             "id": sk,
         },
     }
+
+
+def shown_content(content):
+    """@ 的正文在 origin_text。红包和图片仍推原始 JSON。"""
+    text = str(content or "").strip()
+    if not text.startswith("{") or "walletId" in text or '"files"' in text:
+        return text
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return text
+    if not isinstance(data, dict) or "walletId" in data or "files" in data:
+        return text
+    origin = data.get("origin_text")
+    if isinstance(origin, str) and origin.strip():
+        return origin.strip()
+    return text
 
 
 def is_claim(content):

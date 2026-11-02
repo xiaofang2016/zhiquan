@@ -45,6 +45,24 @@ public class ZhiquanChatDebugService {
         return new GroupPage(aws.getZhiquanChatPartition(), rows, imageBase());
     }
 
+    public Map<String, AttributeValue> messageItem(long groupId, String id) {
+        GroupRow group = loadGroups().get(groupId);
+        if (group == null || !ZhiquanChatRows.olderCursor(group.gid(), id)) {
+            throw new IllegalArgumentException("没有这个红包");
+        }
+        var response = dynamo.getItem(GetItemRequest.builder()
+                .tableName(aws.getZhiquanChatTable())
+                .key(Map.of(
+                        "pk", AttributeValue.fromS(aws.getZhiquanChatPartition()),
+                        "sk", AttributeValue.fromS(id)))
+                .projectionExpression("content")
+                .build());
+        if (!response.hasItem() || response.item().isEmpty()) {
+            throw new IllegalArgumentException("没有这个红包");
+        }
+        return response.item();
+    }
+
     public MessagePage messages(long groupId, String before) {
         GroupRow group = loadGroups().get(groupId);
         if (group == null) {

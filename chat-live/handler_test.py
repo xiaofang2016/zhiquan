@@ -1,6 +1,6 @@
 import unittest
 
-from handler import group_number, is_claim, live_payload, unmarshall
+from handler import group_number, is_claim, live_payload, shown_content, unmarshall
 
 
 def image(**fields):
@@ -57,6 +57,15 @@ class LivePayloadTest(unittest.TestCase):
         self.assertTrue(is_claim("领取了红包"))
         self.assertEqual("", group_number("0"))
         self.assertEqual("8447", group_number("0000008447"))
+
+    def test_mention_json_is_pushed_as_the_sentence(self):
+        raw = '{"gid":"00000001042","origin_text":"@包包揣金豆爱你","select_obj":[{"nickname":"包包揣金豆","user_uid":"2310686"}]}'
+        payload = live_payload(image(
+            kind="group_msg", gid="1042", sk="group#00000001042#msg#1#aa", msgType=12, content=raw, time=3,
+        ))
+        self.assertEqual("@包包揣金豆爱你", payload["message"]["content"])
+        self.assertEqual("12", payload["message"]["type"])
+        self.assertEqual(shown_content('{"walletId":"1","description":"西甲赞助商"}'), '{"walletId":"1","description":"西甲赞助商"}')
 
     def test_text_type_zero_is_kept(self):
         payload = live_payload({
