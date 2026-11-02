@@ -61,6 +61,7 @@
                 <em>奖池 <strong>{{ message.view.pool }}</strong></em>
               </div>
             </button>
+            <p v-else-if="message.view.kind === 'play'"><a class="im-link" :href="message.view.href" :target="message.view.href.startsWith('/') ? null : '_blank'" rel="noopener noreferrer" @click="onPlay($event, message.view.href)">{{ message.view.text }}</a></p>
             <p v-else><RichText :parts="message.view.parts" :text="message.view.text" /></p>
             <em v-if="message.view.kind !== 'image'">{{ chatTime(message.time) }}</em>
           </div>
@@ -95,6 +96,7 @@ import { state, toast } from "../state.js";
 import { chatTime, chatUnread, loadChatGroups, loadOlderMessages, openChatGroup, startChatLive, stopChatLive, subscribeChatLive } from "../lib/chat.js";
 import { postAccount } from "../lib/api.js";
 import { openAccount } from "../lib/session.js";
+import { openPlayback } from "../lib/detail.js";
 import { groupAvatar, present, previewText } from "../lib/chatView.js";
 import RichText from "../components/RichText.vue";
 
@@ -161,6 +163,10 @@ async function onLogScroll(event) {
 function stickBottom() {
   const el = logEl.value;
   if (el) el.scrollTop = el.scrollHeight;
+}
+
+function onPlay(event, href) {
+  if (openPlayback(href)) event.preventDefault();
 }
 
 function markMiss(event) {

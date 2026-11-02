@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { badgeCount, groupAvatar, imageSrc, poolDigits, present, previewText, textParts } from "./chatView.js";
+import { badgeCount, groupAvatar, imageSrc, playbackHref, poolDigits, present, previewText, textParts } from "./chatView.js";
 
 test("red packet card uses the rain title and padded pool", () => {
   const view = present({
@@ -82,6 +82,23 @@ test("group avatar uses the head path", () => {
   assert.equal(groupAvatar("https://cdn.example.com/a.jpg", ""), "https://cdn.example.com/a.jpg");
   assert.equal(groupAvatar("", "https://imfile.dtthsp.com"), "");
   assert.match(groupAvatar("01c47016f1acca765c4ef6312ebcf104", "https://oss.imnono.net"), /^https:\/\/imfile\.dtthsp\.com\/head\//);
+});
+
+test("video card and match link open playback", () => {
+  const card = present({
+    type: "0",
+    content: "[视频小程序]火爆身材马甲线性感尤物 4,https://miniapp.mxzrbz.com/videoDetail?id=134016&cover=video_rank/a.jpg"
+  });
+  assert.equal(card.kind, "play");
+  assert.equal(card.text, "火爆身材马甲线性感尤物 4");
+  assert.equal(card.href, "https://miniapp.mxzrbz.com/videoDetail?id=134016&cover=video_rank/a.jpg");
+  assert.equal(previewText({ type: "0", content: card.text && "[视频小程序]名字,https://miniapp.mxzrbz.com/videoDetail?id=1" }), "名字");
+  const parts = textParts("兮兮真人大秀\n\nhttps://sqd6688pp.theleadernetworks.com/player/3/1/0/39540");
+  const link = parts.find((part) => part.kind === "link");
+  assert.equal(link.text, "https://sqd6688pp.theleadernetworks.com/player/3/1/0/39540");
+  assert.equal(link.href, "/player/3/1/0/39540");
+  assert.equal(playbackHref("https://www.kzbzcq.com/player/1/1/0/9"), "/player/1/1/0/9");
+  assert.equal(playbackHref("https://example.com/a"), "https://example.com/a");
 });
 
 test("mention and preview do not dump raw json", () => {

@@ -2,6 +2,9 @@ import { FACE_SRC } from "./faces.js";
 
 const FALLBACK_IMAGE_BASE = "https://imfile.dtthsp.com";
 const FACE_TOKEN = /\[\/[^\]]+\]/g;
+const URL_TOKEN = /https?:\/\/[^\s<>"']+/g;
+const VIDEO_CARD = /^\[视频小程序\]\s*([^,，]+?)\s*[,，]\s*(https?:\/\/\S+)/;
+const PLAYER_PATH = /^\/player\/([123])\/(\d+)\/(\d+)\/(\d+)\/?$/;
 
 export function present(message, imageBase) {
   const type = String((message && message.type) || "");
@@ -35,6 +38,8 @@ export function present(message, imageBase) {
   if (type === "91" || isRevoke(data)) {
     return { kind: "revoke", text: revokeLine(data, message) };
   }
+  const video = videoCard(content);
+  if (video) return { kind: "play", text: video.title, href: video.href };
   const text = textOf(type, content, data);
   return { kind: "text", text, parts: textParts(text) };
 }
@@ -47,21 +52,57 @@ export function previewText(message, imageBase) {
   return String(view.text || "").replace(/\s+/g, " ").trim();
 }
 
+export function playbackHref(url) {
+  let parsed;
+  try {
+    parsed = new URL(url);
+  } catch (error) {
+    return url;
+  }
+  const match = parsed.pathname.match(PLAYER_PATH);
+  if (!match) return url;
+  return "/player/" + match[1] + "/" + match[2] + "/" + match[3] + "/" + match[4];
+}
+
 export function textParts(text) {
   const value = String(text || "");
   const parts = [];
   let last = 0;
-  for (const match of value.matchAll(FACE_TOKEN)) {
+  for (const match of value.matchAll(URL_TOKEN)) {
+    if (match.index > last) parts.push(...faceParts(value.slice(last, match.index)));
+    const raw = match[0];
+    const clean = raw.replace(/[),.;，。]+$/u, "");
+    parts.push({ kind: "link", text: clean, href: playbackHref(clean) });
+    if (clean.length < raw.length) parts.push({ kind: "text", text: raw.slice(clean.length) });
+    last = match.index + raw.length;
+  }
+  if (last < value.length) parts.push(...faceParts(value.slice(last)));
+  if (!parts.length) return [{ kind: "text", text: value }];
+  return parts;
+}
+
+function faceParts(text) {
+  const parts = [];
+  let last = 0;
+  for (const match of text.matchAll(FACE_TOKEN)) {
     const token = match[0];
     const src = FACE_SRC[token];
     if (!src) continue;
-    if (match.index > last) parts.push({ kind: "text", text: value.slice(last, match.index) });
+    if (match.index > last) parts.push({ kind: "text", text: text.slice(last, match.index) });
     parts.push({ kind: "face", src, alt: token });
     last = match.index + token.length;
   }
-  if (!parts.length) return [{ kind: "text", text: value }];
-  if (last < value.length) parts.push({ kind: "text", text: value.slice(last) });
+  if (!parts.length) return text ? [{ kind: "text", text }] : [];
+  if (last < text.length) parts.push({ kind: "text", text: text.slice(last) });
   return parts;
+}
+
+function videoCard(content) {
+  const match = String(content || "").match(VIDEO_CARD);
+  if (!match) return null;
+  const href = playbackHref(match[2].trim());
+  if (!href) return null;
+  return { title: match[1].trim(), href };
 }
 
 function packCount(data) {

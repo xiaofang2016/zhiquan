@@ -109,6 +109,13 @@ export async function loadPlayer(route) {
   openPlayer(match, "stay");
 }
 
+export function openPlayback(href) {
+  if (!href || !href.startsWith("/player/")) return false;
+  if (location.pathname !== href) history.pushState({ player: href }, "", href);
+  onRoute();
+  return true;
+}
+
 export function onRoute() {
   const route = readPlayerRoute();
   if (!route) {
