@@ -61,7 +61,10 @@
                 <em>奖池 <strong>{{ message.view.pool }}</strong></em>
               </div>
             </button>
-            <p v-else-if="message.view.kind === 'play'"><a class="im-link" :href="message.view.href" :target="message.view.href.startsWith('/') ? null : '_blank'" rel="noopener noreferrer" @click="onPlay($event, message.view.href)">{{ message.view.text }}</a></p>
+            <a v-else-if="message.view.kind === 'play'" class="im-video" :href="message.view.href" :target="message.view.href.startsWith('/') ? null : '_blank'" rel="noopener noreferrer" @click="onPlay($event, message.view.href)">
+              <span v-if="message.view.cover" class="shot"><img :src="message.view.cover" alt="" @error="markMiss" /></span>
+              <span>{{ message.view.text }}</span>
+            </a>
             <p v-else><RichText :parts="message.view.parts" :text="message.view.text" /></p>
             <em v-if="message.view.kind !== 'image'">{{ chatTime(message.time) }}</em>
           </div>

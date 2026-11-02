@@ -92,6 +92,12 @@ test("video card and match link open playback", () => {
   assert.equal(card.kind, "play");
   assert.equal(card.text, "火爆身材马甲线性感尤物 4");
   assert.equal(card.href, "https://miniapp.mxzrbz.com/videoDetail?id=134016&cover=video_rank/a.jpg");
+  assert.equal(card.cover, "https://imfile.dtthsp.com/video_rank/a.jpg");
+  const hosted = present({
+    type: "0",
+    content: "[视频小程序]名字,https://miniapp.mxzrbz.com/videoDetail?id=1&cover=video_rank/b.jpg"
+  }, "https://cdn.example.com");
+  assert.equal(hosted.cover, "https://cdn.example.com/video_rank/b.jpg");
   assert.equal(previewText({ type: "0", content: card.text && "[视频小程序]名字,https://miniapp.mxzrbz.com/videoDetail?id=1" }), "名字");
   const parts = textParts("兮兮真人大秀\n\nhttps://sqd6688pp.theleadernetworks.com/player/3/1/0/39540");
   const link = parts.find((part) => part.kind === "link");

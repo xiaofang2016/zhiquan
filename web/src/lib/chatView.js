@@ -38,8 +38,8 @@ export function present(message, imageBase) {
   if (type === "91" || isRevoke(data)) {
     return { kind: "revoke", text: revokeLine(data, message) };
   }
-  const video = videoCard(content);
-  if (video) return { kind: "play", text: video.title, href: video.href };
+  const video = videoCard(content, imageBase);
+  if (video) return { kind: "play", text: video.title, href: video.href, cover: video.cover };
   const text = textOf(type, content, data);
   return { kind: "text", text, parts: textParts(text) };
 }
@@ -97,12 +97,25 @@ function faceParts(text) {
   return parts;
 }
 
-function videoCard(content) {
+function videoCard(content, imageBase) {
   const match = String(content || "").match(VIDEO_CARD);
   if (!match) return null;
   const href = playbackHref(match[2].trim());
   if (!href) return null;
-  return { title: match[1].trim(), href };
+  return { title: match[1].trim(), href, cover: coverSrc(href, imageBase) };
+}
+
+function coverSrc(href, imageBase) {
+  let cover = "";
+  try {
+    cover = new URL(href).searchParams.get("cover") || "";
+  } catch (error) {
+    cover = "";
+  }
+  cover = cover.trim();
+  if (!cover) return "";
+  if (/^https?:\/\//i.test(cover)) return cover;
+  return imageHost(imageBase) + "/" + cover.replace(/^\/+/, "");
 }
 
 function packCount(data) {
