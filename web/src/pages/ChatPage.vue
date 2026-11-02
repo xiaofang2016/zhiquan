@@ -62,7 +62,7 @@
               </div>
             </button>
             <a v-else-if="message.view.kind === 'play'" class="im-video" :href="message.view.href" :target="message.view.href.startsWith('/') ? null : '_blank'" rel="noopener noreferrer" @click="onPlay($event, message.view.href)">
-              <span v-if="message.view.cover" class="shot"><img :src="message.view.cover" alt="" @error="markMiss" /></span>
+              <span v-if="message.view.cover" class="shot"><CoverImage :src="message.view.cover" @error="markMiss" /></span>
               <span>{{ message.view.text }}</span>
             </a>
             <p v-else><RichText :parts="message.view.parts" :text="message.view.text" /></p>
@@ -101,6 +101,7 @@ import { postAccount } from "../lib/api.js";
 import { openAccount } from "../lib/session.js";
 import { openPlayback } from "../lib/detail.js";
 import { groupAvatar, present, previewText } from "../lib/chatView.js";
+import CoverImage from "../components/CoverImage.vue";
 import RichText from "../components/RichText.vue";
 
 const current = computed(() => state.chatGroups.find((group) => group.id === state.chatGroupId) || null);

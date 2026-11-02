@@ -760,7 +760,7 @@ X-Admin-Key
 
 `minCent` 至少 1，`maxCent` 至多 200000，且不能小于 `minCent`。
 
-带 `origin_text`、又不是红包或图片的 JSON，`content` 改成那句正文再返回。`type` 仍是原来的值。多图是 `{ "text": "", "files": [{ "fileMd5": "", "fileName": "" }] }`。单图的 `content` 就是文件名。表情原文是 `[/微笑]` 这种，对照页里的 `web/src/lib/faces.js`。`[视频小程序] 名字，` 只取名字。
+带 `origin_text`、又不是红包或图片的 JSON，`content` 改成那句正文再返回。`type` 仍是原来的值。多图是 `{ "text": "", "files": [{ "fileMd5": "", "fileName": "" }] }`。单图的 `content` 就是文件名。表情原文是 `[/微笑]` 这种，对照页里的 `web/src/lib/faces.js`。`[视频小程序]名字,链接` 原文原样返回。链接里的 `cover` 是封面路径，页面拼到 `imageBase` 上。路径里带 `_enc.` 的文件是加密图，由页面解开后显示，接口不解密。
 
 撤回 `content` 含 `uid`、`nickName`、`beUid`、`beNickName`、`fpForMessage`。`beUid` 和发送人不同，显示 `{nickName}撤回了"{beNickName}"的一条消息`；否则 `"{nickName}" 撤回了一条消息`。
 

@@ -370,7 +370,9 @@ POST /prod-api/community/posts/{postId}/redpacket
 | `10` | 红包卡片。见下面。`content` 仍是 JSON |
 | `91` 或撤回 JSON | 居中灰字，没有头像昵称。撤回别人的是 `{昵称}撤回了"{对方}"的一条消息`，撤回自己的是 `"{昵称}" 撤回了一条消息` |
 
-`[/发呆]` 这类括号对照 `web/src/lib/faces.js` 换成 `/face/` 里的图。表里没有的整段留在文字里。`[视频小程序] 名字，后面还有别的` 只显示名字。
+`[/发呆]` 这类括号对照 `web/src/lib/faces.js` 换成 `/face/` 里的图。表里没有的整段留在文字里。
+
+`[视频小程序]名字,https://...videoDetail?id=...&cover=video_rank/...` 画成封面加标题。标题和封面都能点。站内 `/player/1|2|3/...` 在本站打开播放页，其它地址新开一页。封面取链接里的 `cover`，拼在 `imageBase` 后面；`cover` 本身已是 `http` 地址就直接用。文件名带 `_enc.` 的封面是加密图，页面解开后再显示。解不开或加载失败时，那一块显示「图片」。
 
 图片地址 `{imageBase}/message/{文件名}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。打不开时那一块显示「图片」。
 

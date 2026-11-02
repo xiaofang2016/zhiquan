@@ -1032,6 +1032,7 @@
   .im-log a.im-video { display: block; max-width: 180px; margin-top: 4px; color: #333; text-decoration: none; }
   .im-log a.im-video .shot { margin-top: 0; }
   .im-log a.im-video .shot img { min-height: 0; height: 240px; object-fit: cover; }
+  .im-log .shot .cover-hold { display: none; }
   .im-log a.im-video > span:last-child { display: block; margin-top: 4px; color: #1677ff; font-size: 13px; line-height: 18px; }
   .im-log em { display: block; margin: 2px 0 0; color: #c7c9cc; font-style: normal; font-size: 10px; line-height: 16px; text-align: right; }
   .im-log article.image > div,
