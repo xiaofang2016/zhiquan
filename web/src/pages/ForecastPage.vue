@@ -3,7 +3,7 @@
     <div class="sub-col">
       <div class="match-bar with-side"><button type="button" aria-label="返回" @click="openMine">‹</button><b>我的预测</b><button class="side" type="button" @click="openOrder('forecast')">获取音浪</button></div>
       <div class="forecast-banners">
-        <button type="button" @click="openTask('forecast')"><b>任务中心</b><span>领音浪 兑实物</span></button>
+        <button type="button" @click="openMall('forecast')"><b>红包商城</b><span>领音浪 兑实物</span></button>
         <button type="button" @click="state.screen = 'rank'"><b>预测收益榜</b><span>预测大神就是你</span></button>
       </div>
       <div class="forecast-tabs">
@@ -19,5 +19,5 @@
 </template>
 <script setup>
 import { state } from "../state.js";
-import { openMine, openOrder, openTask } from "../lib/session.js";
+import { openMall, openMine, openOrder } from "../lib/session.js";
 </script>

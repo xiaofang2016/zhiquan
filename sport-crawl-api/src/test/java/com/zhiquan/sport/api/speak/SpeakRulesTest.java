@@ -224,7 +224,7 @@ class SpeakRulesTest {
         assertTrue(circle.path("followed").asBoolean());
         assertEquals(3, circle.path("followCount").asInt());
         assertEquals(user, Voice.personId(user));
-        ObjectNode hidden = CommunityLife.publish(json, board, "我", "", user, "13800000000", "仅自己", "正文", java.util.List.of(14L), null, null, null, null, null, null);
+        ObjectNode hidden = CommunityLife.publish(json, board, "我", "", user, "13800000000", "仅自己", "正文", java.util.List.of(14L), null, null, null, null, null, null, null);
         CommunityLife.visibility(board, user, hidden.path("postId").asText(), "self");
         ObjectNode feed = CommunityBoard.feed(json, json.readTree("{\"circles\":[],\"posts\":[]}"), board);
         String hiddenId = hidden.path("postId").asText();

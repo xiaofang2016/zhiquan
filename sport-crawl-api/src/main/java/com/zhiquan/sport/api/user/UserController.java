@@ -101,7 +101,7 @@ public class UserController {
 
     @PostMapping("/prod-api/user/mission")
     public KzbResult mission(@RequestBody UserRequest body) {
-        return KzbResult.ok(mission.state(body.token()));
+        return KzbResult.ok(mission.state(body.token(), body.page(), body.pageSize()));
     }
 
     @PostMapping("/prod-api/user/mission/sign")

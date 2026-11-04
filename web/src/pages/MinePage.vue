@@ -36,6 +36,7 @@
         <button v-if="state.user" class="mine-row" type="button" @click="onMine('ued-bind')">绑定UED<span>›</span></button>
         <button class="mine-row" type="button" @click="onMine('avatar')">头像设置<span>›</span></button>
         <button class="mine-row" type="button" @click="onMine('match')">比赛设置<span>›</span></button>
+        <button class="mine-row" type="button" @click="onMine('mall')">红包商城<span>›</span></button>
         <button class="mine-row" type="button" @click="onMine('order', true)">我的订单<span>›</span></button>
         <button class="mine-row" type="button" @click="onMine('level', true)">我的等级<span>›</span></button>
         <button class="mine-row" type="button" @click="onMine('badge', true)">尊享徽章<span>›</span></button>

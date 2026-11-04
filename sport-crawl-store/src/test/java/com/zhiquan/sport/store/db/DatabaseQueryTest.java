@@ -27,4 +27,13 @@ class DatabaseQueryTest {
         assertTrue(DatabaseQuery.demandable("/player/queryFPlayerSeasonDataByPlayerId",
                 Map.of("type", "1", "playerId", "128", "seasonId", "9")));
     }
+
+    @Test
+    void teamStatsNeedsSeason() {
+        assertFalse(DatabaseQuery.demandable("/team/getTeamAndPlayerStatsList", Map.of("cid", "82")));
+        assertTrue(DatabaseQuery.demandable("/team/getTeamAndPlayerStatsList",
+                Map.of("cid", "82", "year", "2025-2026", "type", "1", "statsObj", "1", "statsType", "1")));
+        assertFalse(DatabaseQuery.demandable("/team/getTeamAndPlayerStatsList",
+                Map.of("cid", "82", "year", "this", "type", "1", "statsObj", "1", "statsType", "1")));
+    }
 }

@@ -49,9 +49,23 @@ public class ProdApiService {
     }
 
     public List<DateCountItem> dates() {
+        return dates(null, null);
+    }
+
+    public List<DateCountItem> dates(Integer type, Integer cid) {
+        Integer sportType = type == null || type <= 0 ? null : type;
+        Integer leagueId = cid == null || cid == 0 ? null : cid;
+        boolean filtered = sportType != null || leagueId != null;
         List<DateCountItem> result = new ArrayList<>();
         for (SportMatchDate row : dates.listAll()) {
-            result.add(new DateCountItem(row.getTotalMatch() == null ? 0 : row.getTotalMatch(), row.getMatchDate().toString()));
+            int total;
+            if (filtered) {
+                total = (int) Math.min(Integer.MAX_VALUE,
+                    matches.count(row.getMatchDate(), ListSection.DATA, sportType, leagueId, null));
+            } else {
+                total = row.getTotalMatch() == null ? 0 : row.getTotalMatch();
+            }
+            result.add(new DateCountItem(total, row.getMatchDate().toString()));
         }
         return result;
     }

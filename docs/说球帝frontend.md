@@ -197,7 +197,7 @@ GET /prod-api/community/circles/{circleId}?token=
 | `posts` | 当前页。默认新发的在前；`sortRule=comment` 时最后回复的在前 |
 | `total` `page` `pages` | 分页 |
 
-圈子：`id`、`name`、`icon`、`cover`、`followCount`、`postCount`、`ownerName`、`ownerHead`、`topics`、`followed`。`topics` 里是 `id`、`name`，圈子上的话题还有 `cover`。`GET /circles` 的 `data` 就是这个数组。单个圈子没有时 `data` 为 `null`。没带有效 `token` 时 `followed` 是 `false`。
+圈子：`id`、`name`、`icon`、`cover`、`followCount`、`postCount`、`ownerName`、`ownerHead`、`topics`、`followed`、`isHot`。`topics` 里是 `id`、`name`，圈子上的话题还有 `cover`。`GET /circles` 的 `data` 就是这个数组；没有单独热门标记时，前两个 `isHot` 为 `true`。话题列表是 `GET /community/topics`，每项有 `id`、`name`、`cover`、`postCount`、`participantCount`。单个圈子没有时 `data` 为 `null`。没带有效 `token` 时 `followed` 是 `false`。
 
 社区流抓最近 20 页，精华 3 页，每个圈子 2 页。更早的帖第一次打开单帖或评论时再向上游要这一篇，之后就留在副本里。
 
@@ -221,7 +221,7 @@ GET /prod-api/community/circles/{circleId}?token=
 | `images` | 图片地址，给已经按字符串用的页面 |
 | `pictures` | 同一批图，带 `url`、`thumb`、`w`、`h`。COS 的 `thumb` 已带缩略图参数。没有宽高时 `w`、`h` 为 `null` |
 | `videos` | `url`、`cover`、`w`、`h`、`duration`。`duration` 是秒，播放列表没拿到时为 `null`。原站 `m3u8` 会换成网关地址 `/prod-api/community/video/{taskId}/index.m3u8`，清单、密钥和分片都由网关转发并带上跨域头。分片只转发 `commentfile.yc12315.com` 上 `/community/video/` 开头的地址 |
-| `match` | 没有关联比赛时为 `null`。有则含 `id`、`type`、`home`、`away`、`homeLogo`、`awayLogo`、`score`、`status`。多场只给第一场。`score` 如 `1-0`，`status` 如「上半场」。近三天的赛程里没有这场时这两项为 `null` |
+| `match` | 没有关联比赛时为 `null`。有则含 `id`、`type`、`home`、`away`、`homeLogo`、`awayLogo`、`score`、`status`。多场只给第一场。`score` 如 `1-0`，`status` 如「上半场」。前后约三周赛程里有这场时会补上队名、队徽和比分；没有则队名为空，`score` / `status` 为 `null` |
 | `hotComment` | 没有亮评时为 `null`。有则含 `commentId`、`userId`、`nickname`、`head`、`createTime`、`content`、`likeCount`、`cityName`。头像没有时是空字符串 |
 | `redPacket` | 没有红包时为 `null`。有则是说球帝自己发的，不使用原站金额。每帖 10 份、共 `10.00` 元。字段有 `amount`、`num`、`remainNum`、`status`、`statusName`、`description`、`mine`。`mine` 是当前用户领到的金额，没领或没带 `token` 时为 `null`。领完 `statusName` 是「已领完」 |
 
@@ -277,7 +277,7 @@ POST /prod-api/community/replies/{replyId}/remove
 { "token": "", "postId": "", "commentId": "" }
 ```
 
-发评论可以带 `cityName`，不传就是空。发帖可以带 `circleIds`、`pictures`、`videos`、`topicIds`、`mentionUserIds`、`matchId`、`matchType`。`circleIds` 不传时不进具体圈子，仍出现在全部帖子里。图片和视频先走上传，视频这里只收已经能播的地址，不做转码。
+发评论、发帖都可以带 `cityName`，不传时发帖用账号已存城市，没有就是空。发帖还可以带 `circleIds`、`pictures`、`videos`、`topicIds`、`mentionUserIds`、`matchId`、`matchType`。`circleIds` 不传时不进具体圈子，仍出现在全部帖子里。图片和视频先走上传，视频这里只收已经能播的地址，不做转码。
 
 ```text
 POST /prod-api/community/upload
@@ -522,17 +522,31 @@ POST /prod-api/user/avatar
 | `signed` | 今天是否已签 |
 | `gotReg` | 注册奖励已领 |
 | `gotLogin` | 连续登录奖励已领 |
-| `records` | 明细。`title`、`time`（`yyyy-MM-dd HH:mm:ss`）、`amount` |
+| `records` | 当前页明细。`title`、`time`（`yyyy-MM-dd HH:mm:ss`）、`amount` |
+| `recordTotal` | 明细总条数，最多保留 500 |
+| `page` / `pageSize` | 当前页；默认第 1 页、每页 50，最大 100 |
 
 | 接口 | 请求体 |
 |---|---|
-| `POST /prod-api/user/mission` | `{ "token" }` |
+| `POST /prod-api/user/mission` | `{ "token" }`，可选 `page`、`pageSize` 翻明细 |
 | `POST /prod-api/user/mission/sign` | `{ "token", "day" }`。`day` 从 1 起，对应当天那一格 |
 | `POST /prod-api/user/mission/claim` | `{ "token", "type" }`。`1` 注册 +200，`3` 连续登录满 3 天 +300 |
 
 签到奖励按天是 30、50、70、90、110、130、150。今天已签返回「今日已签到」。还没轮到返回「未到签到时间」。观看时长、分享、邀请没有计数，对应领取会拒绝。已领过返回「已领取」。
 
 等级用音浪余额本地算：不足 100 为 Lv.1，否则等级为余额除以 100 的整数部分。
+
+### 红包商城
+
+只展示，不兑换、不下单、不存地址。个人中心「红包商城」打开列表。商品图仍用原站地址。
+
+```
+GET /prod-api/goods/category/list?langtype=zh
+GET /prod-api/goods/list?type=0&cid=0&ishot=-1&pn=1&ps=10&langtype=zh
+GET /prod-api/goods/detail?id=122&langtype=zh
+```
+
+分类在 `data.dataList`：`id`、`name`、`sort`、`has_goods`。列表在 `data.dataList`，并带 `total`、`totalPage`、`currentPage`。一项有 `id`、`title`、`amount`（元）、`cid`、`cname`、`cover_url`、`limit_type`、`sales`、`stock`、`status`、`type`、`ishot`、`goods_rule_id`。`cid=0` 是全部；`limit_type`：`0` 每月一次、`1` 终身一次、`2` 每日、`3` 每周、`4` 半月。详情多 `description`、`introduction`、`detail`、`img1`～`img3`。没有兑换、订单接口。
 
 ### 红包
 

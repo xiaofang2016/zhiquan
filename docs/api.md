@@ -18,6 +18,8 @@
 | `GET /prod-api/database/`、`/prod-api/team/`、`/prod-api/player/` | 资料库 |
 | 其余 `GET /prod-api/`，例如联赛、日期、`/prod-api/match/list/new` | 比赛 |
 | `GET /prod-api/chat/groups`、`/prod-api/chat/groups/{id}/messages` | 职圈群聊天，只读 |
+| `GET /prod-api/goods/category/list`、`/goods/list`、`/goods/detail` | 红包商城只读，见 [说球帝frontend.md](说球帝frontend.md) |
+| `POST /prod-api/chat/messages` | 播放页聊天发言（说球帝登录后） |
 | `GET https://chat.kzbzcq.com/chat` | 播放页聊天室 |
 | `GET https://live.kzbzcq.com/live` | 直播 |
 | `GET https://index.kzbzcq.com/index` | 指数 |
@@ -781,6 +783,17 @@ wss://ix1ui9ljn6.execute-api.ap-northeast-1.amazonaws.com/prod
 新出现的群推送 `{ "group": { "id": 0, "gid": "", "name": "", "ownerName": "", "notice": "", "avatar": "" } }`。未读数不在接口里，由页面按推送在本地累加，点开该群后清掉，没有上限。
 
 数据在 DynamoDB `zhiquan_chat`。抓取挂着原站长连接，消息到达后由上面的函数推给已连接的浏览器，页面不用为了新消息轮询这两个 GET。抓取断线会先补离线再重连，补上的新行也会推。群列表大约每分钟重读，账号新加入的群在这一轮写入后推送。账号没加入的群不会出现。
+
+## 播放页发言
+
+说球帝登录后，在播放页发聊天：
+
+```text
+POST /prod-api/chat/messages
+{ "token": "", "mid": "4498761", "nick": "", "content": "" }
+```
+
+字段以代码为准。前端已经在用，改路径或字段前先改本文。
 
 ## 聊天室
 

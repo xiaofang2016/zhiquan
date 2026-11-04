@@ -54,13 +54,14 @@ public final class CommunityLife {
 
     public static ObjectNode publish(ObjectMapper json, ObjectNode board, String nick, String head, String userId, String phone,
                                       String title, String content, List<Long> circleIds, List<String> pictures, List<String> videos,
-                                      List<Long> topicIds, List<String> mentionUserIds, Long matchId, String matchType) {
+                                      List<Long> topicIds, List<String> mentionUserIds, Long matchId, String matchType, String cityName) {
         CommunityBoard.ensure(json, board);
         ObjectNode post = CommunityBoard.addPost(json, board, nick, head, "", title, content, userId);
         if (phone != null && !phone.isBlank()) {
             ((ObjectNode) board.get("authors")).put(post.path("postId").asText(), phone);
         }
         writePost(post, circleIds, pictures, videos, topicIds, mentionUserIds, matchId, matchType);
+        city(post, cityName == null || cityName.isBlank() ? null : UserAuthService.city(cityName));
         post.put("visibility", "public");
         post.put("rewardEnabled", false);
         remember(json, board, userId, nick, head);

@@ -76,6 +76,10 @@
 
 正文在同一个桶的 `community/feed.json`、`community/posts/{postId}.json`、`community/posts/{postId}/comments.json`。外站头像转存到图片桶，地址换成 `/prod-api/community/images/{hash}`。读接口见前端文档的社球帝一节。`/prod-api/` 的响应不论请求有没有 `Origin` 都带 `Access-Control-Allow-Origin: *`，预检直接返回 204，避免 CloudFront 把没带头的那份缓存住。
 
+### 红包商城：同一进程里再一口钟
+
+也在 `db.jar`。进程起来先抓一轮，之后每 5 分钟拉 `kzb001.net` 的 `/prod-api/goods/category/list`、`/goods/list`（翻完所有页）和每件商品的 `/goods/detail`。不跟资料库、社球帝共用那把锁；打上游时和资料库共用 `UpstreamClient` 的 200 毫秒间隔。正文写在同一个桶的 `mall/catalog.json`。读接口只返回目录，没有兑换、下单。封面仍用原站地址。
+
 ### 播放页：有人打开才拉
 
 聊天和四个栏目没有定时任务。

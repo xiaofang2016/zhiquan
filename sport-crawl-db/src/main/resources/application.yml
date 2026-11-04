@@ -22,6 +22,7 @@ sport:
     db-prefix: database/
     db-table: sport_db_doc
     community-prefix: community/
+    mall-prefix: mall/
   community:
     enabled: true
     base-url: https://kzb001.net
@@ -33,6 +34,9 @@ sport:
     comment-page-size: 50
     comment-pages: 10
     request-interval-ms: 200
+  mall:
+    enabled: true
+    page-size: 50
   database:
     enabled: true
     base-url: https://kzb001.net

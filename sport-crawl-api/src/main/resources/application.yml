@@ -18,6 +18,7 @@ sport:
     db-prefix: database/
     db-table: sport_db_doc
     community-prefix: community/
+    mall-prefix: mall/
     user-table: sport_user
     zhiquan-chat-table: zhiquan_chat
     zhiquan-chat-partition: apk#5739998

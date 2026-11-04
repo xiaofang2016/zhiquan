@@ -89,9 +89,22 @@ public final class MissionRules {
         if (records != null) {
             next.addAll(records);
         }
-        if (next.size() > 50) {
-            return List.copyOf(next.subList(0, 50));
+        // 明细保留最近 500 条，接口再按页截取。
+        if (next.size() > 500) {
+            return List.copyOf(next.subList(0, 500));
         }
         return List.copyOf(next);
+    }
+
+    public static List<Entry> page(List<Entry> records, int page, int pageSize) {
+        List<Entry> all = records == null ? List.of() : records;
+        int size = Math.min(Math.max(pageSize, 1), 100);
+        int pn = Math.max(page, 1);
+        int from = (pn - 1) * size;
+        if (from >= all.size()) {
+            return List.of();
+        }
+        int to = Math.min(from + size, all.size());
+        return List.copyOf(all.subList(from, to));
     }
 }

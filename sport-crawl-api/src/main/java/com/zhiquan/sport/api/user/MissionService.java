@@ -25,8 +25,12 @@ public class MissionService {
     }
 
     public Map<String, Object> state(String token) {
+        return state(token, 1, 50);
+    }
+
+    public Map<String, Object> state(String token, Integer page, Integer pageSize) {
         SportUser user = auth.account(token);
-        return view(load(user.getPhone()).state(), LocalDate.now(MissionRules.ZONE));
+        return view(load(user.getPhone()).state(), LocalDate.now(MissionRules.ZONE), page, pageSize);
     }
 
     public Map<String, Object> sign(String token, int day) {
@@ -44,7 +48,7 @@ public class MissionService {
             MissionRules.State next = action.apply(loaded.state());
             try {
                 users.saveMission(user.getPhone(), loaded.raw(), encode(next));
-                return view(next, LocalDate.now(MissionRules.ZONE));
+                return view(next, LocalDate.now(MissionRules.ZONE), 1, 50);
             } catch (ConditionalCheckFailedException ex) {
                 if (attempt == 1) {
                     throw new IllegalArgumentException("请稍后再试");
@@ -76,14 +80,20 @@ public class MissionService {
         }
     }
 
-    private static Map<String, Object> view(MissionRules.State state, LocalDate today) {
+    private static Map<String, Object> view(MissionRules.State state, LocalDate today, Integer page, Integer pageSize) {
+        int pn = page == null || page < 1 ? 1 : page;
+        int ps = pageSize == null || pageSize < 1 ? 50 : Math.min(pageSize, 100);
+        java.util.List<MissionRules.Entry> all = state.records() == null ? java.util.List.of() : state.records();
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("balance", state.balance());
         data.put("signDay", state.signDay());
         data.put("signed", today.toString().equals(state.signedOn()));
         data.put("gotReg", state.gotReg());
         data.put("gotLogin", state.gotLogin());
-        data.put("records", state.records());
+        data.put("recordTotal", all.size());
+        data.put("page", pn);
+        data.put("pageSize", ps);
+        data.put("records", MissionRules.page(all, pn, ps));
         return data;
     }
 

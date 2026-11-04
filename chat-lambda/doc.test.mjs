@@ -64,6 +64,16 @@ test("image messages stay in the record without caption text", () => {
   assert.equal(skinned.level, 50);
   assert.equal(skinned.bubble, "https://cdn.example.com/b.png");
   assert.equal(skinned.color, "rgb(130, 100, 169)");
+  const fromLevel = fromNim({
+    type: "text",
+    idClient: "c-from",
+    time: 3,
+    fromNick: "乙",
+    text: "带等级",
+    fromCustom: JSON.stringify({ level: 12 }),
+    custom: JSON.stringify({ level: 99 })
+  });
+  assert.equal(fromLevel.level, 12);
   const shown = present(skinned);
   assert.ok(shown.badge.startsWith("https://") || shown.badge.startsWith("data:image/"));
   const packed = pack([skinned, { ...skinned, id: "c2", time: 4, content: "再来" }, { id: "c3", time: 5, nick: "乙", content: "没有等级" }]);

@@ -219,10 +219,10 @@ public class SpeakService {
 
     public ObjectNode publish(String nick, String head, String userId, String phone, String title, String content,
                               List<Long> circleIds, List<String> pictures, List<String> videos, List<Long> topicIds,
-                              List<String> mentionUserIds, Long matchId, String matchType) {
+                              List<String> mentionUserIds, Long matchId, String matchType, String cityName) {
         return update(boardKey(), board -> CommunityLife.publish(json, CommunityBoard.ensure(json, board),
                 Voice.nick(nick), Voice.head(head), userId, phone, Voice.title(title), Voice.post(content),
-                circleIds, pictures, videos, topicIds, mentionUserIds, matchId, matchType));
+                circleIds, pictures, videos, topicIds, mentionUserIds, matchId, matchType, cityName));
     }
 
     public ObjectNode editPost(String viewer, String postId, String title, String content, List<Long> circleIds,

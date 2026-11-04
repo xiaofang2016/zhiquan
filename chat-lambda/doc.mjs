@@ -110,13 +110,22 @@ export function fromNim(message) {
   if (message.custom) {
     try { custom = JSON.parse(message.custom); } catch { custom = {}; }
   }
+  let fromCustom = {};
+  if (message.fromCustom) {
+    try {
+      fromCustom = typeof message.fromCustom === "string"
+        ? JSON.parse(message.fromCustom)
+        : (message.fromCustom || {});
+    } catch { fromCustom = {}; }
+  }
   if (typeof custom.giftTrendsUrl === "string") images.push({ url: custom.giftTrendsUrl });
   let content = String(message.text || custom.content || "").trim();
   for (const match of content.matchAll(IMAGE_TAG)) images.push({ url: match[1] });
   const linked = content.match(IMAGE_URL) || [];
   for (const url of linked) images.push({ url });
   if (linked.length === 1 && content === linked[0]) content = "";
-  const level = Number(custom.level);
+  // 原站 App 先读 fromCustom.level，没有再读 custom.level。
+  const level = Number(fromCustom.level != null ? fromCustom.level : custom.level);
   return normalize({
     id: message.idClient,
     time: message.time,
@@ -124,8 +133,8 @@ export function fromNim(message) {
     content,
     images,
     level,
-    bubble: custom.bubbleUrl,
-    color: custom.bobbleFrontColor
+    bubble: custom.bubbleUrl || fromCustom.bubbleUrl,
+    color: custom.bobbleFrontColor || fromCustom.bobbleFrontColor
   });
 }
 

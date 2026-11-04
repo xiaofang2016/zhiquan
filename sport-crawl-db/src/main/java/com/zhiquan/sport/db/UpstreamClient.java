@@ -8,6 +8,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -43,16 +44,21 @@ public class UpstreamClient {
         DatabaseQuery.normalize(query).forEach(builder::queryParam);
         URI uri = builder.build().encode().toUri();
         pace();
-        byte[] body = restTemplate.execute(uri, HttpMethod.GET, request -> {
-            request.getHeaders().set(HttpHeaders.USER_AGENT, USER_AGENT);
-            request.getHeaders().set(HttpHeaders.REFERER, "https://kzb001.net/");
-            request.getHeaders().setAccept(List.of(MediaType.APPLICATION_JSON));
-        }, response -> {
-            if (!response.getStatusCode().is2xxSuccessful()) {
-                throw new IllegalStateException("HTTP " + response.getStatusCode().value());
-            }
-            return response.getBody().readAllBytes();
-        });
+        byte[] body;
+        try {
+            body = restTemplate.execute(uri, HttpMethod.GET, request -> {
+                request.getHeaders().set(HttpHeaders.USER_AGENT, USER_AGENT);
+                request.getHeaders().set(HttpHeaders.REFERER, "https://kzb001.net/");
+                request.getHeaders().setAccept(List.of(MediaType.APPLICATION_JSON));
+            }, response -> {
+                if (!response.getStatusCode().is2xxSuccessful()) {
+                    throw new IllegalStateException("HTTP " + response.getStatusCode().value());
+                }
+                return response.getBody().readAllBytes();
+            });
+        } catch (HttpStatusCodeException ex) {
+            throw new IllegalStateException("HTTP " + ex.getStatusCode().value());
+        }
         try {
             JsonNode root = objectMapper.readTree(body);
             if (!"0".equals(root.path("code").asText())) {

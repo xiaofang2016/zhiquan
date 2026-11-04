@@ -656,6 +656,41 @@
   .yin-row em { color: #ee0a24; font-style: normal; }
   .sub-empty { margin: 48px 0; color: #c8c9cc; text-align: center; font-size: 14px; }
   .sub-empty svg { display: block; margin: 0 auto 12px; }
+  .mall-tip { margin: 0 12px 8px; color: #969799; font-size: 12px; }
+  .mall-cats {
+    display: flex; gap: 8px; overflow-x: auto; padding: 0 12px 10px;
+    -webkit-overflow-scrolling: touch;
+  }
+  .mall-cats button {
+    flex: none; border: 0; border-radius: 14px; padding: 6px 12px;
+    background: #fff; color: #646566; font-size: 13px;
+  }
+  .mall-cats button.on { background: #27c5c3; color: #fff; }
+  .mall-grid {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 10px; padding: 0 12px 20px;
+  }
+  .mall-card {
+    border: 0; border-radius: 10px; padding: 0; overflow: hidden;
+    background: #fff; text-align: left; color: #323233;
+  }
+  .mall-card img { display: block; width: 100%; aspect-ratio: 1; object-fit: cover; background: #f2f3f5; }
+  .mall-card div { padding: 8px 10px 12px; }
+  .mall-card b { display: block; min-height: 36px; font-size: 13px; font-weight: 500; line-height: 1.35; }
+  .mall-card em { display: block; margin-top: 6px; color: #ee0a24; font-style: normal; font-size: 15px; }
+  .mall-card em i { font-style: normal; font-weight: 600; }
+  .mall-card span, .mall-card p { display: block; margin-top: 4px; color: #969799; font-size: 11px; }
+  .mall-more {
+    display: block; width: calc(100% - 24px); margin: 0 12px 24px; border: 0;
+    border-radius: 8px; padding: 12px; background: #fff; color: #646566; font-size: 14px;
+  }
+  .mall-sheet { max-width: 360px; padding: 16px; text-align: left; }
+  .mall-sheet img { display: block; width: 100%; border-radius: 8px; margin-bottom: 12px; background: #f2f3f5; }
+  .mall-sheet b { display: block; font-size: 16px; }
+  .mall-sheet em { display: block; margin: 8px 0; color: #ee0a24; font-style: normal; }
+  .mall-sheet em i { font-style: normal; font-weight: 600; }
+  .mall-sheet p { margin: 8px 0; color: #646566; font-size: 13px; line-height: 1.5; }
+  .mall-sheet .mall-stock { color: #969799; font-size: 12px; }
+  .mall-sheet button { margin-top: 8px; }
   .level-head { display: flex; align-items: center; gap: 8px; padding: 14px 16px 0; background: #fff; font-size: 14px; }
   .level-head i { width: 28px; height: 28px; border-radius: 50%; background: #f3d7c5; }
   .level-badge { margin: 8px auto 0; width: 72px; text-align: center; color: #666; font-size: 12px; }

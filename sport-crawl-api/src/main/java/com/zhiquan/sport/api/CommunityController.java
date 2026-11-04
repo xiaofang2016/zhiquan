@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.zhiquan.sport.api.speak.CommunityBoard;
+import com.zhiquan.sport.api.speak.CommunityLife;
 import com.zhiquan.sport.api.speak.CommunityMatch;
 import com.zhiquan.sport.api.speak.CommunitySource;
 import com.zhiquan.sport.api.speak.CommunityVideo;
@@ -90,16 +91,44 @@ public class CommunityController {
         ArrayNode marked = json.createArrayNode();
         if (circles.isArray()) {
             String viewer = viewer(token);
+            int index = 0;
             for (JsonNode circle : circles) {
                 if (circle instanceof ObjectNode object) {
                     ObjectNode copy = object.deepCopy();
                     CommunityBoard.markCircle(copy, speak.board(), viewer);
+                    // 没有单独热门标记时，列表前两个当热门推荐。
+                    if (!copy.has("isHot") || copy.path("isHot").isNull()) {
+                        copy.put("isHot", index < 2);
+                    }
                     marked.add(copy);
+                    index++;
                 }
             }
         }
         CommunityBoard.absoluteHeads(marked, publicBase);
         return KzbResult.ok(marked);
+    }
+
+    @GetMapping("/prod-api/community/topics")
+    public KzbResult topics() {
+        JsonNode feed = read(key("feed.json"));
+        ArrayNode list = json.createArrayNode();
+        java.util.LinkedHashMap<Long, ObjectNode> seen = new java.util.LinkedHashMap<>();
+        for (JsonNode circle : feed.path("circles")) {
+            for (JsonNode topic : circle.path("topics")) {
+                long id = topic.path("id").asLong(0);
+                if (id <= 0 || seen.containsKey(id)) {
+                    continue;
+                }
+                ObjectNode row = CommunityLife.topic(json, feed, id);
+                if (row != null) {
+                    row.put("participantCount", row.path("postCount").asInt(0));
+                    seen.put(id, row);
+                    list.add(row);
+                }
+            }
+        }
+        return KzbResult.ok(list);
     }
 
     @GetMapping("/prod-api/community/circles/{circleId:[0-9]{1,18}}")
@@ -192,7 +221,12 @@ public class CommunityController {
     @PostMapping("/prod-api/community/posts")
     public KzbResult publish(@RequestBody SpeakBody body) {
         SportUser user = auth.account(body.token());
-        return ready(speak.publish(SpeakService.nickOf(user), head(user), user.getUserId(), user.getPhone(), body.title(), body.content(), body.circleIds(), body.pictures(), body.videos(), body.topicIds(), body.mentionUserIds(), body.matchId(), body.matchType()));
+        if (body.cityName() != null) {
+            auth.saveCity(body.token(), body.cityName());
+            speak.saveProfile(user.getUserId(), null, null, body.cityName());
+        }
+        String city = body.cityName() != null ? body.cityName() : user.getCityName();
+        return ready(speak.publish(SpeakService.nickOf(user), head(user), user.getUserId(), user.getPhone(), body.title(), body.content(), body.circleIds(), body.pictures(), body.videos(), body.topicIds(), body.mentionUserIds(), body.matchId(), body.matchType(), city));
     }
 
     @GetMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/highlights")

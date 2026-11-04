@@ -22,8 +22,9 @@ public class ProdApiController {
     }
 
     @GetMapping("/prod-api/match/date/count")
-    public KzbResult dates() {
-        return KzbResult.ok(matches.dates());
+    public KzbResult dates(@RequestParam(required = false) Integer type,
+                           @RequestParam(required = false) Integer cid) {
+        return KzbResult.ok(matches.dates(type, cid));
     }
 
     @GetMapping("/prod-api/match/list/new")

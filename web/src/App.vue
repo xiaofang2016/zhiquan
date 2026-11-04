@@ -48,6 +48,7 @@
   <BindPage v-else-if="state.screen === 'bind'" />
   <MatchSettingsPage v-else-if="state.screen === 'settings'" />
   <OrderPage v-else-if="state.screen === 'order'" />
+  <MallPage v-else-if="state.screen === 'mall'" />
   <LevelPage v-else-if="state.screen === 'level'" />
   <LevelRulePage v-else-if="state.screen === 'level-rule'" />
   <BadgePage v-else-if="state.screen === 'badge'" />
@@ -102,6 +103,7 @@ import MinePage from "./pages/MinePage.vue";
 import BindPage from "./pages/BindPage.vue";
 import MatchSettingsPage from "./pages/MatchSettingsPage.vue";
 import OrderPage from "./pages/OrderPage.vue";
+import MallPage from "./pages/MallPage.vue";
 import LevelPage from "./pages/LevelPage.vue";
 import LevelRulePage from "./pages/LevelRulePage.vue";
 import BadgePage from "./pages/BadgePage.vue";

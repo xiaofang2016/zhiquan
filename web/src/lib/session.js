@@ -427,6 +427,17 @@ export function closeOrder() {
   else openMine();
 }
 
+export function openMall(from) {
+  state.mallFrom = from || "mine";
+  state.screen = "mall";
+}
+
+export function closeMall() {
+  if (state.mallFrom === "forecast") openForecast();
+  else if (state.mallFrom === "task") openTask(state.taskFrom);
+  else openMine();
+}
+
 export async function openLevel() {
   state.screen = "level";
   await refreshMission();
@@ -545,6 +556,7 @@ export function onMine(action, needsLogin) {
   if (action === "ued-withdraw") { withdrawBrand("ued"); return; }
   if (needsLogin && !state.user) { openAccount("login", true); return; }
   if (action === "order") { openOrder("mine"); return; }
+  if (action === "mall") { openMall("mine"); return; }
   if (action === "level") { openLevel(); return; }
   if (action === "badge") { state.screen = "badge"; return; }
   if (action === "forecast") { openForecast(); return; }

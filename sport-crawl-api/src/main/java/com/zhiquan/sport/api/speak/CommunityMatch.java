@@ -50,6 +50,10 @@ public class CommunityMatch {
             object.putNull("status");
             return;
         }
+        putText(object, "home", first(payload, "hteam_name", "home"));
+        putText(object, "away", first(payload, "ateam_name", "away"));
+        putText(object, "homeLogo", first(payload, "hteam_logo", "homeLogo"));
+        putText(object, "awayLogo", first(payload, "ateam_logo", "awayLogo"));
         String score = payload.path("score").asText("");
         if (score.isEmpty()) {
             object.putNull("score");
@@ -64,22 +68,47 @@ public class CommunityMatch {
         }
     }
 
+    private static String first(JsonNode payload, String... keys) {
+        for (String key : keys) {
+            String text = payload.path(key).asText("");
+            if (!text.isBlank()) {
+                return text;
+            }
+        }
+        return "";
+    }
+
+    private static void putText(ObjectNode object, String field, String value) {
+        if (value == null || value.isBlank()) {
+            if (!object.path(field).asText("").isBlank()) {
+                return;
+            }
+            object.put(field, "");
+            return;
+        }
+        object.put(field, value);
+    }
+
     private JsonNode payload(long matchId) {
         LocalDate today = LocalDate.now(SHANGHAI);
-        for (int shift = -1; shift <= 1; shift++) {
+        JsonNode found = null;
+        for (int shift = -14; shift <= 7; shift++) {
             try {
                 SportMatch row = matches.find(today.plusDays(shift), matchId);
                 if (row == null || row.getPayload() == null || row.getPayload().isBlank()) {
                     continue;
                 }
                 JsonNode node = json.readTree(row.getPayload());
-                if (!node.path("score").asText("").isEmpty() || !node.path("status_up_name").asText("").isEmpty()) {
+                found = node;
+                if (!node.path("score").asText("").isEmpty()
+                        || !node.path("hteam_name").asText("").isEmpty()
+                        || !node.path("ateam_name").asText("").isEmpty()) {
                     return node;
                 }
             } catch (Exception ignored) {
                 // 这场不在赛程里，或暂时读不到
             }
         }
-        return null;
+        return found;
     }
 }

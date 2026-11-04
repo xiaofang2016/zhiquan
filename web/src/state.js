@@ -92,6 +92,7 @@ export const state = reactive({
   settingsRev: 0,
   taskFrom: "mine",
   orderFrom: "mine",
+  mallFrom: "mine",
   inviteFrom: "mine",
   forecastTab: "predict",
   feedback: "",
