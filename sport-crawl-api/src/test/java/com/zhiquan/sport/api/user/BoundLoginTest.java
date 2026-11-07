@@ -29,4 +29,11 @@ class BoundLoginTest {
         assertEquals("请重新验证吉祥账号", assertThrows(IllegalArgumentException.class,
                 () -> BoundLogin.token(true, "token-1", NOW, NOW, "jxt")).getMessage());
     }
+
+    @Test
+    void liveBrandUsesTheSameSignature() {
+        String signature = JxtBoximSign.sign(SECRET, String.valueOf(NOW), "nonce1234567890ab", "POST",
+                BoundLogin.PATH, BoundLogin.signed(USER, PHONE, "live"));
+        BoundLogin.check(SECRET, String.valueOf(NOW), "nonce1234567890ab", USER, PHONE, "live", signature, NOW);
+    }
 }

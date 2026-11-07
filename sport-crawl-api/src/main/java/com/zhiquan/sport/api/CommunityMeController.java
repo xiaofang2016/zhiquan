@@ -5,8 +5,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.zhiquan.sport.api.speak.CommunityLife;
 import com.zhiquan.sport.api.speak.CommunityPicture;
+import com.zhiquan.sport.api.speak.CommunityUpload;
 import com.zhiquan.sport.api.speak.SpeakService;
-import com.zhiquan.sport.api.user.AvatarImage;
 import com.zhiquan.sport.api.user.UserAuthService;
 import com.zhiquan.sport.api.user.WalletBook;
 import com.zhiquan.sport.store.aws.SportAwsProperties;
@@ -135,7 +135,7 @@ public class CommunityMeController {
         String orderNo = UUID.randomUUID().toString().replace("-", "");
         book.reward(from, to, cents, orderNo);
         try {
-            speak.commitReward(postId, from.getUserId(), SpeakService.nickOf(from), head(from), cents);
+            speak.commitReward(postId, from.getUserId(), SpeakService.nickOf(from), head(from), cents, body.showHead() == null || body.showHead());
         } catch (RuntimeException ex) {
             book.reward(to, from, cents, orderNo + "-back");
             throw new IllegalArgumentException("打赏失败，余额已退回");
@@ -152,6 +152,11 @@ public class CommunityMeController {
     @GetMapping("/prod-api/community/users/{userId:[0-9a-fA-F]{1,32}}")
     public KzbResult user(@PathVariable String userId, @RequestParam(required = false) String token) {
         return ready(speak.profile(read(key("feed.json")), userId, viewer(token)));
+    }
+
+    @GetMapping("/prod-api/community/users/{userId:[0-9a-fA-F]{1,32}}/comments")
+    public KzbResult commentsOf(@PathVariable String userId, @RequestParam(required = false) Integer page, @RequestParam(required = false) Integer ps) {
+        return ready(speak.myComments(read(key("feed.json")), read(key("comment-index.json")), userId, pageOf(page), sizeOf(ps, 20)));
     }
 
     @GetMapping("/prod-api/community/users/{userId:[0-9a-fA-F]{1,32}}/follows")
@@ -233,37 +238,54 @@ public class CommunityMeController {
     @PostMapping("/prod-api/community/upload")
     public KzbResult upload(@RequestBody TokenBody body) {
         auth.account(body.token());
-        byte[] jpeg = AvatarImage.jpeg(body.image());
-        int[] size = CommunityPicture.size(jpeg);
+        CommunityUpload.File file = CommunityUpload.read(body.image());
         String id = UUID.randomUUID().toString().replace("-", "");
-        images.put("community/media/" + id + ".jpg", jpeg, "image/jpeg");
+        images.put("community/media/" + id + file.extension(), file.bytes(), file.contentType());
         ObjectNode data = json.createObjectNode();
         data.put("url", publicBase + "/prod-api/community/media/" + id);
-        if (size[0] > 0) {
-            data.put("w", size[0]);
-            data.put("h", size[1]);
-        } else {
+        data.put("type", file.video() ? "video" : "image");
+        if (file.video()) {
             data.putNull("w");
             data.putNull("h");
+        } else {
+            int[] size = CommunityPicture.size(file.bytes());
+            if (size[0] > 0) {
+                data.put("w", size[0]);
+                data.put("h", size[1]);
+            } else {
+                data.putNull("w");
+                data.putNull("h");
+            }
         }
         return KzbResult.ok(data);
     }
 
     @GetMapping("/prod-api/community/media/{id:[a-f0-9]{32}}")
     public ResponseEntity<byte[]> media(@PathVariable String id) {
-        byte[] body;
-        try {
-            body = images.get("community/media/" + id + ".jpg");
-        } catch (RuntimeException ex) {
-            return ResponseEntity.notFound().build();
+        byte[] jpeg = mediaBytes("community/media/" + id + ".jpg");
+        if (jpeg != null) {
+            return ResponseEntity.ok()
+                    .contentType(MediaType.IMAGE_JPEG)
+                    .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
+                    .body(jpeg);
         }
-        if (body == null || body.length == 0) {
+        byte[] video = mediaBytes("community/media/" + id + ".mp4");
+        if (video == null) {
             return ResponseEntity.notFound().build();
         }
         return ResponseEntity.ok()
-                .contentType(MediaType.IMAGE_JPEG)
+                .contentType(MediaType.valueOf("video/mp4"))
                 .cacheControl(CacheControl.maxAge(Duration.ofDays(30)).cachePublic())
-                .body(body);
+                .body(video);
+    }
+
+    private byte[] mediaBytes(String key) {
+        try {
+            byte[] body = images.get(key);
+            return body == null || body.length == 0 ? null : body;
+        } catch (RuntimeException ex) {
+            return null;
+        }
     }
 
     @GetMapping("/prod-api/community/topics/{topicId:[0-9]{1,18}}")
@@ -284,7 +306,7 @@ public class CommunityMeController {
         return ready(announce);
     }
 
-    public record TokenBody(String token, String postId, String commentId, String title, String content, String amount, String visibility, String intro, String bg, String image, List<String> ids, List<Long> circleIds, List<String> pictures, List<String> videos, List<Long> topicIds, List<String> mentionUserIds, Long matchId, String matchType, String cityName) {
+    public record TokenBody(String token, String postId, String commentId, String title, String content, String amount, String visibility, String intro, String bg, String image, List<String> ids, List<Long> circleIds, List<String> pictures, List<String> videos, List<Long> topicIds, List<String> mentionUserIds, Long matchId, String matchType, String cityName, Boolean showHead) {
     }
 
     private int originalLikes(String postId, String commentId, String id, boolean reply) {

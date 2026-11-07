@@ -177,6 +177,11 @@ public class UserAuthService {
         users.deleteCode(phone);
     }
 
+    /** 职圈打开说球帝直播时签发一份和登录相同的令牌。 */
+    public String issueSession(SportUser user) {
+        return issue(user);
+    }
+
     private String issue(SportUser user) {
         long expiresAt = Instant.now().plus(days, ChronoUnit.DAYS).getEpochSecond();
         return UserToken.issue(secret, user.getPhone(), user.getUserId(), expiresAt);

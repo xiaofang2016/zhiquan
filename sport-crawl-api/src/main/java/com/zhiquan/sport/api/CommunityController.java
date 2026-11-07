@@ -221,11 +221,11 @@ public class CommunityController {
     @PostMapping("/prod-api/community/posts")
     public KzbResult publish(@RequestBody SpeakBody body) {
         SportUser user = auth.account(body.token());
-        if (body.cityName() != null) {
+        if (CommunityLife.rememberCity(body.cityName())) {
             auth.saveCity(body.token(), body.cityName());
             speak.saveProfile(user.getUserId(), null, null, body.cityName());
         }
-        String city = body.cityName() != null ? body.cityName() : user.getCityName();
+        String city = CommunityLife.postedCity(body.cityName(), user.getCityName());
         return ready(speak.publish(SpeakService.nickOf(user), head(user), user.getUserId(), user.getPhone(), body.title(), body.content(), body.circleIds(), body.pictures(), body.videos(), body.topicIds(), body.mentionUserIds(), body.matchId(), body.matchType(), city));
     }
 
@@ -282,7 +282,7 @@ public class CommunityController {
     @PostMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/comments")
     public KzbResult reply(@PathVariable String postId, @RequestBody SpeakBody body) {
         SportUser user = auth.account(body.token());
-        if (body.cityName() != null) {
+        if (CommunityLife.rememberCity(body.cityName())) {
             auth.saveCity(body.token(), body.cityName());
             speak.saveProfile(user.getUserId(), null, null, body.cityName());
         }

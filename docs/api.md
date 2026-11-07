@@ -13,7 +13,7 @@
 | `POST /prod-api/user/sms` `/register` `/login` `/session` | 账号 |
 | `POST /prod-api/user/jxt/status` `/sms` `/bind` `/unbind` `/withdraw` | 吉祥绑定和提现，见 [吉祥转账对接](jxt.md) |
 | `POST /prod-api/user/ued/status` `/sms` `/bind` `/unbind` `/withdraw` | UED 绑定和提现，商户号 `10012`，其余与吉祥相同 |
-| `POST /prod-api/user/bound-login` | 职圈取已绑定的吉祥或 UED 令牌。浏览器不要调用，见 [吉祥转账对接](jxt.md) |
+| `POST /prod-api/user/bound-login` | 职圈取吉祥、UED 或说球帝直播令牌。浏览器不要调用，见 [吉祥转账对接](jxt.md) |
 | `GET /prod-api/match/list/new2` | 即时比分 |
 | `GET /prod-api/database/`、`/prod-api/team/`、`/prod-api/player/` | 资料库 |
 | 其余 `GET /prod-api/`，例如联赛、日期、`/prod-api/match/list/new` | 比赛 |
@@ -84,7 +84,7 @@
 | `cityName` | 当前城市，还没设置时是空串。评论定位用这个值 |
 | `token` | 登录令牌。保存下来，恢复登录时原样传回。30 天后失效 |
 
-设置城市是 `POST /prod-api/user/city`，body `{ "token", "cityName" }`。最多 20 个字。成功 `data` 仍是登录结果。发评论或改社区资料时带了 `cityName`，也会写进这里。
+设置城市是 `POST /prod-api/user/city`，body `{ "token", "cityName" }`。最多 20 个字。成功 `data` 仍是登录结果。发帖、发评论带了非空的 `cityName`，也会写进这里。这两处传空串只让这一条不带城市，不改账号。改资料仍按传入的 `cityName` 保存。
 
 ### 发送验证码
 
@@ -183,7 +183,7 @@
 
 给比赛首页用。路径、参数和成功返回与 kzb001.net 的 `/prod-api` 一致。只读，不需要登录。
 
-今天的比赛每 2 分钟抓一次，顺带更新联赛和日期。未来日期每 30 分钟抓一次。过去 7 天每天 04:00（上海）抓一次。`total` 会跟着原站变。卡片上的实时比分、分钟、半场和角球用下面的即时比分，不要等这份列表刷新。
+今天的比赛每 2 分钟抓一次，顺带更新联赛和日期。上海时间 0 点到 6 点，同一轮再抓昨天。未来日期每 30 分钟抓一次。过去 7 天每天 04:00（上海）抓一次。`total` 会跟着原站变。卡片上的实时比分、分钟、半场和角球用下面的即时比分，不要等这份列表刷新。
 
 `/prod-api/match/detail`、阵容、伤停、球员、指数这次没有提供。
 
@@ -224,7 +224,7 @@
 
 `GET /prod-api/match/date/count?type=-1&cid=0`
 
-这是全部运动的日期统计。`type`、`cid` 可以照原站传，当前只存了这一份，筛了也不会按运动或联赛重算场次。
+不带 `type`、`cid`，或 `type` 小于等于 0、`cid` 为 0 时，`totalmatch` 是上游日期接口的数字。带了 `type` 或 `cid` 时，按这一天已经抓到的场次重算。
 
 ```json
 {
@@ -354,6 +354,21 @@
 | `streamId` `live_user_name` `liveUserId` `room_num` | 直播间信息。动画线路通常没有这些字段 |
 
 播放时用 `url`。不要把 `.flv` 当成文件下载。`mirror_live_urls`、`global_live_urls` 现在和 `live_urls` 内容相同，还没有单独的镜像线路。
+
+### 原站只读
+
+下面这些路径原样转发 `kzb001.net` 的同一地址，查询参数照原站传。成功时正文就是上游的 JSON。上游失败时 HTTP 502，`msg` 为「上游暂时不可用」。成功响应缓存 60 秒。资料库不在这里。
+
+| 路径 | 用途 |
+|---|---|
+| `GET /prod-api/gift/getGiftList` | 礼物目录 |
+| `GET /prod-api/bobble/getBobbleList` | 气泡目录 |
+| `GET /prod-api/match/news/information/list` | 比赛资讯列表 |
+| `GET /prod-api/match/detail/tabs` | 阵容页，含阵型、站位、评分 |
+| `GET /prod-api/match/detail/lineupAnalysis` | 阵容分析 |
+| `GET /prod-api/match/detail/playersStatSeason` | 本赛季球员数据 |
+| `GET /prod-api/match/detail/seasonData` | 篮球常规赛关键数据。上游没有时 `data` 为 `null` |
+| `GET /prod-api/at/list` | 比赛聊天里的推广卡 |
 
 ## 即时比分
 

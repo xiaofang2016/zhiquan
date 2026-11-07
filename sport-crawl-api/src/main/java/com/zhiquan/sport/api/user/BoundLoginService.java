@@ -15,11 +15,13 @@ public class BoundLoginService {
 
     private final SportUserRepository users;
     private final JxtClient jxt;
+    private final UserAuthService auth;
     private final ObjectMapper json;
 
-    public BoundLoginService(SportUserRepository users, JxtClient jxt, ObjectMapper json) {
+    public BoundLoginService(SportUserRepository users, JxtClient jxt, UserAuthService auth, ObjectMapper json) {
         this.users = users;
         this.jxt = jxt;
+        this.auth = auth;
         this.json = json;
     }
 
@@ -44,6 +46,14 @@ public class BoundLoginService {
             throw new IllegalArgumentException("签名不正确");
         }
         SportUser user = users.find(phone).orElse(null);
+        if ("live".equals(brand)) {
+            if (user == null || !userId.equals(user.getUserId())) {
+                throw new IllegalArgumentException("请先登录");
+            }
+            Map<String, String> opened = new LinkedHashMap<>();
+            opened.put("accessToken", auth.issueSession(user));
+            return opened;
+        }
         if (user == null || !userId.equals(user.getUserId())) {
             throw new IllegalArgumentException(BoundLogin.token(false, "", 0, now, brand));
         }

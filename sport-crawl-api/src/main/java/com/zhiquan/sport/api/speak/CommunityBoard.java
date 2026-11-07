@@ -271,6 +271,7 @@ public final class CommunityBoard {
                 if (post instanceof ObjectNode object) {
                     ObjectNode copy = object.deepCopy();
                     mark(copy, board, viewer);
+                    payable(copy, board);
                     PostRedPack.apply(copy, board, viewer);
                     posts.add(copy);
                 }
@@ -314,6 +315,7 @@ public final class CommunityBoard {
         copy.put("likeCount", copy.path("likeCount").asInt(0) + count(board, "likes", key));
         copy.put("collectCount", copy.path("collectCount").asInt(0) + count(board, "collects", key));
         mark(copy, board, viewer);
+        payable(copy, board);
         PostRedPack.apply(copy, board, viewer);
         return copy;
     }
@@ -1017,6 +1019,14 @@ public final class CommunityBoard {
             }
         }
         return false;
+    }
+
+    /** 没有说球帝作者手机号的帖子不能打赏，开关直接关掉。 */
+    static void payable(ObjectNode post, JsonNode board) {
+        String id = post.path("postId").asText("");
+        if (board == null || board.path("authors").path(id).asText("").isBlank()) {
+            post.put("rewardEnabled", false);
+        }
     }
 
     private static JsonNode findIn(JsonNode posts, long postId) {

@@ -17,6 +17,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class MatchCrawlRulesTest {
 
     @Test
+    void yesterdayIsRecrawledUntilMorning() {
+        assertTrue(MatchCrawlScheduler.catchUpYesterday(0));
+        assertTrue(MatchCrawlScheduler.catchUpYesterday(5));
+        assertFalse(MatchCrawlScheduler.catchUpYesterday(6));
+    }
+
+    @Test
     void pastCrawlStopsAtOneWeek() {
         LocalDate today = LocalDate.parse("2026-10-23");
         var dates = java.util.List.of(

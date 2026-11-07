@@ -251,9 +251,9 @@ public class SpeakService {
         return CommunityLife.rewardPhone(board(), Voice.postId(postId));
     }
 
-    public ObjectNode commitReward(String postId, String userId, String nick, String head, long cents) {
+    public ObjectNode commitReward(String postId, String userId, String nick, String head, long cents, boolean showHead) {
         String id = Voice.postId(postId);
-        return update(boardKey(), board -> CommunityLife.commitReward(json, CommunityBoard.ensure(json, board), id, userId, nick, head, cents));
+        return update(boardKey(), board -> CommunityLife.commitReward(json, CommunityBoard.ensure(json, board), id, userId, nick, head, cents, showHead));
     }
 
     public ObjectNode rewardList(String postId, int page, int pageSize) {

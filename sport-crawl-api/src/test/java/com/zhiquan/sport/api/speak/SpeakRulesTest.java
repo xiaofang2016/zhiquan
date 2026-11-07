@@ -269,6 +269,45 @@ class SpeakRulesTest {
     }
 
     @Test
+    void blankCityDoesNotReplaceTheAccountCity() {
+        assertFalse(CommunityLife.rememberCity(null));
+        assertFalse(CommunityLife.rememberCity("  "));
+        assertTrue(CommunityLife.rememberCity("上海"));
+        assertEquals("上海", CommunityLife.postedCity(null, "上海"));
+        assertEquals("", CommunityLife.postedCity("", "上海"));
+    }
+
+    @Test
+    void originalPostCannotBeRewardedAndMentionsNotify() throws Exception {
+        ObjectNode board = CommunityBoard.ensure(json, json.createObjectNode());
+        String author = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        String friend = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        CommunityLife.remember(json, board, friend, "朋友", "/head.jpg");
+        ObjectNode post = CommunityLife.publish(json, board, "我", "", author, "13800000000", "标题", "正文",
+                null, null, null, null, java.util.List.of(friend), null, null, null);
+        assertEquals("朋友", post.path("mentionUsers").get(0).path("nickname").asText());
+        assertEquals("mention", board.path("messages").get(0).path("type").asText());
+        assertEquals(friend, board.path("messages").get(0).path("toUserId").asText());
+        ObjectNode upstream = (ObjectNode) json.readTree("""
+                {"circles":[],"posts":[{"postId":9,"userId":"8","nickname":"原站","rewardEnabled":true,"createTime":"2026-10-29T01:00:00.000+00:00","title":"旧帖","content":"正文"}]}
+                """);
+        ObjectNode page = CommunityBoard.page(json, CommunityBoard.feed(json, upstream, board), 1, 20, null, null, null, board, null, "publish");
+        boolean closed = false;
+        for (JsonNode row : page.path("posts")) {
+            if (row.path("postId").asLong() == 9) {
+                closed = !row.path("rewardEnabled").asBoolean();
+            }
+        }
+        assertTrue(closed);
+        CommunityLife.rewardSwitch(board, author, post.path("postId").asText());
+        ObjectNode mine = CommunityBoard.find(json.createObjectNode(), json.createObjectNode(), board, post.path("postId").asText(), null);
+        assertTrue(mine.path("rewardEnabled").asBoolean());
+        ObjectNode reward = CommunityLife.commitReward(json, board, post.path("postId").asText(), friend, "朋友", "/head.jpg", 100, false);
+        assertEquals("", reward.path("head").asText());
+        assertEquals("reward", board.path("messages").get(1).path("type").asText());
+    }
+
+    @Test
     void unknownNickIsAccepted() {
         assertEquals("路人甲", Voice.nick("路人甲"));
         assertEquals("上海", UserAuthService.city(" 上海 "));

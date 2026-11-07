@@ -65,13 +65,28 @@ public final class CommunityLife {
         post.put("visibility", "public");
         post.put("rewardEnabled", false);
         remember(json, board, userId, nick, head);
+        fillMentionNames(board, post);
+        notifyMentions(json, board, post, java.util.Set.of());
         return post;
+    }
+
+    /** 空串表示这一条不带城市，也不写回账号。null 表示发帖沿用账号城市。 */
+    public static String postedCity(String requested, String accountCity) {
+        if (requested == null) {
+            return accountCity == null ? "" : accountCity;
+        }
+        return requested.isBlank() ? "" : requested;
+    }
+
+    public static boolean rememberCity(String requested) {
+        return requested != null && !requested.isBlank();
     }
 
     public static ObjectNode edit(ObjectMapper json, ObjectNode board, String viewer, String postId, String title, String content,
                                    List<Long> circleIds, List<String> pictures, List<String> videos, List<Long> topicIds,
                                    List<String> mentionUserIds, Long matchId, String matchType) {
         ObjectNode post = ownPost(board, viewer, postId);
+        java.util.Set<String> mentioned = mentionIds(post);
         if (title != null) {
             post.put("title", Voice.title(title));
         }
@@ -79,6 +94,8 @@ public final class CommunityLife {
             post.put("content", Voice.post(content));
         }
         writePost(post, circleIds, pictures, videos, topicIds, mentionUserIds, matchId, matchType);
+        fillMentionNames(board, post);
+        notifyMentions(json, board, post, mentioned);
         return post;
     }
 
@@ -118,16 +135,17 @@ public final class CommunityLife {
         return board.path("authors").path(postId).asText("");
     }
 
-    public static ObjectNode commitReward(ObjectMapper json, ObjectNode board, String postId, String userId, String nick, String head, long cents) {
+    public static ObjectNode commitReward(ObjectMapper json, ObjectNode board, String postId, String userId, String nick, String head, long cents, boolean showHead) {
         CommunityBoard.ensure(json, board);
         ArrayNode rewards = rewards(json, board, postId);
         ObjectNode row = json.createObjectNode();
         row.put("userId", userId);
         row.put("nickname", nick);
-        row.put("head", head);
+        row.put("head", showHead ? head : "");
         row.put("amount", String.format(java.util.Locale.ROOT, "%d.%02d", cents / 100, cents % 100));
         row.put("createTime", Instant.now().toString());
         rewards.add(row);
+        note(json, board, authorId(board, postId), userId, nick, showHead ? head : "", "reward", postId, "", "打赏了你的帖子");
         return row;
     }
 
@@ -256,6 +274,8 @@ public final class CommunityLife {
         int reply = 0;
         int like = 0;
         int follow = 0;
+        int mention = 0;
+        int reward = 0;
         int system = 0;
         for (JsonNode row : board.path("messages")) {
             if (!viewer.equals(row.path("toUserId").asText()) || row.path("read").asBoolean(false)) {
@@ -266,6 +286,8 @@ public final class CommunityLife {
                 case "reply" -> reply++;
                 case "like" -> like++;
                 case "follow" -> follow++;
+                case "mention" -> mention++;
+                case "reward" -> reward++;
                 default -> system++;
             }
         }
@@ -274,8 +296,10 @@ public final class CommunityLife {
         body.put("reply", reply);
         body.put("like", like);
         body.put("follow", follow);
+        body.put("mention", mention);
+        body.put("reward", reward);
         body.put("system", system);
-        body.put("total", comment + reply + like + follow + system);
+        body.put("total", comment + reply + like + follow + mention + reward + system);
         return body;
     }
 
@@ -703,6 +727,68 @@ public final class CommunityLife {
             throw new IllegalArgumentException("打赏金额为 0.01 到 200 元");
         }
         return cents;
+    }
+
+    private static java.util.Set<String> mentionIds(ObjectNode post) {
+        java.util.Set<String> ids = new java.util.LinkedHashSet<>();
+        for (JsonNode person : post.path("mentionUsers")) {
+            String id = person.path("userId").asText("");
+            if (!id.isBlank()) {
+                ids.add(id);
+            }
+        }
+        return ids;
+    }
+
+    private static void fillMentionNames(ObjectNode board, ObjectNode post) {
+        for (JsonNode person : post.path("mentionUsers")) {
+            if (!(person instanceof ObjectNode row) || !row.path("nickname").asText("").isBlank()) {
+                continue;
+            }
+            String nick = nickOf(board, row.path("userId").asText(""));
+            if (!nick.isBlank()) {
+                row.put("nickname", nick);
+            }
+        }
+    }
+
+    private static void notifyMentions(ObjectMapper json, ObjectNode board, ObjectNode post, java.util.Set<String> already) {
+        String postId = post.path("postId").asText("");
+        String from = post.path("userId").asText("");
+        String nick = post.path("nickname").asText("");
+        String head = post.path("head").asText("");
+        for (JsonNode person : post.path("mentionUsers")) {
+            String id = person.path("userId").asText("");
+            if (id.isBlank() || already.contains(id)) {
+                continue;
+            }
+            note(json, board, id, from, nick, head, "mention", postId, "", "在帖子里提到了你");
+        }
+    }
+
+    private static String nickOf(ObjectNode board, String userId) {
+        String nick = board.path("profiles").path(userId).path("nickname").asText("");
+        if (!nick.isBlank()) {
+            return nick;
+        }
+        for (JsonNode post : board.path("posts")) {
+            if (userId.equals(post.path("userId").asText())) {
+                nick = post.path("nickname").asText("");
+                if (!nick.isBlank()) {
+                    return nick;
+                }
+            }
+        }
+        return "";
+    }
+
+    private static String authorId(ObjectNode board, String postId) {
+        for (JsonNode post : board.path("posts")) {
+            if (postId.equals(post.path("postId").asText())) {
+                return post.path("userId").asText("");
+            }
+        }
+        return "";
     }
 
     private static void writePost(ObjectNode post, List<Long> circleIds, List<String> pictures, List<String> videos,

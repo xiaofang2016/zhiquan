@@ -7,6 +7,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDate;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
@@ -50,6 +51,15 @@ public class MatchCrawlScheduler {
             matches.syncDates();
             matches.crawlDate(matches.today());
         });
+        if (catchUpYesterday(ZonedDateTime.now(matches.zone()).getHour())) {
+            LocalDate yesterday = matches.today().minusDays(1);
+            gate.awaitRun("yesterday", () -> matches.crawlDate(yesterday));
+        }
+    }
+
+    /** 上海时间 0 点到 6 点，昨天的完场还在补，跟着今天一起抓。 */
+    static boolean catchUpYesterday(int hour) {
+        return hour >= 0 && hour < 6;
     }
 
     @Scheduled(fixedRate = 30, timeUnit = TimeUnit.MINUTES, initialDelay = 30)

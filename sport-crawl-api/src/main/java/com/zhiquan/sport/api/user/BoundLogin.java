@@ -3,7 +3,7 @@ package com.zhiquan.sport.api.user;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 
-/** 职圈用已绑定的吉祥或 UED 令牌打开对应站点。签名原文和入账同一套，body 是用户、手机号、品牌。 */
+/** 职圈打开吉祥、UED 或说球帝直播。签名原文和入账同一套，body 是用户、手机号、品牌。 */
 public final class BoundLogin {
 
     public static final String PATH = "/prod-api/user/bound-login";
@@ -66,7 +66,7 @@ public final class BoundLogin {
     }
 
     private static String brandOf(String brand) {
-        if ("jxt".equals(brand) || "ued".equals(brand)) {
+        if ("jxt".equals(brand) || "ued".equals(brand) || "live".equals(brand)) {
             return brand;
         }
         return "";

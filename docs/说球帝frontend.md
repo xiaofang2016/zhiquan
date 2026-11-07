@@ -66,7 +66,9 @@ GET /prod-api/match/list/new?isfanye=1&type=0&cid=0&ishot=-1&langtype=zh&pid=4&z
 | `zoneId` | 浏览器时区，用来显示开赛钟点。接口里的 `matchtime` 仍是上海时间 |
 | `isfanye` `langtype` `pid` `zhuboType` | 固定 `1`、`zh`、`4`、`1` |
 
-第 1 页按 `topList`、`notopList`、`dataList` 接起来。第 2 页起只接 `dataList`。同一场 `id` 只留一条。热门页把 `is_zd` 为 `1` 的场次按 `zd_level` 从高到低抽到最前。
+第 1 页按 `topList`、`notopList`、`dataList` 接起来。第 2 页起只接 `dataList`。同一场 `id` 只留一条。热门页把 `is_zd` 为 `1` 的场次按 `zd_level` 从高到低抽到最前。名单和原站一样，只要带主播的；后面几页会带上后面几天的场次，不要按开赛日再切。
+
+`date/count` 不带 `type`、`cid` 时，`totalmatch` 是上游日期接口的数字。带了 `type` 或 `cid` 时，按这一天已经抓到的场次重算。
 
 卡片用到的字段：
 
@@ -277,14 +279,14 @@ POST /prod-api/community/replies/{replyId}/remove
 { "token": "", "postId": "", "commentId": "" }
 ```
 
-发评论、发帖都可以带 `cityName`，不传时发帖用账号已存城市，没有就是空。发帖还可以带 `circleIds`、`pictures`、`videos`、`topicIds`、`mentionUserIds`、`matchId`、`matchType`。`circleIds` 不传时不进具体圈子，仍出现在全部帖子里。图片和视频先走上传，视频这里只收已经能播的地址，不做转码。
+发评论、发帖都可以带 `cityName`。不传时发帖用账号已存城市，没有就是空。传空串时这一条不带城市，账号里的城市不动。发帖还可以带 `circleIds`、`pictures`、`videos`、`topicIds`、`mentionUserIds`、`matchId`、`matchType`。`circleIds` 不传时不进具体圈子，仍出现在全部帖子里。图片和视频先走上传。`mentionUsers` 里能对上的人会带昵称，并给对方一条 `mention` 通知。
 
 ```text
 POST /prod-api/community/upload
 { "token": "", "image": "" }
 ```
 
-`image` 和头像一样是压好的 JPEG。返回 `url`、`w`、`h`。`url` 是 `https://dgtplaoir00la.cloudfront.net/prod-api/community/media/{id}`。
+`image` 可以是压好的 JPEG，或 `data:video/mp4;base64,...`。图片沿用头像那条大小限制。视频不超过 8MB，不做转码。返回 `url`、`type`、`w`、`h`。`type` 是 `image` 或 `video`。视频的宽高是 `null`。`url` 是 `https://dgtplaoir00la.cloudfront.net/prod-api/community/media/{id}`，视频读出来是 `video/mp4`。
 
 自己的帖子可以改、删、改查看权限、开关打赏。`visibility` 是 `public` 或 `self`。`self` 只有作者自己的流和详情看得到。
 
@@ -298,9 +300,9 @@ POST /prod-api/community/posts/{postId}/reward-switch
 { "token": "" }
 ```
 
-打赏从说球帝余额扣到作者余额，流水标题是「帖子打赏」。金额 `0.01` 到 `200` 元。帖子要先打开打赏。作者是原站用户时返回「暂时不能打赏原站作者」，不会扣款。不能打赏自己的帖子。帖子上有 `rewardUsers`，最近几个人的头像。记录是 `GET /posts/{postId}/rewards`。
+打赏从说球帝余额扣到作者余额，流水标题是「帖子打赏」。金额 `0.01` 到 `200` 元。帖子要先打开打赏。原站帖子的 `rewardEnabled` 固定是 `false`。直接打赏仍返回「暂时不能打赏原站作者」，不会扣款。不能打赏自己的帖子。请求体可以带 `showHead`，不传或 `true` 时展示头像，`false` 时这条打赏不带头像。作者会收到一条 `reward` 通知。帖子上有 `rewardUsers`，最近几个人的头像。记录是 `GET /posts/{postId}/rewards`。
 
-用户主页是 `GET /users/{userId}`，`userId` 可以是原站数字或说球帝 32 位编号。昵称、头像和徽章从他发过的帖、评论里取，说球帝自己发的也算。带 `token` 时有 `followed`、`blocked`。资料里有 `cityName`。他的帖用 `GET /feed?userId=`。关注和粉丝是 `GET /users/{userId}/follows`、`/fans`。改自己的简介、背景和城市是 `POST /me/profile`，`intro` 最多 100 字，`bg` 用上传得到的地址，`cityName` 最多 20 个字。
+用户主页是 `GET /users/{userId}`，`userId` 可以是原站数字或说球帝 32 位编号。昵称、头像和徽章从他发过的帖、评论里取，说球帝自己发的也算。带 `token` 时有 `followed`、`blocked`。资料里有 `cityName`。他的帖用 `GET /feed?userId=`。他在说球帝发过的评论和回复是 `GET /users/{userId}/comments`，字段和「我的评论」一样。原站历史评论不在这里。关注和粉丝是 `GET /users/{userId}/follows`、`/fans`。改自己的简介、背景和城市是 `POST /me/profile`，`intro` 最多 100 字，`bg` 用上传得到的地址，`cityName` 最多 20 个字。
 
 ```text
 GET /prod-api/community/me/collects?token=&page=1&ps=20
@@ -315,7 +317,7 @@ POST /prod-api/community/me/likes/clear
 
 单条取消收藏、取消点赞仍用原来的 `/collect`、`/like`。
 
-通知是说球帝账号之间的评论、回复、点赞、关注。原站用户不产生、也收不到。
+通知是说球帝账号之间的评论、回复、点赞、关注、@、打赏。原站用户不产生、也收不到。审核通知没有。
 
 ```text
 GET /prod-api/community/me/messages?token=&type=comment&page=1&ps=20
@@ -324,7 +326,7 @@ POST /prod-api/community/me/messages/read
 { "token": "", "ids": [] }
 ```
 
-`type` 可以是 `comment`、`reply`、`like`、`follow`、`system`。不传 `ids` 时全部标成已读。未读数按这几类分开，另有 `total`。
+`type` 可以是 `comment`、`reply`、`like`、`follow`、`mention`、`reward`、`system`。不传 `ids` 时全部标成已读。未读数按这几类分开，另有 `total`。
 
 话题是 `GET /topics/{topicId}`，这个话题下的帖用 `GET /feed?topicId=`。公告从圈子详情和话题详情的 `announces` 抓来，正文在 `content`。详情是 `GET /announces/{id}`，只有外链时用 `url`。粉丝发的帖是 `GET /feed?type=fans`。
 
@@ -502,7 +504,7 @@ POST /prod-api/user/city
 { "token": "登录令牌", "cityName": "上海" }
 ```
 
-成功 `data` 仍是登录结果。最多 20 个字。发评论或改社区资料时如果带了 `cityName`，也会写进这里。
+成功 `data` 仍是登录结果。最多 20 个字。发帖、发评论如果带了非空的 `cityName`，也会写进这里。这两处传空串不改账号城市。改资料仍按传入的 `cityName` 保存。
 
 头像：
 
@@ -599,6 +601,12 @@ POST /prod-api/user/redpack
 未登录是「请先登录」。提现还没绑定时，吉祥是「请先绑定吉祥账号」，UED 把「吉祥」换成「UED」。
 
 说球帝页面不要调用 `POST /prod-api/user/bound-login`。绑定成功后，吉祥令牌只留在说球帝。职圈打开吉祥体育时，由职圈服务器来取这个令牌。令牌过期要重新验证。页面不会因此变成吉祥的登录态。细节在 [吉祥转账对接](jxt.md)。
+
+职圈打开说球帝直播不走本仓库的页面。门户成功后，用返回的 `accessToken` 打开 `https://kzb.7pgb88.com/login#accessToken=<登录令牌>`。令牌就是说球帝登录令牌，和 `POST /prod-api/user/login` 返回的 `token` 相同。
+
+`kzb.7pgb88.com` 在应用启动前已经做完这些事，不要再改：只认路径 `/login`、没有查询参数、fragment 恰好是一段 `#accessToken=`。合法时把令牌写入 `sessionStorage` 的 `kzb_access_token`，`kzb_username` 写成空串，地址改成 `/home` 并清掉 fragment，`window.__IM_PORTAL_BOOTSTRAP__.accepted` 为真。不合法时只清掉地址栏里的令牌，不写入。
+
+还没接上的是登录。应用启动后，若 `kzb_access_token` 有值，用它调用 `POST /prod-api/user/session`，请求体 `{ "token": "<kzb_access_token>" }`。成功后按现在的登录结果记下账号，并删掉 `kzb_access_token`。失败也删掉这个键，停在未登录。不要把令牌写回地址栏。
 
 提现 `msg` 可以直接提示：
 
