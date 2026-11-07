@@ -28,7 +28,7 @@
       <div class="login-actions">
         <button type="button" @click="state.authMode = register ? 'login' : 'register'">{{ register ? "密码登录" : "验证码登录/注册" }}</button>
         <span>|</span>
-        <button type="button" @click="toast('客服暂未开放')">在线客服</button>
+        <button type="button" @click="openService">在线客服</button>
         <span>|</span>
         <button type="button" @click="closeAccount">随便逛逛</button>
       </div>
@@ -44,6 +44,9 @@
 import { computed } from "vue";
 import { state, toast } from "../state.js";
 import { closeAccount, sendCode, submitAccount } from "../lib/session.js";
+function openService() {
+  window.open("https://zhiquan.78chat0.com/#/pages/cs/cs?merchantNo=sport", "_blank", "noopener,noreferrer");
+}
 const register = computed(() => state.authMode === "register");
 const sponsor = "https://www.laliga.com/en-CN/news/jxsports-and-ued-sport-extend-sponsorship-agreement-with-laliga-through-2026-27?openBrowser=1";
 const sponsors = [

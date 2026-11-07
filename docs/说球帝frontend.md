@@ -475,6 +475,8 @@ GET https://tip.kzbzcq.com/tip?mid=4498761&type=1
 
 手机号 11 位，`1` 开头，第二位 `3` 到 `9`，不带 `+86`。密码 6 到 20 位。注册验证码 6 位，5 分钟内有效，60 秒内不能重复获取。
 
+登录页「在线客服」新开页面 `https://zhiquan.78chat0.com/#/pages/cs/cs?merchantNo=sport`，进客服美美。还没登录说球帝时按访客进入，不能查余额和领彩金。
+
 | 接口 | 请求体 | 成功时 `data` |
 |---|---|---|
 | `POST /prod-api/user/sms` | `{ "phone" }` | `null`。已注册返回「这个手机号已经注册」 |
