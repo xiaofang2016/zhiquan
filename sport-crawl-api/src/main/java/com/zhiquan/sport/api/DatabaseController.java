@@ -44,7 +44,7 @@ public class DatabaseController {
         this.json = json;
     }
 
-    @GetMapping({"/prod-api/database/**", "/prod-api/team/**", "/prod-api/player/**"})
+    @GetMapping({"/prod-api/database/**", "/prod-api/team/**", "/prod-api/player/**", "/prod-api/manage/**"})
     public ResponseEntity<byte[]> get(HttpServletRequest request) {
         String path = pathOf(request);
         Map<String, String> query = DatabaseQuery.normalize(request.getParameterMap().entrySet().stream()
@@ -105,6 +105,14 @@ public class DatabaseController {
                 || path.startsWith("/team/getCompetitionByTeam")
                 || path.startsWith("/team/getCompetitionYearByTeam")
                 || "/team/getMatchListByCid".equals(path)
+                || "/team/getMatchList".equals(path)
+                || "/team/getFbCompetitionStats".equals(path)
+                || "/team/getFbCompetitionBestLineup".equals(path)
+                || "/team/getTeamRankByTeamId".equals(path)
+                || "/database/competition/notStarted".equals(path)
+                || "/manage/getManageInfoByManageId".equals(path)
+                || "/manage/queryFManageHistoryByManageId".equals(path)
+                || "/manage/queryFManageHonorByManageId".equals(path)
                 || "/team/getFifaRankMem".equals(path)
                 || "/team/getFifaRankWomen".equals(path)
                 || "/team/getHonorHistory".equals(path);

@@ -148,22 +148,73 @@ public class MatchCrawlService {
         Set<String> kept = new HashSet<>();
         if (capped > 0) {
             status.page(date, 1, capped);
-            ingest(date, data, 1, true, pinned, kept);
+            ingest(date, data, 1, true, pinned, kept, false);
             if (capped >= 2) {
                 JsonNode pageData = second == null ? client.matchList(date, 2, requested).path("data") : second;
                 status.page(date, 2, capped);
-                ingest(date, pageData, 2, false, pinned, kept);
+                ingest(date, pageData, 2, false, pinned, kept, false);
             }
             for (int page = 3; page <= capped; page++) {
                 JsonNode pageData = client.matchList(date, page, requested).path("data");
                 status.page(date, page, capped);
-                ingest(date, pageData, page, false, pinned, kept);
+                ingest(date, pageData, page, false, pinned, kept, false);
             }
         }
         if (capped < pages) {
             log.warn("match date {} stopped at {} of {} pages, leave existing rows", date, capped, pages);
             return;
         }
+        removeStale(date, kept);
+    }
+
+    /**
+     * 明天起主播名单还没排出来，带主播的列表是空的。这里改抓全部场次，只留下开赛日是这一天的。
+     */
+    public void crawlUpcoming(LocalDate date) {
+        int requested = properties.getPageSize();
+        JsonNode data = upcomingPage(date, 1, requested);
+        int dataSize = arraySize(data, "dataList");
+        if (MatchListPages.pageSizeIgnored(data.path("total").asInt(0), data.path("totalPage").asInt(0), dataSize, requested)) {
+            requested = properties.getFallbackPageSize();
+            log.info("match date {} page size ignored, retry ps={}", date, requested);
+            data = upcomingPage(date, 1, requested);
+        }
+        Set<Long> pinned = new HashSet<>();
+        Set<String> kept = new HashSet<>();
+        boolean seen = false;
+        boolean done = false;
+        int page = 1;
+        int cap = 30;
+        while (page <= cap) {
+            if (page > 1) {
+                data = upcomingPage(date, page, requested);
+            }
+            if (!hasRows(data)) {
+                done = true;
+                break;
+            }
+            if (MatchDayPages.past(date, data) && (seen || page == 1)) {
+                done = true;
+                break;
+            }
+            ingest(date, data, page, page == 1, pinned, kept, true);
+            if (MatchDayPages.has(date, data)) {
+                seen = true;
+            }
+            page++;
+        }
+        if (!done) {
+            log.warn("match date {} upcoming stopped at {} pages, leave existing rows", date, cap);
+            return;
+        }
+        removeStale(date, kept);
+    }
+
+    private JsonNode upcomingPage(LocalDate date, int page, int pageSize) {
+        return client.matchList(date, page, pageSize, 0).path("data");
+    }
+
+    private void removeStale(LocalDate date, Set<String> kept) {
         int removed = matchMapper.deleteAbsent(date, kept);
         if (removed > 0) {
             log.info("match date {} removed stale {}", date, removed);
@@ -188,16 +239,16 @@ public class MatchCrawlService {
     }
 
     private void ingest(LocalDate date, JsonNode data, int pageNumber, boolean firstPage,
-                        Set<Long> pinned, Set<String> kept) {
+                        Set<Long> pinned, Set<String> kept, boolean dayOnly) {
         if (firstPage) {
-            saveSection(date, data, "notopList", ListSection.NOTOP, pageNumber, pinned, kept);
-            saveSection(date, data, "topList", ListSection.TOP, pageNumber, pinned, kept);
+            saveSection(date, data, "notopList", ListSection.NOTOP, pageNumber, pinned, kept, dayOnly);
+            saveSection(date, data, "topList", ListSection.TOP, pageNumber, pinned, kept, dayOnly);
         }
-        saveSection(date, data, "dataList", ListSection.DATA, pageNumber, pinned, kept);
+        saveSection(date, data, "dataList", ListSection.DATA, pageNumber, pinned, kept, dayOnly);
     }
 
     private void saveSection(LocalDate date, JsonNode data, String field, String section,
-                             int pageNumber, Set<Long> pinned, Set<String> kept) {
+                             int pageNumber, Set<Long> pinned, Set<String> kept, boolean dayOnly) {
         JsonNode list = data.get(field);
         if (list == null || !list.isArray() || list.isEmpty()) {
             return;
@@ -208,6 +259,9 @@ public class MatchCrawlService {
             SportMatch row = parser.toRow(item, date, section, pageNumber, index);
             index++;
             if (row == null) {
+                continue;
+            }
+            if (dayOnly && (row.getMatchTime() == null || !date.equals(row.getMatchTime().toLocalDate()))) {
                 continue;
             }
             kept.add(MatchKeys.itemKey(date, row.getSourceId()));

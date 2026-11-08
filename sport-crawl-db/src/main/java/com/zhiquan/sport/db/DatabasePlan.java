@@ -35,6 +35,13 @@ public final class DatabasePlan {
             docs.add(daily("/team/getTeamRankByTeamId", Map.of("type", type, "competitionId", id, "year", year)));
             docs.add(daily("/team/getCompetitionBracket", Map.of("type", type, "cid", id, "year", year)));
         }
+        if (competition.sportsType() == 1 && !year.isBlank()) {
+            docs.add(daily("/team/getFbCompetitionStats", Map.of("type", type, "cid", id, "year", year)));
+            docs.add(daily("/team/getTeamRankByTeamId", Map.of(
+                    "type", type, "competitionId", id, "year", year, "isHome", "1")));
+            docs.add(daily("/team/getTeamRankByTeamId", Map.of(
+                    "type", type, "competitionId", id, "year", year, "isHome", "0")));
+        }
         if (competition.sportsType() == 2 && competition.id() == 1 && !year.isBlank()) {
             docs.add(daily("/team/getNbaTeamRank", Map.of("rankType", "1", "year", year)));
             docs.add(daily("/team/getNbaTeamRank", Map.of("rankType", "3", "year", year)));

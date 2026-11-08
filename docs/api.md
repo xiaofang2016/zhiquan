@@ -11,11 +11,12 @@
 | 路径 | 应答 |
 |---|---|
 | `POST /prod-api/user/sms` `/register` `/login` `/session` | 账号 |
+| `POST /prod-api/user/gift`、`/predict`、`/predict/bet`、`/predict/rank`、`/wallet/sign`、`/phone/sms`、`/updatePhone` | 送礼、预测、现金签到、修改手机号 |
 | `POST /prod-api/user/jxt/status` `/sms` `/bind` `/unbind` `/withdraw` | 吉祥绑定和提现，见 [吉祥转账对接](jxt.md) |
 | `POST /prod-api/user/ued/status` `/sms` `/bind` `/unbind` `/withdraw` | UED 绑定和提现，商户号 `10012`，其余与吉祥相同 |
 | `POST /prod-api/user/bound-login` | 职圈取吉祥、UED 或说球帝直播令牌。浏览器不要调用，见 [吉祥转账对接](jxt.md) |
 | `GET /prod-api/match/list/new2` | 即时比分 |
-| `GET /prod-api/database/`、`/prod-api/team/`、`/prod-api/player/` | 资料库 |
+| `GET /prod-api/database/`、`/prod-api/team/`、`/prod-api/player/`、`/prod-api/manage/` | 资料库 |
 | 其余 `GET /prod-api/`，例如联赛、日期、`/prod-api/match/list/new` | 比赛 |
 | `GET /prod-api/chat/groups`、`/prod-api/chat/groups/{id}/messages` | 职圈群聊天，只读 |
 | `GET /prod-api/goods/category/list`、`/goods/list`、`/goods/detail` | 红包商城只读，见 [说球帝frontend.md](说球帝frontend.md) |
@@ -165,6 +166,46 @@
 
 帖子红包是说球帝自己发的，不走原站钱包。`POST /prod-api/community/posts/{postId}/redpacket`，请求体 `{ "token" }`。只出现在原站带红包标记的帖上，每帖 10 份、共 `10.00` 元，每个人每帖只能领一次。成功时 `data` 是这篇帖子，`redPacket.mine` 是领到的金额。领完返回「红包已领完」，这篇没有红包返回「这篇没有红包」。
 
+### 现金签到
+
+和任务中心的音浪签到分开。连续 7 天金额是 1、2、3、5、6、8、10 元，记入说球帝余额，账单 `kind=bill`、标题「签到」。断签或满 7 天后的下一次从第 1 天算。
+
+| 接口 | 请求体 |
+|---|---|
+| `POST /prod-api/user/wallet/sign` | `{ "token" }`。只查询 |
+| `POST /prod-api/user/wallet/sign/claim` | `{ "token", "day" }`。`day` 可不传。对不上当天那一格是「未到签到时间」。今天已签是「今日已签到」 |
+
+`data` 有 `signDay`、`signed`、`amounts`、`today`（元，整数）、`canSign`、`balance`（元，两位小数）。领取成功另有 `amount`。
+
+### 修改手机号
+
+1. `POST /prod-api/user/phone/sms`，body `{ "token", "phone" }`。`phone` 是新号。验证码规则同注册。已注册返回「这个手机号已经注册」。与当前号码相同返回「新手机号不能和当前号码相同」。
+2. `POST /prod-api/user/updatePhone`，body `{ "token", "phone", "code" }`。成功 `data` 是登录结果，`phone` 和 `token` 都是新的。旧令牌失效。余额、音浪、预测、吉祥和 UED 绑定跟着新号走。
+
+### 送礼
+
+`POST /prod-api/user/gift`，body `{ "token", "mid", "giftId", "count" }`。`count` 缺省 1，范围 1 到 99。单价取礼物目录的 `gift_yinlang`，从音浪余额扣除，明细标题以「送出」开头，`amount` 为负数。音浪不够是「音浪不足」。
+
+成功 `data`：`balance`、`giftId`、`giftName`、`count`、`cost`、`content`。`content` 会作为这场聊天的一条普通消息，例如 `送出了「足球射门」×1`。聊天室已关闭时退回音浪，`msg` 为「当前聊天室已关闭」。
+
+### 预测
+
+下注扣音浪。盘口和赔率取下注当时 `tip` 的 `pankou`。大于等于 1 按欧洲赔率，返还为本金乘赔率，四舍五入到整数。小于 1 按水位，先加 1 再乘。让球、大小的四分之一盘把本金分两半。走水退本金。没猜中不退。完场用比赛详情的比分结算，打开下面两个查询时入账。推迟、取消、腰斩、待定、延期退回本金。
+
+| 接口 | 请求体 |
+|---|---|
+| `POST /prod-api/user/predict/bet` | `{ "token", "mid", "type", "market", "betvalue", "stake", "clientId" }` |
+| `POST /prod-api/user/predict` | `{ "token" }`。我的预测 |
+| `POST /prod-api/user/predict/rank` | `{ "token", "period", "board" }` |
+
+`market`：`rq` 让球（`betvalue` 1 主、2 客），`dx` 大小（1 大、2 小），`sf` 胜平负（1 胜、2 平、3 负）。`type` 缺省 1。`stake` 为 1 到 100000 的音浪整数。`clientId` 可选，同一用户重复提交不重复扣款。
+
+下注成功的 `data` 是一条预测，并带 `balance`。我的预测还有 `total`、`win`、`rate`、`profit`、`records`。`total` 不含未开奖和退回。`rate` 是胜场除以 `total`，百分数去掉小数。
+
+一条预测：`id`、`mid`、`type`、`market`、`betvalue`、`label`、`line`、`odds`、`stake`、`status`、`statusName`、`returned`、`profit`、`placedAt`、`settledAt`。`status` 为 `pending` 未开奖、`win` 赢、`lose` 输、`push` 走水、`half-win` 赢半、`half-lose` 输半、`refund` 退回。
+
+收益榜 `period` 为 `day`、`week`、`month`，缺省 `day`，周从周一开始。`board` 为 `profit` 或 `roof`，缺省 `profit`。`profit` 按盈利从高到低，`roof` 按亏损从多到少。`records` 最多 50 条，字段 `rank`、`userId`、`nick`、`profit`、`win`、`total`。`mine` 是自己的名次，没有结算记录时 `rank` 为 0。
+
 社球帝的评论、发帖、打赏、用户主页、通知和上传都在 [说球帝frontend.md](说球帝frontend.md) 的社球帝一节。评论和回复的 `likeCount` 不会小于原站。回复某一条回复时带 `replyToReplyId`。自己发的帖和评论会计入用户主页。公告从圈子详情和话题详情抓来；原站这两处目前是空的。发帖视频填已经能播的地址，不做转码。
 
 ### 恢复登录
@@ -309,11 +350,11 @@
 
 没有这场日期的数据时，`total` 为 `0`，三个列表为空。
 
-每次抓取都会记下这场在原站列表里的位置。三个列表都按这个位置返回，接口不再按开赛时间、联赛或在线人数重排。抓取用 `zhuboType=1`，和原站页面同一份名单。今天这份最多比原站晚约 2 分钟。
+每次抓取都会记下这场在原站列表里的位置。三个列表都按这个位置返回，接口不再按开赛时间、联赛或在线人数重排。今天和昨天用 `zhuboType=1`，和原站带主播的那份名单一样。今天这份最多比原站晚约 2 分钟。
 
 热门页在这个顺序上再做一次和原站相同的调整：`is_zd` 为 `1` 的场次抽到最前，按 `zd_level` 从高到低排，其余场次保持原顺序。足球、篮球分区不做这一步。开赛钟点按用户浏览器时区显示，接口里的 `matchtime` 仍是上海时间。
 
-原站后面几页会带上后面几天的场次，这里也保留，不按开赛日再切，也不把一场比赛从另一个日期的列表里拿走。同一天过一会儿再查，`total` 会变，因为原站还在更新，抓取会跟着补。
+今天和昨天：原站后面几页会带上后面几天的场次，这里也保留，不按开赛日再切，也不把一场比赛从另一个日期的列表里拿走。从明天起，主播名单往往还没排出来，带主播的列表是空的。这些日期改抓全部场次，只留下开赛日就是这一天的。同一天过一会儿再查，`total` 会变，因为原站还在更新，抓取会跟着补。
 
 ### 比赛对象
 
@@ -364,10 +405,17 @@
 | `GET /prod-api/gift/getGiftList` | 礼物目录 |
 | `GET /prod-api/bobble/getBobbleList` | 气泡目录 |
 | `GET /prod-api/match/news/information/list` | 比赛资讯列表 |
+| `GET /prod-api/match/news/information/related/list` | 这场的相关资讯 |
 | `GET /prod-api/match/detail/tabs` | 阵容页，含阵型、站位、评分 |
 | `GET /prod-api/match/detail/lineupAnalysis` | 阵容分析 |
 | `GET /prod-api/match/detail/playersStatSeason` | 本赛季球员数据 |
 | `GET /prod-api/match/detail/seasonData` | 篮球常规赛关键数据。上游没有时 `data` 为 `null` |
+| `GET /prod-api/match/detail/player` | 阵容里点球员的本场数据。参数照原站：`type`、`mid`、`playerid`、`teamtype`（主队 1、客队 2） |
+| `GET /prod-api/data/lanqiu/ranklist` | NBA 榜单。`ranktype=1` 球队、`2` 球员、`3` 伤病、`4` 日榜 |
+| `GET /prod-api/search/hot` | 热门搜索词 |
+| `GET /prod-api/search/content` | 搜索。查询参数照原站传，至少要 `key`、`pid`、`tab` |
+| `GET /prod-api/news/list` | 资料库资讯列表 |
+| `GET /prod-api/news/detail` | 资讯详情。`newsid` 用列表里的 `id` |
 | `GET /prod-api/at/list` | 比赛聊天里的推广卡 |
 
 ## 即时比分
@@ -510,7 +558,7 @@
 
 下面这些由后台定时写入，页面打开不会触发补抓。每天 04:30（上海）刷目录、当前赛季和 FIFA 最新榜，每 15 分钟只刷新正在进行或刚结束的联赛。往年赛季抓过一次就不再更新。
 
-球员、球队详情、某一轮赛程、FIFA 国家队某一期、荣誉列表，第一次打开可能是 `data: null`。这次访问会登记补抓。常见是一分钟内有正文，冷门的球队、球员页要一两分钟，之前慢的时候到过 3 分钟。一个页面会同时打好几个这样的接口，各 Tab 是陆续出来的。已经有的球队和球员页超过 24 小时会在后台更新，当次仍返回旧正文。
+球员、球队详情、某一轮赛程、球队赛程、最佳阵容、教练、FIFA 国家队某一期、荣誉列表，第一次打开可能是 `data: null`。这次访问会登记补抓。常见是一分钟内有正文，冷门的球队、球员页要一两分钟，之前慢的时候到过 3 分钟。一个页面会同时打好几个这样的接口，各 Tab 是陆续出来的。已经有的球队和球员页超过 24 小时会在后台更新，当次仍返回旧正文。
 
 往年积分榜、NBA、CBA 往年排名不在这次打开时补抓。后台按联赛慢慢抓，抓到之前一直是 `data: null`。当季的积分榜和排名是有的。
 
@@ -595,9 +643,12 @@
 | `/prod-api/team/getHonorHistory` | `type` `cid` | 冠军列表。`teamName`、`teamLogo`、`teamId`、`season_year`、`title_zh` |
 | `/prod-api/team/getLatelyMatchInfo` | `type` `cid` | 最近一场。`homeTeamName`、`awayTeamName`、`homeTeamLogo`、`awayTeamLogo`、`matchTime`、`matchId` |
 | `/prod-api/team/getCompetitionStageList` | `type` `cid` | 阶段。见下面 |
-| `/prod-api/team/getTeamRankByTeamId` | `type` `competitionId` `year` | 当前或往年积分榜 |
+| `/prod-api/team/getTeamRankByTeamId` | `type` `competitionId` `year` | 当前或往年积分榜。主场再加 `isHome=1`，客场加 `isHome=0`。不传是总积分 |
 | `/prod-api/team/getCompetitionBracket` | `type` `cid` `year` | 淘汰赛对阵。联赛可能没有对阵 |
 | `/prod-api/team/getMatchListByCid` | `type` `cid` `year` `stageId` `roundNum` | 某一轮赛程 |
+| `/prod-api/team/getFbCompetitionStats` | `type` `cid` `year` | 足球轮次名，在 `data.nameZh`。最佳阵容用这些名字 |
+| `/prod-api/team/getFbCompetitionBestLineup` | `type` `cid` `year` `stats` | 最佳阵容。`stats` 是轮次名，例如 `第9轮`。缺了 `stats` 不会去补抓 |
+| `/prod-api/team/getMatchList` | `type` `teamId` `competitionId` `year` | 这支球队在这个联赛这一季的赛程 |
 
 阶段列表示例，英超当前只有一个阶段：
 
@@ -642,7 +693,25 @@
 }
 ```
 
-`sdf` 是胜/平/负，`io` 是进/失球。杯赛的 `rankList` 可能是空的。
+`sdf` 是胜/平/负，`io` 是进/失球。杯赛的 `rankList` 可能是空的。足球当前赛季的总积分、主场、客场各抓一份。主场是 `isHome=1`，客场是 `isHome=0`，积分只算这一边。
+
+近期赛事：
+
+```text
+/prod-api/database/competition/notStarted?pid=4
+```
+
+每天抓一份。`data` 是联赛数组，有 `name`、`logo`、`matchCount`、`sportsType`、`shortName`、`cid`。
+
+教练。第一次打开可能是 `data: null`，这次访问会登记补抓：
+
+```text
+/prod-api/manage/getManageInfoByManageId?type=1&manageId=8084
+/prod-api/manage/queryFManageHistoryByManageId?type=1&manageId=8084
+/prod-api/manage/queryFManageHonorByManageId?type=1&manageId=8084&orderType=1
+```
+
+荣誉缺了 `orderType` 不会去补抓。
 
 NBA 不用上面这张积分榜，用东西部：
 
@@ -879,6 +948,8 @@ GET https://chat.kzbzcq.com/chat?mid=4498761&type=1
 | `w` / `h` | 宽高。上游没给时不返回 |
 
 打开聊天先不带 `before`、`after`，把 `badges` 按等级记下来。贴在底部时，用最新一条的 `time` 作为 `after` 问新消息，把返回的 `messages` 接在后面。`after` 不再带图标。往上滚时，用最早一条的 `time` 作为 `before`，把返回的记录插到前面，并补上这次带回的 `badges`。同一条 `id` 不要画两次。
+
+送礼往这场文档追加一条普通消息，`content` 为 `送出了「礼物名」×数量`。聊天函数不用另发。
 
 ## 直播、指数、数据、预测
 

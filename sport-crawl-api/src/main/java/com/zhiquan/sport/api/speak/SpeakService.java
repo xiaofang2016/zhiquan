@@ -227,9 +227,9 @@ public class SpeakService {
 
     public ObjectNode editPost(String viewer, String postId, String title, String content, List<Long> circleIds,
                                List<String> pictures, List<String> videos, List<Long> topicIds, List<String> mentionUserIds,
-                               Long matchId, String matchType) {
+                               Long matchId, String matchType, String cityName, boolean updateCity) {
         String id = Voice.postId(postId);
-        return update(boardKey(), board -> CommunityLife.edit(json, CommunityBoard.ensure(json, board), viewer, id, title, content, circleIds, pictures, videos, topicIds, mentionUserIds, matchId, matchType));
+        return update(boardKey(), board -> CommunityLife.edit(json, CommunityBoard.ensure(json, board), viewer, id, title, content, circleIds, pictures, videos, topicIds, mentionUserIds, matchId, matchType, cityName, updateCity));
     }
 
     public ObjectNode removePost(String viewer, String postId) {

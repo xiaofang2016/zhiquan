@@ -69,7 +69,7 @@ public class MatchCrawlScheduler {
         }
         List<LocalDate> dates = matches.futureDates(matches.syncDates());
         for (LocalDate date : dates) {
-            gate.awaitRun("future-" + date, () -> matches.crawlDate(date));
+            gate.awaitRun("future-" + date, () -> matches.crawlUpcoming(date));
         }
     }
 
@@ -93,7 +93,7 @@ public class MatchCrawlScheduler {
             });
             List<LocalDate> dates = matches.syncDates();
             for (LocalDate date : matches.futureDates(dates)) {
-                gate.awaitRun("backfill-" + date, () -> matches.crawlDate(date));
+                gate.awaitRun("backfill-" + date, () -> matches.crawlUpcoming(date));
             }
             for (LocalDate date : matches.pastDates(dates)) {
                 gate.awaitRun("backfill-" + date, () -> matches.crawlDate(date));

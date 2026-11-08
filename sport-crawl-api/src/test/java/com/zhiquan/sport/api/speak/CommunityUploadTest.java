@@ -5,22 +5,43 @@ import org.junit.jupiter.api.Test;
 import java.util.Base64;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class CommunityUploadTest {
 
     @Test
-    void jpegAndMp4AreAccepted() {
-        byte[] jpeg = new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff, 0};
-        CommunityUpload.File image = CommunityUpload.read(Base64.getEncoder().encodeToString(jpeg));
-        assertFalse(image.video());
-        assertEquals(".jpg", image.extension());
-        byte[] mp4 = new byte[] {0, 0, 0, 0x18, 'f', 't', 'y', 'p', 'm', 'p', '4', '2'};
-        CommunityUpload.File video = CommunityUpload.read("data:video/mp4;base64," + Base64.getEncoder().encodeToString(mp4));
-        assertTrue(video.video());
-        assertEquals("video/mp4", video.contentType());
-        assertThrows(IllegalArgumentException.class, () -> CommunityUpload.read("data:image/png;base64,aaaa"));
+    void videoMustBeH264AndFitTheGateway() {
+        CommunityUpload.File file = CommunityUpload.read(data(ftyp(24, "isom", "avc1")));
+        assertTrue(file.video());
+        assertEquals("video/mp4", file.contentType());
+        assertThrows(IllegalArgumentException.class, () -> CommunityUpload.read(data(ftyp(24, "qt  ", "hev1"))));
+        assertThrows(IllegalArgumentException.class, () -> CommunityUpload.read(data(ftyp(20, "hvc1"))));
+    }
+
+    private static String data(byte[] bytes) {
+        return "data:video/mp4;base64," + Base64.getEncoder().encodeToString(bytes);
+    }
+
+    private static byte[] ftyp(int size, String major, String... compatible) {
+        byte[] bytes = new byte[size];
+        bytes[3] = (byte) size;
+        bytes[4] = 'f';
+        bytes[5] = 't';
+        bytes[6] = 'y';
+        bytes[7] = 'p';
+        write(bytes, 8, major);
+        int offset = 16;
+        for (String brand : compatible) {
+            write(bytes, offset, brand);
+            offset += 4;
+        }
+        return bytes;
+    }
+
+    private static void write(byte[] bytes, int offset, String brand) {
+        for (int i = 0; i < 4; i++) {
+            bytes[offset + i] = (byte) brand.charAt(i);
+        }
     }
 }

@@ -138,6 +138,10 @@ public final class CommunityCards {
         card.put("highlightCommentCount", node.path("highlightCommentCount").asInt(0));
         card.put("mentionUsers", mentions(node.path("mentionUsers")));
         card.put("rewardCount", node.path("rewardCount").asInt(0));
+        String rewardTotal = first(node, "rewardTotalAmount", "rewardAmount");
+        if (!rewardTotal.isEmpty()) {
+            card.put("rewardTotalAmount", rewardTotal);
+        }
         card.put("rewardEnabled", enabled(node.get("rewardEnabled")));
         card.put("redPacket", packet(node.path("redPacket")));
         return card;
@@ -281,6 +285,12 @@ public final class CommunityCards {
             if (cover && !text(node, "cover").isEmpty()) {
                 topic.put("cover", text(node, "cover"));
             }
+            putCount(topic, node, "participantCount");
+            putCount(topic, node, "viewCount");
+            putCount(topic, node, "commentCount");
+            if (node.path("announces").isArray()) {
+                topic.put("announces", announces(node.path("announces")));
+            }
             topics.add(topic);
         }
         return topics;
@@ -419,6 +429,13 @@ public final class CommunityCards {
             }
         }
         return node.path(fields[0]);
+    }
+
+    private static void putCount(Map<String, Object> topic, JsonNode node, String field) {
+        JsonNode value = node.get(field);
+        if (value != null && value.isNumber()) {
+            topic.put(field, value.asInt());
+        }
     }
 
     private static String first(JsonNode node, String... fields) {

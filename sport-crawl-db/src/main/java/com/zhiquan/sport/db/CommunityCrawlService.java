@@ -325,7 +325,16 @@ public class CommunityCrawlService {
             }
             long topicId = topic.path("topicId").asLong();
             try {
-                JsonNode extra = client.get("/topic/detail?topicId=" + topicId).path("data").path("announces");
+                JsonNode detail = client.get("/topic/detail?topicId=" + topicId).path("data");
+                if (topic instanceof ObjectNode row) {
+                    copyCount(row, detail, "participantCount");
+                    copyCount(row, detail, "viewCount");
+                    copyCount(row, detail, "commentCount");
+                    if (detail.path("announces").isArray()) {
+                        row.set("announces", detail.path("announces"));
+                    }
+                }
+                JsonNode extra = detail.path("announces");
                 if (!extra.isArray()) {
                     continue;
                 }
@@ -339,6 +348,13 @@ public class CommunityCrawlService {
             } catch (Exception ex) {
                 log.warn("社球帝话题 {} 的公告没有拉到: {}", topicId, ex.getMessage());
             }
+        }
+    }
+
+    private static void copyCount(ObjectNode row, JsonNode detail, String field) {
+        JsonNode value = detail.get(field);
+        if (value != null && value.isNumber()) {
+            row.set(field, value);
         }
     }
 

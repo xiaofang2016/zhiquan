@@ -198,6 +198,32 @@ public class UserAuthService {
         return data;
     }
 
+    public void sendPhoneCode(String token, String phoneRaw) {
+        SportUser user = account(token);
+        String phone = AccountCheck.phone(phoneRaw);
+        if (phone.equals(user.getPhone())) {
+            throw new IllegalArgumentException("新手机号不能和当前号码相同");
+        }
+        sendSms(phone, false);
+    }
+
+    public Map<String, String> updatePhone(String token, String phoneRaw, String codeRaw) {
+        SportUser user = account(token);
+        String phone = AccountCheck.phone(phoneRaw);
+        if (phone.equals(user.getPhone())) {
+            throw new IllegalArgumentException("新手机号不能和当前号码相同");
+        }
+        acceptCode(phone, AccountCheck.code(codeRaw));
+        users.find(phone).ifPresent(taken -> {
+            if (!user.getUserId().equals(taken.getUserId())) {
+                throw new IllegalArgumentException("这个手机号已经注册");
+            }
+        });
+        users.relocate(user.getPhone(), phone);
+        user.setPhone(phone);
+        return view(user, issue(user));
+    }
+
     public Map<String, String> saveCity(String token, String cityName) {
         SportUser user = account(token);
         String city = city(cityName);

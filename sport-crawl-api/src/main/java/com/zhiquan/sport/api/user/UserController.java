@@ -23,8 +23,11 @@ public class UserController {
     private final MissionService mission;
     private final RedPackService redpack;
     private final WalletBook book;
+    private final GiftService gifts;
+    private final CashSignService cash;
+    private final PredictService predict;
 
-    public UserController(UserAuthService auth, S3ImageStore images, JxtBindService jxt, UedBindService ued, MissionService mission, RedPackService redpack, WalletBook book) {
+    public UserController(UserAuthService auth, S3ImageStore images, JxtBindService jxt, UedBindService ued, MissionService mission, RedPackService redpack, WalletBook book, GiftService gifts, CashSignService cash, PredictService predict) {
         this.auth = auth;
         this.images = images;
         this.jxt = jxt;
@@ -32,6 +35,9 @@ public class UserController {
         this.mission = mission;
         this.redpack = redpack;
         this.book = book;
+        this.gifts = gifts;
+        this.cash = cash;
+        this.predict = predict;
     }
 
     @PostMapping("/prod-api/user/sms")
@@ -196,5 +202,46 @@ public class UserController {
     @PostMapping("/prod-api/user/ued/withdraw")
     public KzbResult uedWithdraw(@RequestBody UserRequest body) {
         return KzbResult.ok(ued.withdraw(body.token(), body.amount()));
+    }
+
+    @PostMapping("/prod-api/user/gift")
+    public KzbResult gift(@RequestBody UserRequest body) {
+        return KzbResult.ok(gifts.give(body.token(), body.mid(), body.giftId(), body.count()));
+    }
+
+    @PostMapping("/prod-api/user/wallet/sign")
+    public KzbResult walletSign(@RequestBody UserRequest body) {
+        return KzbResult.ok(cash.status(body.token()));
+    }
+
+    @PostMapping("/prod-api/user/wallet/sign/claim")
+    public KzbResult walletSignClaim(@RequestBody UserRequest body) {
+        return KzbResult.ok(cash.claim(body.token(), body.day()));
+    }
+
+    @PostMapping("/prod-api/user/phone/sms")
+    public KzbResult phoneSms(@RequestBody UserRequest body) {
+        auth.sendPhoneCode(body.token(), body.phone());
+        return KzbResult.ok(null);
+    }
+
+    @PostMapping("/prod-api/user/updatePhone")
+    public KzbResult updatePhone(@RequestBody UserRequest body) {
+        return KzbResult.ok(auth.updatePhone(body.token(), body.phone(), body.code()));
+    }
+
+    @PostMapping("/prod-api/user/predict/bet")
+    public KzbResult predictBet(@RequestBody UserRequest body) {
+        return KzbResult.ok(predict.bet(body.token(), body.mid(), body.type(), body.market(), body.betvalue(), body.stake(), body.clientId()));
+    }
+
+    @PostMapping("/prod-api/user/predict")
+    public KzbResult predictMine(@RequestBody UserRequest body) {
+        return KzbResult.ok(predict.mine(body.token()));
+    }
+
+    @PostMapping("/prod-api/user/predict/rank")
+    public KzbResult predictRank(@RequestBody UserRequest body) {
+        return KzbResult.ok(predict.rank(body.token(), body.period(), body.board()));
     }
 }

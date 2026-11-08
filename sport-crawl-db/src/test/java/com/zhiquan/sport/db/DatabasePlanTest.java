@@ -50,6 +50,12 @@ class DatabasePlanTest {
         assertTrue(season.stream().anyMatch(request -> request.path().equals("/team/getNbaTeamRank")
                 && "3".equals(request.query().get("rankType"))));
         assertEquals("/team/getBbYearListByCompetitionId", DatabasePlan.yearPath(nba));
+        assertFalse(season.stream().anyMatch(request -> request.path().equals("/team/getFbCompetitionStats")));
+
+        var premier = DatabasePlan.season(new DatabaseCatalog.Competition(82, 1), "2026-2027");
+        assertTrue(premier.stream().anyMatch(request -> request.path().equals("/team/getFbCompetitionStats")));
+        assertTrue(premier.stream().anyMatch(request -> "1".equals(request.query().get("isHome"))));
+        assertTrue(premier.stream().anyMatch(request -> "0".equals(request.query().get("isHome"))));
 
         var past = DatabasePlan.past(new DatabaseCatalog.Competition(82, 1), "2025-2026");
         assertEquals(DatabaseTier.FROZEN, past.get(0).tier());

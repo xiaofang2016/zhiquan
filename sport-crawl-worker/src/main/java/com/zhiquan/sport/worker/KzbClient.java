@@ -59,6 +59,10 @@ public class KzbClient {
     }
 
     public JsonNode matchList(LocalDate date, int page, int pageSize) {
+        return matchList(date, page, pageSize, properties.getZhuboType());
+    }
+
+    public JsonNode matchList(LocalDate date, int page, int pageSize, int zhuboType) {
         URI uri = UriComponentsBuilder.fromHttpUrl(properties.getBaseUrl() + "/prod-api/match/list/new")
                 .queryParam("isfanye", 1)
                 .queryParam("type", 0)
@@ -70,7 +74,7 @@ public class KzbClient {
                 .queryParam("starttime", date.toString())
                 .queryParam("pid", 4)
                 .queryParam("zoneId", properties.getZoneId())
-                .queryParam("zhuboType", properties.getZhuboType())
+                .queryParam("zhuboType", zhuboType)
                 .build()
                 .encode()
                 .toUri();

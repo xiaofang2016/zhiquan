@@ -117,7 +117,9 @@ class CommunityCardsTest {
         var circle = json.readTree("""
                 {"circleId":14,"circleName":"足球热聊","icon":"https://img/i.jpg","cover":"https://img/c.jpg",
                  "followCount":84,"postCount":1363,"groupAdminNickname":"假想敌","groupAdminHead":"https://img/o.jpg",
-                 "topics":[{"topicId":15,"topicName":"天下足球","cover":"https://img/t.jpg"}],
+                 "topics":[{"topicId":15,"topicName":"天下足球","cover":"https://img/t.jpg",
+                   "participantCount":283,"viewCount":90000,"commentCount":3459,
+                   "announces":[{"announceId":8,"title":"话题公告","content":"看这里"}]}],
                  "announces":[{"announceId":3,"title":"赛程","typeName":"公告","content":"<p>正文</p>","createTime":"2026-10-01T00:00:00.000+00:00"}]}
                 """);
         Map<String, Object> profile = CommunityCards.circle(circle);
@@ -126,6 +128,12 @@ class CommunityCardsTest {
         @SuppressWarnings("unchecked")
         Map<String, Object> circleTopic = ((java.util.List<Map<String, Object>>) profile.get("topics")).get(0);
         assertEquals("https://img/t.jpg", circleTopic.get("cover"));
+        assertEquals(283, circleTopic.get("participantCount"));
+        assertEquals(90000, circleTopic.get("viewCount"));
+        assertEquals(3459, circleTopic.get("commentCount"));
+        @SuppressWarnings("unchecked")
+        Map<String, Object> topicAnnounce = ((java.util.List<Map<String, Object>>) circleTopic.get("announces")).get(0);
+        assertEquals("话题公告", topicAnnounce.get("title"));
         @SuppressWarnings("unchecked")
         Map<String, Object> announce = ((java.util.List<Map<String, Object>>) profile.get("announces")).get(0);
         assertEquals(3L, announce.get("id"));

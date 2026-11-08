@@ -549,6 +549,144 @@ public class SportUserRepository {
         dynamo.putItem(PutItemRequest.builder().tableName(aws.getUserTable()).item(item).build());
     }
 
+    public String profileJson(String phone, String attribute) {
+        checkProfileField(attribute);
+        Map<String, AttributeValue> item = dynamo.getItem(GetItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .projectionExpression("#attr")
+                .expressionAttributeNames(Map.of("#attr", attribute))
+                .build()).item();
+        if (item == null || item.isEmpty()) {
+            return "";
+        }
+        String saved = Attrs.str(item, attribute);
+        return saved == null ? "" : saved;
+    }
+
+    public void saveMissionAndPredict(String phone, String missionExpected, String missionNext, String predictExpected, String predictNext) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":mission", Attrs.s(missionNext));
+        values.put(":predict", Attrs.s(predictNext));
+        String condition = "attribute_exists(pk)";
+        condition = expect(condition, values, "mission", missionExpected, ":missionWas");
+        condition = expect(condition, values, "predict", predictExpected, ":predictWas");
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET mission = :mission, predict = :predict")
+                .conditionExpression(condition)
+                .expressionAttributeValues(values)
+                .build());
+    }
+
+    /** 签到状态、余额、账单同一笔写入。任一条对不上就整笔取消。 */
+    public void claimCashSign(String phone, String expected, String next, long cents, Map<String, AttributeValue> ledger) {
+        Map<String, AttributeValue> values = new HashMap<>();
+        values.put(":next", Attrs.s(next));
+        values.put(":zero", Attrs.n(0));
+        values.put(":amt", Attrs.n(cents));
+        String condition = expect("attribute_exists(pk)", values, "cash_sign", expected, ":expected");
+        Update profile = Update.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET cash_sign = :next, balance_cent = if_not_exists(balance_cent, :zero) + :amt")
+                .conditionExpression(condition)
+                .expressionAttributeValues(values)
+                .build();
+        Put row = Put.builder()
+                .tableName(aws.getUserTable())
+                .item(ledger)
+                .conditionExpression("attribute_not_exists(pk)")
+                .build();
+        dynamo.transactWriteItems(TransactWriteItemsRequest.builder()
+                .transactItems(
+                        TransactWriteItem.builder().update(profile).build(),
+                        TransactWriteItem.builder().put(row).build())
+                .build());
+    }
+
+    /**
+     * 把这个号码下的资料、密码和流水改到新号码。验证码留在原处并删掉。
+     * 新号码已经是别的用户时拒绝。写到一半再调用会接着搬完。
+     */
+    public void relocate(String from, String to) {
+        List<Map<String, AttributeValue>> rows = queryAll(from);
+        Map<String, AttributeValue> profile = null;
+        for (Map<String, AttributeValue> row : rows) {
+            if (PROFILE.equals(Attrs.str(row, "sk"))) {
+                profile = row;
+            }
+        }
+        if (profile == null) {
+            throw new IllegalArgumentException("请先登录");
+        }
+        String userId = Attrs.str(profile, "user_id");
+        Optional<SportUser> occupied = find(to);
+        if (occupied.isPresent() && (userId == null || !userId.equals(occupied.get().getUserId()))) {
+            throw new IllegalArgumentException("这个手机号已经注册");
+        }
+        for (Map<String, AttributeValue> row : rows) {
+            String sort = Attrs.str(row, "sk");
+            if (sort == null || PhoneMove.skip(sort)) {
+                continue;
+            }
+            PutItemRequest.Builder put = PutItemRequest.builder()
+                    .tableName(aws.getUserTable())
+                    .item(PhoneMove.copy(row, to));
+            if (PROFILE.equals(sort)) {
+                put.conditionExpression("attribute_not_exists(pk) OR user_id = :uid")
+                        .expressionAttributeValues(Map.of(":uid", Attrs.s(userId == null ? "" : userId)));
+            }
+            try {
+                dynamo.putItem(put.build());
+            } catch (ConditionalCheckFailedException ex) {
+                throw new IllegalArgumentException("这个手机号已经注册");
+            }
+        }
+        for (Map<String, AttributeValue> row : rows) {
+            String sort = Attrs.str(row, "sk");
+            if (sort == null) {
+                continue;
+            }
+            dynamo.deleteItem(DeleteItemRequest.builder().tableName(aws.getUserTable()).key(key(from, sort)).build());
+        }
+    }
+
+    private List<Map<String, AttributeValue>> queryAll(String phone) {
+        List<Map<String, AttributeValue>> rows = new ArrayList<>();
+        Map<String, AttributeValue> start = null;
+        do {
+            QueryRequest.Builder builder = QueryRequest.builder()
+                    .tableName(aws.getUserTable())
+                    .keyConditionExpression("pk = :pk")
+                    .expressionAttributeValues(Map.of(":pk", Attrs.s(phone)));
+            if (start != null && !start.isEmpty()) {
+                builder.exclusiveStartKey(start);
+            }
+            var response = dynamo.query(builder.build());
+            if (response.items() != null) {
+                rows.addAll(response.items());
+            }
+            start = response.lastEvaluatedKey();
+        } while (start != null && !start.isEmpty());
+        return rows;
+    }
+
+    private static String expect(String condition, Map<String, AttributeValue> values, String attribute, String expected, String token) {
+        if (expected == null || expected.isEmpty()) {
+            return condition + " AND attribute_not_exists(" + attribute + ")";
+        }
+        values.put(token, Attrs.s(expected));
+        return condition + " AND " + attribute + " = " + token;
+    }
+
+    private static void checkProfileField(String attribute) {
+        if (!"mission".equals(attribute) && !"predict".equals(attribute) && !"cash_sign".equals(attribute)) {
+            throw new IllegalStateException("unknown profile field");
+        }
+    }
+
     /** 这个单号已经入过账时返回当时的分。 */
     public Optional<Long> orderCent(String phone, String tradeNo) {
         Map<String, AttributeValue> item = dynamo.getItem(GetItemRequest.builder()

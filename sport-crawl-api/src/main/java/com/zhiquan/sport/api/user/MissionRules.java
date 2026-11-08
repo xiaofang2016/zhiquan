@@ -83,6 +83,23 @@ public final class MissionRules {
         throw new IllegalArgumentException("领取失败");
     }
 
+    /** 音浪加减。delta 为负时余额不够抛出「音浪不足」。明细里扣减记负数。 */
+    public static State change(State raw, String title, int delta, LocalDateTime now) {
+        if (title == null || title.isBlank() || title.length() > 40 || delta == 0 || delta < -1_000_000 || delta > 1_000_000) {
+            throw new IllegalArgumentException("领取失败");
+        }
+        State state = normalize(raw, now.toLocalDate());
+        long next = (long) state.balance() + delta;
+        if (next < 0) {
+            throw new IllegalArgumentException("音浪不足");
+        }
+        if (next > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("领取失败");
+        }
+        return new State((int) next, state.signDay(), state.signedOn(), state.gotReg(), state.gotLogin(),
+                prepend(state.records(), title, now, delta));
+    }
+
     private static List<Entry> prepend(List<Entry> records, String title, LocalDateTime now, int amount) {
         List<Entry> next = new ArrayList<>();
         next.add(new Entry(title, now.format(STAMP), amount));

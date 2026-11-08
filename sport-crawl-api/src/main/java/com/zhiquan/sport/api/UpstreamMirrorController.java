@@ -28,10 +28,17 @@ public class UpstreamMirrorController {
             "/prod-api/gift/getGiftList",
             "/prod-api/bobble/getBobbleList",
             "/prod-api/match/news/information/list",
+            "/prod-api/match/news/information/related/list",
             "/prod-api/match/detail/tabs",
             "/prod-api/match/detail/lineupAnalysis",
             "/prod-api/match/detail/playersStatSeason",
             "/prod-api/match/detail/seasonData",
+            "/prod-api/match/detail/player",
+            "/prod-api/data/lanqiu/ranklist",
+            "/prod-api/search/hot",
+            "/prod-api/search/content",
+            "/prod-api/news/list",
+            "/prod-api/news/detail",
             "/prod-api/at/list"
     );
 
@@ -54,10 +61,17 @@ public class UpstreamMirrorController {
             "/prod-api/gift/getGiftList",
             "/prod-api/bobble/getBobbleList",
             "/prod-api/match/news/information/list",
+            "/prod-api/match/news/information/related/list",
             "/prod-api/match/detail/tabs",
             "/prod-api/match/detail/lineupAnalysis",
             "/prod-api/match/detail/playersStatSeason",
             "/prod-api/match/detail/seasonData",
+            "/prod-api/match/detail/player",
+            "/prod-api/data/lanqiu/ranklist",
+            "/prod-api/search/hot",
+            "/prod-api/search/content",
+            "/prod-api/news/list",
+            "/prod-api/news/detail",
             "/prod-api/at/list"
     })
     public ResponseEntity<byte[]> mirror(HttpServletRequest request) {

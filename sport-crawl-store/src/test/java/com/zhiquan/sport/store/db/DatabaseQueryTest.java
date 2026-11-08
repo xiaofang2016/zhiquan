@@ -29,6 +29,18 @@ class DatabaseQueryTest {
     }
 
     @Test
+    void lineupNeedsTheRoundName() {
+        assertFalse(DatabaseQuery.demandable("/team/getFbCompetitionBestLineup",
+                Map.of("type", "1", "cid", "82", "year", "2026-2027")));
+        assertTrue(DatabaseQuery.demandable("/team/getFbCompetitionBestLineup",
+                Map.of("type", "1", "cid", "82", "year", "2026-2027", "stats", "第9轮")));
+        assertFalse(DatabaseQuery.demandable("/manage/queryFManageHonorByManageId",
+                Map.of("type", "1", "manageId", "8084")));
+        assertTrue(DatabaseQuery.demandable("/manage/getManageInfoByManageId",
+                Map.of("type", "1", "manageId", "8084")));
+    }
+
+    @Test
     void teamStatsNeedsSeason() {
         assertFalse(DatabaseQuery.demandable("/team/getTeamAndPlayerStatsList", Map.of("cid", "82")));
         assertTrue(DatabaseQuery.demandable("/team/getTeamAndPlayerStatsList",

@@ -24,6 +24,22 @@ class MatchCrawlRulesTest {
     }
 
     @Test
+    void upcomingPageStopsOnceTheDayIsOver() throws Exception {
+        var json = new ObjectMapper();
+        LocalDate day = LocalDate.parse("2026-11-10");
+        var mixed = json.readTree("""
+                {"dataList":[{"matchtime":"2026-11-10 01:00:00"},{"matchtime":"2026-11-29 01:00:00"}]}
+                """);
+        var later = json.readTree("""
+                {"dataList":[{"matchtime":"2026-11-11 01:00:00"}]}
+                """);
+        assertTrue(MatchDayPages.has(day, mixed));
+        assertFalse(MatchDayPages.past(day, mixed));
+        assertTrue(MatchDayPages.past(day, later));
+        assertFalse(MatchDayPages.past(day, json.readTree("{\"dataList\":[{\"matchtime\":\"\"}]}")));
+    }
+
+    @Test
     void pastCrawlStopsAtOneWeek() {
         LocalDate today = LocalDate.parse("2026-10-23");
         var dates = java.util.List.of(

@@ -122,7 +122,6 @@ public class CommunityController {
                 }
                 ObjectNode row = CommunityLife.topic(json, feed, id);
                 if (row != null) {
-                    row.put("participantCount", row.path("postCount").asInt(0));
                     seen.put(id, row);
                     list.add(row);
                 }

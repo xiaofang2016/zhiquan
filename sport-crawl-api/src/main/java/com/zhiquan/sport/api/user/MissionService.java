@@ -41,6 +41,10 @@ public class MissionService {
         return change(token, current -> MissionRules.claim(current, type, LocalDateTime.now(MissionRules.ZONE)));
     }
 
+    public Map<String, Object> adjust(String token, String title, int delta) {
+        return change(token, current -> MissionRules.change(current, title, delta, LocalDateTime.now(MissionRules.ZONE)));
+    }
+
     private Map<String, Object> change(String token, java.util.function.UnaryOperator<MissionRules.State> action) {
         SportUser user = auth.account(token);
         for (int attempt = 0; attempt < 2; attempt++) {

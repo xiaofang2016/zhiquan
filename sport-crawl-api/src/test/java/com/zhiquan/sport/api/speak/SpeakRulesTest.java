@@ -269,6 +269,55 @@ class SpeakRulesTest {
     }
 
     @Test
+    void editCanClearTheCityWithoutTouchingAnythingElse() throws Exception {
+        ObjectNode board = CommunityBoard.ensure(json, json.createObjectNode());
+        String author = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        ObjectNode post = CommunityLife.publish(json, board, "我", "", author, "13800000000", "标题", "在上海",
+                null, null, null, null, null, null, null, "上海");
+        String id = post.path("postId").asText();
+        ObjectNode kept = CommunityLife.edit(json, board, author, id, null, null, null, null, null, null, null, null, null, null, false);
+        assertEquals("上海", kept.path("cityName").asText());
+        ObjectNode cleared = CommunityLife.edit(json, board, author, id, "新标题", null, null, null, null, null, null, null, null, "", true);
+        assertEquals("", cleared.path("cityName").asText());
+        assertEquals("新标题", cleared.path("title").asText());
+    }
+
+    @Test
+    void topicUsesTheUpstreamCounts() throws Exception {
+        var feed = json.readTree("""
+                {"circles":[{"topics":[{"id":269,"name":"年度最佳歌曲","participantCount":1027,"viewCount":98959,"commentCount":3642,
+                  "announces":[{"id":8,"title":"公告"}]}]}],
+                 "posts":[{"postId":1,"topics":[{"id":269,"name":"年度最佳歌曲"}]}]}
+                """);
+        ObjectNode topic = CommunityLife.topic(json, feed, 269);
+        assertEquals(1027, topic.path("participantCount").asInt());
+        assertEquals(98959, topic.path("viewCount").asInt());
+        assertEquals(3642, topic.path("commentCount").asInt());
+        assertEquals(1, topic.path("postCount").asInt());
+        assertEquals("公告", topic.path("announces").get(0).path("title").asText());
+    }
+
+    @Test
+    void rewardRecordKeepsWhetherTheHeadIsShown() throws Exception {
+        ObjectNode board = CommunityBoard.ensure(json, json.createObjectNode());
+        String author = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
+        String fan = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
+        ObjectNode post = CommunityLife.publish(json, board, "我", "", author, "13800000000", "标题", "正文",
+                null, null, null, null, null, null, null, null);
+        post.put("rewardEnabled", true);
+        String id = post.path("postId").asText();
+        CommunityLife.commitReward(json, board, id, fan, "粉丝", "", 150, true);
+        ObjectNode hidden = CommunityLife.commitReward(json, board, id, fan, "粉丝", "/a.jpg", 50, false);
+        assertFalse(hidden.path("showHead").asBoolean());
+        assertEquals("", hidden.path("head").asText());
+        CommunityLife.attachRewards(post, board);
+        assertEquals("2.00", post.path("rewardTotalAmount").asText());
+        assertFalse(post.path("rewardUsers").get(0).path("showHead").asBoolean());
+        assertTrue(post.path("rewardUsers").get(1).path("showHead").asBoolean());
+        assertEquals("", post.path("rewardUsers").get(1).path("head").asText());
+    }
+
+    @Test
     void blankCityDoesNotReplaceTheAccountCity() {
         assertFalse(CommunityLife.rememberCity(null));
         assertFalse(CommunityLife.rememberCity("  "));

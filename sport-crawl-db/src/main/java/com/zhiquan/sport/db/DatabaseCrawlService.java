@@ -80,6 +80,12 @@ public class DatabaseCrawlService {
                 throw new IllegalStateException("资料库目录没有拿到");
             }
             JsonNode homeData = json.readTree(home).path("data");
+            try {
+                pull(new DatabasePlan.DocRequest("/database/competition/notStarted", Map.of("pid", "4"), DatabaseTier.DAILY), false);
+            } catch (Exception ex) {
+                status.failed();
+                log.warn("近期赛事没有抓到: {}", ex.getMessage());
+            }
             fifa();
             pull(new DatabasePlan.DocRequest("/team/getFbHotCompetition", Map.of(), DatabaseTier.DAILY), false);
             List<DatabaseCatalog.Competition> competitions = new ArrayList<>(DatabaseCatalog.competitions(homeData));

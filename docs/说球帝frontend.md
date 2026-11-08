@@ -66,7 +66,7 @@ GET /prod-api/match/list/new?isfanye=1&type=0&cid=0&ishot=-1&langtype=zh&pid=4&z
 | `zoneId` | 浏览器时区，用来显示开赛钟点。接口里的 `matchtime` 仍是上海时间 |
 | `isfanye` `langtype` `pid` `zhuboType` | 固定 `1`、`zh`、`4`、`1` |
 
-第 1 页按 `topList`、`notopList`、`dataList` 接起来。第 2 页起只接 `dataList`。同一场 `id` 只留一条。热门页把 `is_zd` 为 `1` 的场次按 `zd_level` 从高到低抽到最前。名单和原站一样，只要带主播的；后面几页会带上后面几天的场次，不要按开赛日再切。
+第 1 页按 `topList`、`notopList`、`dataList` 接起来。第 2 页起只接 `dataList`。同一场 `id` 只留一条。热门页把 `is_zd` 为 `1` 的场次按 `zd_level` 从高到低抽到最前。今天和昨天只要带主播的，后面几页会带上后面几天的场次，不要按开赛日再切。从明天起，这一天的列表是开赛日落在这一天的全部场次，不含后面几天。
 
 `date/count` 不带 `type`、`cid` 时，`totalmatch` 是上游日期接口的数字。带了 `type` 或 `cid` 时，按这一天已经抓到的场次重算。
 
@@ -187,7 +187,7 @@ GET /prod-api/community/circles/{circleId}?token=
 
 `page` 从 1。`ps` 不传时流是 60、评论和回复是 50，最大也是这两个数。`circleId` 只留这个圈子。`type=essence` 只留精华。`type=follow` 是头部「关注」。只留当前登录用户在说球帝点过关注的作者或圈子，不使用原站的关注列表。要带 `token`，没登录或还没关注任何人时这一页是空的。`type=fans` 只留关注了当前用户的人发的帖，没登录或还没有粉丝发帖时是空的。原站被关注的人新发的帖，下一轮抓取写进副本后会出现在这里，大约 2 分钟。`sortRule=publish` 按发布时间，`sortRule=comment` 按 `lastReplyTime`，没有回复的用发布时间。不传按发布时间。`before` 只留这条时间之前的帖；按发布时间排时用 `createTime`，按最新回复排时用 `lastReplyTime`。筛完再分页。`total` 是筛完的条数，`pages` 是页数。拉黑的作者不会出现在流和评论里。
 
-`GET /circles?type=essence` 的 `data` 仍是圈子数组，只留这份副本里有精华帖的圈子，顺序和全部圈子一致。带 `token` 时每个圈子有 `followed`，表示当前用户有没有在说球帝关注这个圈子。`followCount` 是原站人数，再加上说球帝本地关注人数。圈子详情多一个 `announces`。抓取会读圈子详情，再读这个圈子下每个话题的详情，把 `announces` 合到一起。每条有 `id`、`title`、`type`、`createTime`、`content`，有外链时还有 `url`。上游这两处都没有时是空数组。
+`GET /circles?type=essence` 的 `data` 仍是圈子数组，只留这份副本里有精华帖的圈子，顺序和全部圈子一致。带 `token` 时每个圈子有 `followed`，表示当前用户有没有在说球帝关注这个圈子。`followCount` 是原站人数，再加上说球帝本地关注人数。圈子详情多一个 `announces`。抓取会读圈子详情，再读这个圈子下每个话题的详情，把 `announces` 合到圈子上，同时把参与人数、阅读数、评论数和这份公告留在话题自己身上。每条有 `id`、`title`、`type`、`createTime`、`content`，有外链时还有 `url`。上游这两处都没有时是空数组。
 
 帖子不在已抓到的范围里时，单帖 `data` 为 `null`。评论还没抓到，或帖子不存在，`comments` 是空数组。说球帝账号发出的帖、评论和回复，`userId` 是登录接口返回的 32 位编号，用来对上当前用户。原站内容仍是数字编号。社区里的 `head`、`ownerHead` 若是站内相对路径，会补成 `https://dgtplaoir00la.cloudfront.net` 开头的绝对地址。
 
@@ -199,7 +199,7 @@ GET /prod-api/community/circles/{circleId}?token=
 | `posts` | 当前页。默认新发的在前；`sortRule=comment` 时最后回复的在前 |
 | `total` `page` `pages` | 分页 |
 
-圈子：`id`、`name`、`icon`、`cover`、`followCount`、`postCount`、`ownerName`、`ownerHead`、`topics`、`followed`、`isHot`。`topics` 里是 `id`、`name`，圈子上的话题还有 `cover`。`GET /circles` 的 `data` 就是这个数组；没有单独热门标记时，前两个 `isHot` 为 `true`。话题列表是 `GET /community/topics`，每项有 `id`、`name`、`cover`、`postCount`、`participantCount`。单个圈子没有时 `data` 为 `null`。没带有效 `token` 时 `followed` 是 `false`。
+圈子：`id`、`name`、`icon`、`cover`、`followCount`、`postCount`、`ownerName`、`ownerHead`、`topics`、`followed`、`isHot`。`topics` 里是 `id`、`name`，圈子上的话题还有 `cover`。抓到原站话题详情之后，话题上还有 `participantCount`、`viewCount`、`commentCount` 和这个话题自己的 `announces`。`GET /circles` 的 `data` 就是这个数组；没有单独热门标记时，前两个 `isHot` 为 `true`。话题列表是 `GET /community/topics`，每项有 `id`、`name`、`cover`、`postCount`、`participantCount`、`viewCount`、`commentCount`、`announces`。`participantCount` 是原站话题详情里的参与人数。这一轮还没抓到时，用副本里的帖子数。`viewCount`、`commentCount` 同样来自原站；还没抓到是 `0`。`announces` 是这个话题自己的公告，没有时是空数组。单个圈子没有时 `data` 为 `null`。没带有效 `token` 时 `followed` 是 `false`。单个话题是 `GET /community/topics/{topicId}`，字段和列表里的一项相同，另外有 `intro`。
 
 社区流抓最近 20 页，精华 3 页，每个圈子 2 页。更早的帖第一次打开单帖或评论时再向上游要这一篇，之后就留在副本里。
 
@@ -286,9 +286,9 @@ POST /prod-api/community/upload
 { "token": "", "image": "" }
 ```
 
-`image` 可以是压好的 JPEG，或 `data:video/mp4;base64,...`。图片沿用头像那条大小限制。视频不超过 8MB，不做转码。返回 `url`、`type`、`w`、`h`。`type` 是 `image` 或 `video`。视频的宽高是 `null`。`url` 是 `https://dgtplaoir00la.cloudfront.net/prod-api/community/media/{id}`，视频读出来是 `video/mp4`。
+`image` 可以是压好的 JPEG，或 `data:video/mp4;base64,...`。图片沿用头像那条大小限制。视频不超过 7MB，只收 H.264 的 MP4，HEVC 会返回「请上传 H.264 的 MP4」，不做转码。返回 `url`、`type`、`w`、`h`。`type` 是 `image` 或 `video`。视频的宽高是 `null`。`url` 是 `https://dgtplaoir00la.cloudfront.net/prod-api/community/media/{id}`，视频读出来是 `video/mp4`。
 
-自己的帖子可以改、删、改查看权限、开关打赏。`visibility` 是 `public` 或 `self`。`self` 只有作者自己的流和详情看得到。
+自己的帖子可以改、删、改查看权限、开关打赏。`visibility` 是 `public` 或 `self`。`self` 只有作者自己的流和详情看得到。编辑也可以带 `cityName`。不传不改这一帖的城市。传空串这一帖不带城市，账号城市不动。传了城市就写上这一帖，并写回账号，规则和发帖一样。
 
 ```text
 POST /prod-api/community/posts/{postId}/edit
@@ -300,7 +300,7 @@ POST /prod-api/community/posts/{postId}/reward-switch
 { "token": "" }
 ```
 
-打赏从说球帝余额扣到作者余额，流水标题是「帖子打赏」。金额 `0.01` 到 `200` 元。帖子要先打开打赏。原站帖子的 `rewardEnabled` 固定是 `false`。直接打赏仍返回「暂时不能打赏原站作者」，不会扣款。不能打赏自己的帖子。请求体可以带 `showHead`，不传或 `true` 时展示头像，`false` 时这条打赏不带头像。作者会收到一条 `reward` 通知。帖子上有 `rewardUsers`，最近几个人的头像。记录是 `GET /posts/{postId}/rewards`。
+打赏从说球帝余额扣到作者余额，流水标题是「帖子打赏」。金额 `0.01` 到 `200` 元。帖子要先打开打赏。原站帖子的 `rewardEnabled` 固定是 `false`。直接打赏仍返回「暂时不能打赏原站作者」，不会扣款。不能打赏自己的帖子。请求体可以带 `showHead`，不传或 `true` 时展示头像，`false` 时这条打赏不带头像。作者会收到一条 `reward` 通知。帖子上有 `rewardUsers`，最近几个人的头像，每项有 `showHead`。`rewardTotalAmount` 是说球帝这边的打赏合计，例如 `2.00`。还没有说球帝打赏时可以没有这一项。记录是 `GET /posts/{postId}/rewards`，每条有 `showHead`。旧记录没有这个字段时，头像空就当不展示。
 
 用户主页是 `GET /users/{userId}`，`userId` 可以是原站数字或说球帝 32 位编号。昵称、头像和徽章从他发过的帖、评论里取，说球帝自己发的也算。带 `token` 时有 `followed`、`blocked`。资料里有 `cityName`。他的帖用 `GET /feed?userId=`。他在说球帝发过的评论和回复是 `GET /users/{userId}/comments`，字段和「我的评论」一样。原站历史评论不在这里。关注和粉丝是 `GET /users/{userId}/follows`、`/fans`。改自己的简介、背景和城市是 `POST /me/profile`，`intro` 最多 100 字，`bg` 用上传得到的地址，`cityName` 最多 20 个字。
 
@@ -462,7 +462,7 @@ GET https://tip.kzbzcq.com/tip?mid=4498761&type=1
 | `badges` | 等级图标。键是等级，值是图片地址 |
 | `messages` | 按 `time` 从早到晚 |
 
-一条消息：`id`、`time`（毫秒）、`nick`（没有时显示「游客」）、`content`、`images`（最多 4 张，每张有 `url`，可能有 `w`、`h`）、`level`（图标用 `badges[level]`）、`bubble`、`color`。后面三项没有时不返回。
+一条消息：`id`、`time`（毫秒）、`nick`（没有时显示「游客」）、`content`、`images`（最多 4 张，每张有 `url`，可能有 `w`、`h`）、`level`（图标用 `badges[level]`）、`bubble`、`color`。后面三项没有时不返回。送礼写进同一场聊天，正文是 `送出了「礼物名」×数量`，按普通消息画。
 
 四个栏目成功时 `data` 按地址读。暂时拿不到时 `code` 为 `"1"`，`msg` 是「这场资料暂时没有拿到」。
 
@@ -485,6 +485,8 @@ GET https://tip.kzbzcq.com/tip?mid=4498761&type=1
 | `POST /prod-api/user/register` | `{ "phone", "password", "confirm", "code" }` | 登录结果 |
 | `POST /prod-api/user/login` | `{ "phone", "password" }` | 登录结果。手机号或密码不对都是「手机号或密码不正确」 |
 | `POST /prod-api/user/session` | `{ "token" }` | 登录结果。令牌不续期。过期是「登录已过期」 |
+| `POST /prod-api/user/phone/sms` | `{ "token", "phone" }` | `null`。`phone` 是新号。已注册返回「这个手机号已经注册」。和当前号码相同返回「新手机号不能和当前号码相同」 |
+| `POST /prod-api/user/updatePhone` | `{ "token", "phone", "code" }` | 登录结果。`phone` 和 `token` 都换成新的，旧令牌失效 |
 
 登录结果：
 
@@ -538,7 +540,71 @@ POST /prod-api/user/avatar
 
 签到奖励按天是 30、50、70、90、110、130、150。今天已签返回「今日已签到」。还没轮到返回「未到签到时间」。观看时长、分享、邀请没有计数，对应领取会拒绝。已领过返回「已领取」。
 
-等级用音浪余额本地算：不足 100 为 Lv.1，否则等级为余额除以 100 的整数部分。
+等级用音浪余额本地算：不足 100 为 Lv.1，否则等级为余额除以 100 的整数部分。送礼和预测扣的是这份余额，明细里的 `amount` 可以是负数。不要再在本机另记一笔。
+
+### 送礼
+
+```json
+POST /prod-api/user/gift
+{ "token": "登录令牌", "mid": "4498761", "giftId": 10, "count": 1 }
+```
+
+`giftId` 用礼物目录里的 `id`。`count` 不传按 1，范围 1 到 99。单价是目录里的 `gift_yinlang`。成功 `data` 有 `balance`、`giftId`、`giftName`、`count`、`cost`、`content`。音浪不够是「音浪不足」。目录里没有是「没有这个礼物」。目录暂时拿不到是「礼物暂时没有拿到」。
+
+房间里多一条普通聊天，正文就是 `content`，例如 `送出了「足球射门」×1`。聊天室已关闭时音浪退回，`msg` 是「当前聊天室已关闭」。
+
+### 预测
+
+下注、我的预测、收益榜都要登录。盘口用下注当时 `tip` 上的 `pankou`。大于等于 1 的数是欧洲赔率，猜中返还本金乘赔率，四舍五入成整数音浪。小于 1 的数是水位，先加 1 再乘。让球和大小碰到四分之一盘，本金分两半各算一次。走水退回本金。没猜中不退。完场后按比赛详情的比分结算，打开我的预测或收益榜时入账。推迟、取消、腰斩、待定、延期退回本金。
+
+```json
+POST /prod-api/user/predict/bet
+{ "token": "登录令牌", "mid": "4498761", "type": 1, "market": "rq", "betvalue": 1, "stake": 10 }
+```
+
+`market`：`rq` 让球（1 主、2 客），`dx` 大小（1 大、2 小），`sf` 胜平负（1 胜、2 平、3 负）。`type` 缺省为 1。`stake` 是音浪整数，1 到 100000。可选 `clientId`，1 到 40 位字母数字，同一个号再提交不会重复扣。成功 `data` 是这条注，并带 `balance`。`status` 为 `pending`。
+
+```json
+POST /prod-api/user/predict
+{ "token": "登录令牌" }
+```
+
+`data` 有 `balance`、`total`、`win`、`rate`、`profit`、`records`。`total` 不含未开奖和退回。`rate` 是胜场除以 `total` 的百分数，去掉小数，没有结算过是 `0%`。`profit` 是盈亏音浪，输了为负。一条记录有 `id`、`mid`、`type`、`market`、`betvalue`、`label`、`line`、`odds`、`stake`、`status`、`statusName`、`returned`、`profit`、`placedAt`、`settledAt`。
+
+| `status` | `statusName` |
+|---|---|
+| `pending` | 未开奖 |
+| `win` | 赢 |
+| `lose` | 输 |
+| `push` | 走水 |
+| `half-win` | 赢半 |
+| `half-lose` | 输半 |
+| `refund` | 退回 |
+
+```json
+POST /prod-api/user/predict/rank
+{ "token": "登录令牌", "period": "day", "board": "profit" }
+```
+
+`period` 为 `day`、`week`、`month`，缺省 `day`。周从周一开始。`board` 为 `profit`（收益榜，盈利从高到低）或 `roof`（天台榜，亏损从多到少），缺省 `profit`。`records` 最多 50 条：`rank`、`userId`、`nick`、`profit`、`win`、`total`。`mine` 是自己的同一行。还没有结算记录时 `mine.rank` 为 0。
+
+### 现金签到
+
+钱包页「签到领1元」用这一套，和上面的音浪签到分开。连续 7 天的金额是 1、2、3、5、6、8、10 元，进说球帝余额，账单标题是「签到」。断了一天，或满 7 天的次日，从第 1 天再来。
+
+```json
+POST /prod-api/user/wallet/sign
+{ "token": "登录令牌" }
+```
+
+只查询，不入账。`data` 有 `signDay`、`signed`、`amounts`、`today`、`canSign`、`balance`。`amounts` 是 7 个整数元。`today` 是今天这一格的元。`balance` 是说球帝余额，两位小数。
+
+```json
+POST /prod-api/user/wallet/sign/claim
+{ "token": "登录令牌", "day": 1 }
+```
+
+`day` 可以不传。传了就要对上当天那一格，否则「未到签到时间」。今天已经签过是「今日已签到」。成功后的 `data` 同上，另有 `amount`，领到的元，两位小数。
 
 ### 红包商城
 

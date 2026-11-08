@@ -49,6 +49,12 @@ public class WalletBook {
         put(row(user.getPhone(), now, orderNo, "withdraw", platform, cents, 2, "提现失败，余额已退回", reason == null ? "" : reason));
     }
 
+    public void sign(SportUser user, long cents, String orderNo, String expectedSign, String nextSign) {
+        long now = Instant.now().toEpochMilli();
+        users.claimCashSign(user.getPhone(), expectedSign, nextSign, cents,
+                row(user.getPhone(), now, orderNo, "bill", "", cents, 1, "签到", ""));
+    }
+
     public void redpack(SportUser user, long cents, String orderNo) {
         long now = Instant.now().toEpochMilli();
         put(row(user.getPhone(), now, orderNo, "redpacket", "", cents, 1, "红包", ""));

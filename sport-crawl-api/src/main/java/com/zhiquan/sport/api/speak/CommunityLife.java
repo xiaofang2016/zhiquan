@@ -42,14 +42,21 @@ public final class CommunityLife {
         if (extra == 0) {
             return;
         }
+        long total = 0;
         int from = Math.max(0, rewards.size() - 8);
-        for (int i = rewards.size() - 1; i >= from; i--) {
+        for (int i = rewards.size() - 1; i >= 0; i--) {
             JsonNode row = rewards.get(i);
+            total += money(row.path("amount").asText(""));
+            if (i < from) {
+                continue;
+            }
             ObjectNode person = shown.addObject();
             person.put("userId", row.path("userId").asText(""));
             person.put("nickname", row.path("nickname").asText(""));
             person.put("head", row.path("head").asText(""));
+            person.put("showHead", showHead(row));
         }
+        post.put("rewardTotalAmount", yuan(total));
     }
 
     public static ObjectNode publish(ObjectMapper json, ObjectNode board, String nick, String head, String userId, String phone,
@@ -84,7 +91,7 @@ public final class CommunityLife {
 
     public static ObjectNode edit(ObjectMapper json, ObjectNode board, String viewer, String postId, String title, String content,
                                    List<Long> circleIds, List<String> pictures, List<String> videos, List<Long> topicIds,
-                                   List<String> mentionUserIds, Long matchId, String matchType) {
+                                   List<String> mentionUserIds, Long matchId, String matchType, String cityName, boolean updateCity) {
         ObjectNode post = ownPost(board, viewer, postId);
         java.util.Set<String> mentioned = mentionIds(post);
         if (title != null) {
@@ -94,6 +101,13 @@ public final class CommunityLife {
             post.put("content", Voice.post(content));
         }
         writePost(post, circleIds, pictures, videos, topicIds, mentionUserIds, matchId, matchType);
+        if (updateCity) {
+            if (cityName == null || cityName.isBlank()) {
+                post.put("cityName", "");
+            } else {
+                city(post, UserAuthService.city(cityName));
+            }
+        }
         fillMentionNames(board, post);
         notifyMentions(json, board, post, mentioned);
         return post;
@@ -142,7 +156,8 @@ public final class CommunityLife {
         row.put("userId", userId);
         row.put("nickname", nick);
         row.put("head", showHead ? head : "");
-        row.put("amount", String.format(java.util.Locale.ROOT, "%d.%02d", cents / 100, cents % 100));
+        row.put("showHead", showHead);
+        row.put("amount", yuan(cents));
         row.put("createTime", Instant.now().toString());
         rewards.add(row);
         note(json, board, authorId(board, postId), userId, nick, showHead ? head : "", "reward", postId, "", "打赏了你的帖子");
@@ -154,9 +169,13 @@ public final class CommunityLife {
         List<ObjectNode> ordered = new ArrayList<>();
         if (all.isArray()) {
             for (int i = all.size() - 1; i >= 0; i--) {
-                if (all.get(i) instanceof ObjectNode row) {
-                    ordered.add(row);
+            if (all.get(i) instanceof ObjectNode row) {
+                ObjectNode copy = row.deepCopy();
+                if (!copy.has("showHead")) {
+                    copy.put("showHead", showHead(copy));
                 }
+                ordered.add(copy);
+            }
             }
         }
         return slice(json, "rewards", ordered, page, pageSize);
@@ -634,13 +653,30 @@ public final class CommunityLife {
     public static ObjectNode topic(ObjectMapper json, JsonNode feed, long topicId) {
         String name = "";
         String cover = "";
+        Integer participants = null;
+        int views = 0;
+        int comments = 0;
+        JsonNode announces = null;
         int posts = 0;
         if (feed != null) {
             for (JsonNode circle : feed.path("circles")) {
                 for (JsonNode topic : circle.path("topics")) {
-                    if (topic.path("id").asLong() == topicId) {
-                        name = topic.path("name").asText(name);
-                        cover = topic.path("cover").asText(cover);
+                    if (topic.path("id").asLong() != topicId) {
+                        continue;
+                    }
+                    name = topic.path("name").asText(name);
+                    cover = topic.path("cover").asText(cover);
+                    if (topic.hasNonNull("participantCount")) {
+                        participants = topic.path("participantCount").asInt(0);
+                    }
+                    if (topic.hasNonNull("viewCount")) {
+                        views = topic.path("viewCount").asInt(views);
+                    }
+                    if (topic.hasNonNull("commentCount")) {
+                        comments = topic.path("commentCount").asInt(comments);
+                    }
+                    if (topic.path("announces").isArray() && topic.path("announces").size() > 0) {
+                        announces = topic.path("announces");
                     }
                 }
             }
@@ -659,6 +695,10 @@ public final class CommunityLife {
         body.put("cover", cover);
         body.put("intro", "");
         body.put("postCount", posts);
+        body.put("participantCount", participants == null ? posts : participants);
+        body.put("viewCount", views);
+        body.put("commentCount", comments);
+        body.set("announces", announces == null ? json.createArrayNode() : announces.deepCopy());
         return body;
     }
 
@@ -727,6 +767,31 @@ public final class CommunityLife {
             throw new IllegalArgumentException("打赏金额为 0.01 到 200 元");
         }
         return cents;
+    }
+
+    static long money(String raw) {
+        String text = raw == null ? "" : raw.trim();
+        if (!text.matches("\\d+(\\.\\d{1,2})?")) {
+            return 0;
+        }
+        String[] parts = text.split("\\.");
+        long yuan = Long.parseLong(parts[0]);
+        int frac = 0;
+        if (parts.length == 2) {
+            frac = Integer.parseInt(parts[1].length() == 1 ? parts[1] + "0" : parts[1]);
+        }
+        return yuan * 100 + frac;
+    }
+
+    static String yuan(long cents) {
+        return String.format(java.util.Locale.ROOT, "%d.%02d", cents / 100, Math.floorMod(cents, 100));
+    }
+
+    static boolean showHead(JsonNode row) {
+        if (row.has("showHead")) {
+            return row.path("showHead").asBoolean(false);
+        }
+        return !row.path("head").asText("").isEmpty();
     }
 
     private static java.util.Set<String> mentionIds(ObjectNode post) {
