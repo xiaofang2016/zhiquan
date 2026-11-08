@@ -128,8 +128,7 @@ const tabs = [
   ["match", "比赛", "M7 4h10v2a5 5 0 0 1-4 4.9V13h3v2H8v-2h3V10.9A5 5 0 0 1 7 6V4zm-2 1H3v2a4 4 0 0 0 3.2 3.9M19 5h2v2a4 4 0 0 1-3.2 3.9"],
   ["live", "即时比分", "M6 3v2M18 3v2M4 8h16M5 5h14a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1z"],
   ["db", "资料库", "M4 18V8M10 18V4M16 18v-6M20 18H4"],
-  ["community", "社球帝", "M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"],
-  ["chat", "聊天", "M4 6h16v10H7l-3 3V6z"]
+  ["community", "社球帝", "M5 6h14a2 2 0 0 1 2 2v7a2 2 0 0 1-2 2H9l-4 3v-3H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2z"]
 ].map(([id, label, icon]) => ({ id, label, icon }));
 
 const showSide = computed(() => state.tab !== "live" && state.tab !== "chat" && !(state.detail && state.tab === "match"));
