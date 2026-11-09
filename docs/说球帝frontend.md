@@ -66,7 +66,7 @@ GET /prod-api/match/list/new?isfanye=1&type=0&cid=0&ishot=-1&langtype=zh&pid=4&z
 | `zoneId` | 浏览器时区，用来显示开赛钟点。接口里的 `matchtime` 仍是上海时间 |
 | `isfanye` `langtype` `pid` `zhuboType` | 固定 `1`、`zh`、`4`、`1` |
 
-第 1 页按 `topList`、`notopList`、`dataList` 接起来。第 2 页起只接 `dataList`。同一场 `id` 只留一条。热门页把 `is_zd` 为 `1` 的场次按 `zd_level` 从高到低抽到最前。今天和昨天只要带主播的，后面几页会带上后面几天的场次，不要按开赛日再切。从明天起，这一天的列表是开赛日落在这一天的全部场次，不含后面几天。
+第 1 页按 `topList`、`notopList`、`dataList` 接起来。第 2 页起只接 `dataList`。同一场 `id` 只留一条。热门页把 `is_zd` 为 `1` 的场次按 `zd_level` 从高到低抽到最前。今天只要带主播的，后面几页会带上后面几天的场次，不要按开赛日再切。昨天和更早的日子，以及从明天起，这一天的列表是开赛日落在这一天的全部场次，不含后面几天。赛果按这个日期查 `list/new`，没有主播的场次也在里面。今天的赛果仍用即时比分。
 
 `date/count` 不带 `type`、`cid` 时，`totalmatch` 是上游日期接口的数字。带了 `type` 或 `cid` 时，按这一天已经抓到的场次重算。
 
@@ -286,7 +286,7 @@ POST /prod-api/community/upload
 { "token": "", "image": "" }
 ```
 
-`image` 可以是压好的 JPEG，或 `data:video/mp4;base64,...`。图片沿用头像那条大小限制。视频不超过 7MB，只收 H.264 的 MP4，HEVC 会返回「请上传 H.264 的 MP4」，不做转码。返回 `url`、`type`、`w`、`h`。`type` 是 `image` 或 `video`。视频的宽高是 `null`。`url` 是 `https://dgtplaoir00la.cloudfront.net/prod-api/community/media/{id}`，视频读出来是 `video/mp4`。
+`image` 可以是压好的 JPEG，或 `data:video/mp4;base64,...`。图片沿用头像那条大小限制。视频不超过 7MB，只收 H.264 的 MP4。编码看文件里的 `stsd`，要有 `avc1` 或 `avc3`。只在 `ftyp` 里没有 `hev1` 的 HEVC 也会返回「请上传 H.264 的 MP4」，不做转码。返回 `url`、`type`、`w`、`h`。`type` 是 `image` 或 `video`。视频的宽高是 `null`。`url` 是 `https://dgtplaoir00la.cloudfront.net/prod-api/community/media/{id}`，视频读出来是 `video/mp4`。
 
 自己的帖子可以改、删、改查看权限、开关打赏。`visibility` 是 `public` 或 `self`。`self` 只有作者自己的流和详情看得到。编辑也可以带 `cityName`。不传不改这一帖的城市。传空串这一帖不带城市，账号城市不动。传了城市就写上这一帖，并写回账号，规则和发帖一样。
 
@@ -471,7 +471,7 @@ GET https://tip.kzbzcq.com/tip?mid=4498761&type=1
 | 直播 | `environment` 场地，可能没有。有则用 `nameZh`、`city`、`temperature`、`humidity`。`tlive` 是文字直播，按时间顺序，每条 `time`、`data` |
 | 指数 | `yazhi` 让球，`ouzhi` 胜平负，`daxiao` 大小球，`jiaoqiu` 角球。一行有 `company_name`、`initial` 初盘、`realtime` 即时盘。没有的组不画 |
 | 数据 | `history` 里 `vs`、`home`、`away` 是数组，一行也是数组，按位置取联赛、日期、比分和队伍。`injury.home`、`injury.away` 用 `player_name`（没有时看 `name`、`player`）和 `reason` |
-| 预测 | `forecast.rq` 让球（主、客），`dx` 大小（大、小），`sf` 胜平负（胜、平、负）。每份有 `pankou` 和 `betList`。`betvalue` 从 `1` 起对应选项顺序，`numPeople` 是人数。`intel` 是情报：`home_good`、`away_good`、`neutral`、`home_bad`、`away_bad` |
+| 预测 | `forecast.rq` 让球（主、客），`dx` 大小（大、小），`sf` 胜平负（胜、平、负）。不返回 `jq`，角球不要画、也不要提交。每份有 `pankou` 和 `betList`。`betvalue` 从 `1` 起对应选项顺序，`numPeople` 是人数。`intel` 是情报：`home_good`、`away_good`、`neutral`、`home_bad`、`away_bad` |
 
 ## 账号
 
@@ -562,14 +562,14 @@ POST /prod-api/user/predict/bet
 { "token": "登录令牌", "mid": "4498761", "type": 1, "market": "rq", "betvalue": 1, "stake": 10 }
 ```
 
-`market`：`rq` 让球（1 主、2 客），`dx` 大小（1 大、2 小），`sf` 胜平负（1 胜、2 平、3 负）。`type` 缺省为 1。`stake` 是音浪整数，1 到 100000。可选 `clientId`，1 到 40 位字母数字，同一个号再提交不会重复扣。成功 `data` 是这条注，并带 `balance`。`status` 为 `pending`。
+`market`：`rq` 让球（1 主、2 客），`dx` 大小（1 大、2 小），`sf` 胜平负（1 胜、2 平、3 负）。不要提交 `jq`。`type` 缺省为 1。`stake` 是音浪整数，1 到 100000。可选 `clientId`，1 到 40 位字母数字，同一个号再提交不会重复扣。只有未开赛能下。进行中是「这场已经开始」，完场是「这场已经结束」。成功 `data` 是这条注，并带 `balance`。`status` 为 `pending`。注上有 `league`、`home`、`away`、`kickoff`，结算后 `score` 是完场比分。
 
 ```json
 POST /prod-api/user/predict
 { "token": "登录令牌" }
 ```
 
-`data` 有 `balance`、`total`、`win`、`rate`、`profit`、`records`。`total` 不含未开奖和退回。`rate` 是胜场除以 `total` 的百分数，去掉小数，没有结算过是 `0%`。`profit` 是盈亏音浪，输了为负。一条记录有 `id`、`mid`、`type`、`market`、`betvalue`、`label`、`line`、`odds`、`stake`、`status`、`statusName`、`returned`、`profit`、`placedAt`、`settledAt`。
+`data` 有 `balance`、`total`、`win`、`rate`、`profit`、`records`。`total` 不含未开奖和退回。`rate` 是胜场除以 `total` 的百分数，去掉小数，没有结算过是 `0%`。`profit` 是盈亏音浪，输了为负。一条记录有 `id`、`mid`、`type`、`market`、`betvalue`、`label`、`line`、`odds`、`stake`、`status`、`statusName`、`returned`、`profit`、`placedAt`、`settledAt`、`league`、`home`、`away`、`kickoff`、`score`。换一台手机也能看出是哪一场。以前的注这几项是空的。
 
 | `status` | `statusName` |
 |---|---|
@@ -586,7 +586,7 @@ POST /prod-api/user/predict/rank
 { "token": "登录令牌", "period": "day", "board": "profit" }
 ```
 
-`period` 为 `day`、`week`、`month`，缺省 `day`。周从周一开始。`board` 为 `profit`（收益榜，盈利从高到低）或 `roof`（天台榜，亏损从多到少），缺省 `profit`。`records` 最多 50 条：`rank`、`userId`、`nick`、`profit`、`win`、`total`。`mine` 是自己的同一行。还没有结算记录时 `mine.rank` 为 0。
+`period` 为 `day`、`week`、`month`，缺省 `day`。周从周一开始。`board` 为 `profit`（收益榜，盈利从高到低）或 `roof`（天台榜，亏损从多到少），缺省 `profit`。`records` 最多 50 条：`rank`、`userId`、`nick`、`avatar`、`level`、`profit`、`win`、`total`。`avatar` 没有时是空串。`level` 用音浪那一节的算法，不要再写「游客」。`mine` 是自己的同一行。还没有结算记录时 `mine.rank` 为 0。
 
 ### 现金签到
 

@@ -171,6 +171,15 @@ public class MatchCrawlService {
      * 明天起主播名单还没排出来，带主播的列表是空的。这里改抓全部场次，只留下开赛日是这一天的。
      */
     public void crawlUpcoming(LocalDate date) {
+        crawlFullDay(date, 30);
+    }
+
+    /** 昨天和过去几天的赛果。全部场次，只留下开赛日是这一天的。 */
+    public void crawlResults(LocalDate date) {
+        crawlFullDay(date, properties.getMaxPages());
+    }
+
+    private void crawlFullDay(LocalDate date, int cap) {
         int requested = properties.getPageSize();
         JsonNode data = upcomingPage(date, 1, requested);
         int dataSize = arraySize(data, "dataList");
@@ -184,7 +193,6 @@ public class MatchCrawlService {
         boolean seen = false;
         boolean done = false;
         int page = 1;
-        int cap = 30;
         while (page <= cap) {
             if (page > 1) {
                 data = upcomingPage(date, page, requested);
@@ -204,7 +212,7 @@ public class MatchCrawlService {
             page++;
         }
         if (!done) {
-            log.warn("match date {} upcoming stopped at {} pages, leave existing rows", date, cap);
+            log.warn("match date {} full list stopped at {} pages, leave existing rows", date, cap);
             return;
         }
         removeStale(date, kept);

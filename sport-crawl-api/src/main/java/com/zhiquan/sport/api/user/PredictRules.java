@@ -25,7 +25,8 @@ public final class PredictRules {
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record Bet(String id, String userId, String phone, String nick, String mid, int type, String market,
                       int betvalue, String label, String line, String odds, int stake, String status,
-                      int returned, int profit, String placedAt, String settledAt, String clientId) {
+                      int returned, int profit, String placedAt, String settledAt, String clientId,
+                      String league, String home, String away, String kickoff, String score) {
     }
 
     public record Outcome(String status, int returned, int profit) {
@@ -37,7 +38,10 @@ public final class PredictRules {
     public record MatchEnd(String kind, int home, int away) {
     }
 
-    public record RankRow(int rank, String userId, String nick, long profit, int win, int total) {
+    public record Fixture(String league, String home, String away, String kickoff) {
+    }
+
+    public record RankRow(int rank, String userId, String nick, long profit, int win, int total, String phone) {
     }
 
     public record BoardView(List<RankRow> records, RankRow mine) {
@@ -112,6 +116,44 @@ public final class PredictRules {
             return new MatchEnd("open", 0, 0);
         }
         return new MatchEnd("done", score[0], score[1]);
+    }
+
+    /** upcoming 未开赛，live 进行中，done 完场，void 取消，unknown 没有赛况。 */
+    public static String phase(JsonNode root) {
+        JsonNode info = root == null ? null : root.path("data").path("matchinfo");
+        if (info == null || !info.isObject() || info.isEmpty()) {
+            return "unknown";
+        }
+        String name = info.path("status_up_name").asText("");
+        int code = info.path("status_up").asInt(-1);
+        String kind = finish(name, code, info.path("type").asInt(1));
+        if ("done".equals(kind)) {
+            return "done";
+        }
+        if ("void".equals(kind)) {
+            return "void";
+        }
+        if (name.contains("未开赛") || code == 1) {
+            return "upcoming";
+        }
+        return "live";
+    }
+
+    public static String closed(String phase) {
+        return switch (phase) {
+            case "done" -> "这场已经结束";
+            case "live" -> "这场已经开始";
+            case "void" -> "这场不能投注";
+            default -> "这场还不能投注";
+        };
+    }
+
+    public static Fixture fixture(JsonNode root) {
+        JsonNode info = root == null ? null : root.path("data").path("matchinfo");
+        if (info == null || !info.isObject()) {
+            return new Fixture("", "", "", "");
+        }
+        return new Fixture(textOf(info, "name"), textOf(info, "hteam_name"), textOf(info, "ateam_name"), textOf(info, "matchtime"));
     }
 
     public static int[] score(String raw) {
@@ -216,16 +258,20 @@ public final class PredictRules {
                 if (bet.nick() != null && !bet.nick().isBlank()) {
                     agg.nick = bet.nick();
                 }
+                if (bet.phone() != null && !bet.phone().isBlank()) {
+                    agg.phone = bet.phone();
+                }
             }
         }
         List<Map.Entry<String, Agg>> rows = new ArrayList<>(groups.entrySet());
         rows.sort(Comparator.comparingLong((Map.Entry<String, Agg> entry) -> "roof".equals(which) ? entry.getValue().profit : -entry.getValue().profit)
                 .thenComparing(Map.Entry::getKey));
         List<RankRow> top = new ArrayList<>();
-        RankRow mine = new RankRow(0, userId == null ? "" : userId, "", 0, 0, 0);
+        RankRow mine = new RankRow(0, userId == null ? "" : userId, "", 0, 0, 0, "");
         for (int i = 0; i < rows.size(); i++) {
             Map.Entry<String, Agg> entry = rows.get(i);
-            RankRow row = new RankRow(i + 1, entry.getKey(), entry.getValue().nick, entry.getValue().profit, entry.getValue().win, entry.getValue().total);
+            RankRow row = new RankRow(i + 1, entry.getKey(), entry.getValue().nick, entry.getValue().profit,
+                    entry.getValue().win, entry.getValue().total, entry.getValue().phone);
             if (i < 50) {
                 top.add(row);
             }
@@ -311,6 +357,11 @@ public final class PredictRules {
         return decimal.stripTrailingZeros().toPlainString();
     }
 
+    private static String textOf(JsonNode node, String name) {
+        String value = node.path(name).asText("");
+        return value == null ? "" : value;
+    }
+
     private static String label(String market, int betvalue) {
         if ("rq".equals(market)) {
             return betvalue == 1 ? "主" : "客";
@@ -337,5 +388,6 @@ public final class PredictRules {
         private int win;
         private int total;
         private String nick = "";
+        private String phone = "";
     }
 }

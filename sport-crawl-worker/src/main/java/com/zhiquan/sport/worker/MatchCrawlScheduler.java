@@ -53,11 +53,11 @@ public class MatchCrawlScheduler {
         });
         if (catchUpYesterday(ZonedDateTime.now(matches.zone()).getHour())) {
             LocalDate yesterday = matches.today().minusDays(1);
-            gate.awaitRun("yesterday", () -> matches.crawlDate(yesterday));
+            gate.awaitRun("yesterday", () -> matches.crawlResults(yesterday));
         }
     }
 
-    /** 上海时间 0 点到 6 点，昨天的完场还在补，跟着今天一起抓。 */
+    /** 上海时间 0 点到 6 点，昨天的完场还在补，跟着今天一起抓这一天的全部场次。 */
     static boolean catchUpYesterday(int hour) {
         return hour >= 0 && hour < 6;
     }
@@ -80,7 +80,7 @@ public class MatchCrawlScheduler {
         }
         List<LocalDate> dates = matches.pastDates(matches.syncDates());
         for (LocalDate date : dates) {
-            gate.awaitRun("past-" + date, () -> matches.crawlDate(date));
+            gate.awaitRun("past-" + date, () -> matches.crawlResults(date));
         }
     }
 
@@ -96,7 +96,7 @@ public class MatchCrawlScheduler {
                 gate.awaitRun("backfill-" + date, () -> matches.crawlUpcoming(date));
             }
             for (LocalDate date : matches.pastDates(dates)) {
-                gate.awaitRun("backfill-" + date, () -> matches.crawlDate(date));
+                gate.awaitRun("backfill-" + date, () -> matches.crawlResults(date));
             }
         } finally {
             status.markBackfillFinished();

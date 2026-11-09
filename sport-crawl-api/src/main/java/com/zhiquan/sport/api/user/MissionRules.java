@@ -26,6 +26,12 @@ public final class MissionRules {
     public record State(int balance, int signDay, String signedOn, boolean gotReg, boolean gotLogin, List<Entry> records) {
     }
 
+    /** 不足 100 为 1 级，否则是余额除以 100。 */
+    public static int level(int balance) {
+        int level = balance / 100;
+        return level < 1 ? 1 : level;
+    }
+
     public static State fresh() {
         return new State(0, 0, "", false, false, List.of());
     }

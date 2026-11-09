@@ -8,8 +8,11 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.client.RestTemplate;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 import jakarta.servlet.http.HttpServletRequest;
 
@@ -37,8 +40,11 @@ public class UpstreamMirrorController {
             "/prod-api/data/lanqiu/ranklist",
             "/prod-api/search/hot",
             "/prod-api/search/content",
+            "/prod-api/get/search/history",
+            "/prod-api/clear/search/history",
             "/prod-api/news/list",
             "/prod-api/news/detail",
+            "/prod-api/news/information/detail",
             "/prod-api/at/list"
     );
 
@@ -47,10 +53,16 @@ public class UpstreamMirrorController {
 
     private final String baseUrl;
     private final RestTemplate http;
+    private final SearchHistory searches;
+    private final ObjectMapper jsonMapper;
     private final ConcurrentHashMap<String, Cached> cache = new ConcurrentHashMap<>();
 
-    public UpstreamMirrorController(@Value("${sport.community.base-url:https://kzb001.net}") String baseUrl) {
+    public UpstreamMirrorController(@Value("${sport.community.base-url:https://kzb001.net}") String baseUrl,
+                                    SearchHistory searches,
+                                    ObjectMapper jsonMapper) {
         this.baseUrl = baseUrl.endsWith("/") ? baseUrl.substring(0, baseUrl.length() - 1) : baseUrl;
+        this.searches = searches;
+        this.jsonMapper = jsonMapper;
         SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
         factory.setConnectTimeout(Duration.ofSeconds(5));
         factory.setReadTimeout(Duration.ofSeconds(20));
@@ -70,8 +82,11 @@ public class UpstreamMirrorController {
             "/prod-api/data/lanqiu/ranklist",
             "/prod-api/search/hot",
             "/prod-api/search/content",
+            "/prod-api/get/search/history",
+            "/prod-api/clear/search/history",
             "/prod-api/news/list",
             "/prod-api/news/detail",
+            "/prod-api/news/information/detail",
             "/prod-api/at/list"
     })
     public ResponseEntity<byte[]> mirror(HttpServletRequest request) {
@@ -83,17 +98,64 @@ public class UpstreamMirrorController {
         if (query != null && query.length() > 2000) {
             throw new IllegalArgumentException("参数过长");
         }
-        String key = query == null || query.isBlank() ? path : path + "?" + query;
+        if ("/prod-api/get/search/history".equals(path)) {
+            return history(query, false);
+        }
+        if ("/prod-api/clear/search/history".equals(path)) {
+            return history(query, true);
+        }
+        String upstream = "/prod-api/search/content".equals(path) ? SearchPages.withoutAccount(query) : query;
+        Cached loaded = fetch(path, upstream);
+        byte[] body = loaded.body();
+        if (loaded.ok() && "/prod-api/search/content".equals(path) && SearchPages.matchFirstPage(upstream, body, jsonMapper)) {
+            Cached next = fetch(path, SearchPages.withPage(upstream, 2));
+            if (next.ok() && SearchPages.laterPageEmpty(next.body(), jsonMapper)) {
+                body = SearchPages.clamp(body, jsonMapper);
+                cache.put(cacheKey(path, upstream), new Cached(body, true, loaded.until()));
+            }
+        }
+        if ("/prod-api/search/content".equals(path)) {
+            searches.remember(query);
+        }
+        return json(body, loaded.ok(), true);
+    }
+
+    @PostMapping("/prod-api/clear/search/history")
+    public ResponseEntity<byte[]> clearHistory(HttpServletRequest request) {
+        String query = request.getQueryString();
+        if (query != null && query.length() > 2000) {
+            throw new IllegalArgumentException("参数过长");
+        }
+        return history(query, true);
+    }
+
+    private ResponseEntity<byte[]> history(String query, boolean clear) {
+        Cached loaded = fetch("/prod-api/get/search/history", SearchPages.withoutAccount(query));
+        if (!loaded.ok()) {
+            return json(loaded.body(), false, false);
+        }
+        String token = SearchPages.param(query, "token");
+        if (clear) {
+            searches.clear(token);
+        }
+        return json(searches.overlay(loaded.body(), clear ? java.util.List.of() : searches.keys(token)), true, false);
+    }
+
+    private Cached fetch(String path, String query) {
+        String key = cacheKey(path, query);
         Cached hit = cache.get(key);
-        long now = System.currentTimeMillis();
-        if (hit != null && hit.until > now) {
-            return json(hit.body, hit.ok);
+        if (hit != null && hit.until > System.currentTimeMillis()) {
+            return hit;
         }
         Cached loaded = load(key);
         if (loaded.ok) {
             cache.put(key, loaded);
         }
-        return json(loaded.body, loaded.ok);
+        return loaded;
+    }
+
+    private static String cacheKey(String path, String query) {
+        return query == null || query.isBlank() ? path : path + "?" + query;
     }
 
     private Cached load(String key) {
@@ -118,8 +180,8 @@ public class UpstreamMirrorController {
         }
     }
 
-    private static ResponseEntity<byte[]> json(byte[] body, boolean ok) {
-        CacheControl cache = ok
+    private static ResponseEntity<byte[]> json(byte[] body, boolean ok, boolean shared) {
+        CacheControl cache = ok && shared
                 ? CacheControl.maxAge(Duration.ofSeconds(60)).cachePublic()
                 : CacheControl.noStore();
         return ResponseEntity.status(ok ? 200 : 502)

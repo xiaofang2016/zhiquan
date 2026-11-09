@@ -18,6 +18,9 @@ class UpstreamMirrorTest {
         assertTrue(UpstreamMirrorController.PATHS.contains("/prod-api/match/news/information/related/list"));
         assertTrue(UpstreamMirrorController.PATHS.contains("/prod-api/news/list"));
         assertTrue(UpstreamMirrorController.PATHS.contains("/prod-api/news/detail"));
+        assertTrue(UpstreamMirrorController.PATHS.contains("/prod-api/news/information/detail"));
+        assertTrue(UpstreamMirrorController.PATHS.contains("/prod-api/get/search/history"));
+        assertTrue(UpstreamMirrorController.PATHS.contains("/prod-api/clear/search/history"));
         assertFalse(UpstreamMirrorController.PATHS.contains("/prod-api/database/home"));
         assertFalse(UpstreamMirrorController.PATHS.contains("/prod-api/team/getMatchList"));
     }

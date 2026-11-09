@@ -27,6 +27,19 @@ class AccountWritesTest {
         assertEquals(-10, next.records().get(0).amount());
         assertEquals("音浪不足", assertThrows(IllegalArgumentException.class,
                 () -> MissionRules.change(next, "预测投注", -21, NOW)).getMessage());
+        assertEquals(1, MissionRules.level(99));
+        assertEquals(2, MissionRules.level(250));
+    }
+
+    @Test
+    void onlyUpcomingMatchesCanBeBet() throws Exception {
+        assertEquals("upcoming", PredictRules.phase(JSON.readTree("{\"data\":{\"matchinfo\":{\"status_up\":1,\"status_up_name\":\"未开赛\",\"name\":\"英超\",\"hteam_name\":\"阿森纳\",\"ateam_name\":\"切尔西\",\"matchtime\":\"2026-11-10 03:00:00\"}}}")));
+        assertEquals("live", PredictRules.phase(JSON.readTree("{\"data\":{\"matchinfo\":{\"status_up\":4,\"status_up_name\":\"下半场\"}}}")));
+        assertEquals("done", PredictRules.phase(JSON.readTree("{\"data\":{\"matchinfo\":{\"status_up\":8,\"status_up_name\":\"完场\"}}}")));
+        assertEquals("这场已经开始", PredictRules.closed("live"));
+        PredictRules.Fixture fixture = PredictRules.fixture(JSON.readTree("{\"data\":{\"matchinfo\":{\"name\":\"英超\",\"hteam_name\":\"阿森纳\",\"ateam_name\":\"切尔西\",\"matchtime\":\"2026-11-10 03:00:00\"}}}"));
+        assertEquals("阿森纳", fixture.home());
+        assertEquals("玩法不正确", assertThrows(IllegalArgumentException.class, () -> PredictRules.market("jq")).getMessage());
     }
 
     @Test
@@ -113,11 +126,11 @@ class AccountWritesTest {
 
     private static PredictRules.Bet sample(String market, int betvalue, String line, String odds, int stake) {
         return new PredictRules.Bet("1", "u", "13800138000", "甲", "4498761", 1, market, betvalue, "", line, odds, stake,
-                "pending", 0, 0, "", "", "");
+                "pending", 0, 0, "", "", "", "", "", "", "", "");
     }
 
     private static PredictRules.Bet settled(String userId, String nick, int profit, String settledAt) {
         return new PredictRules.Bet(userId, userId, "13800138000", nick, "1", 1, "sf", 1, "胜", "", "2", 10,
-                profit >= 0 ? "win" : "lose", 0, profit, "2026-11-09 09:00:00", settledAt, "");
+                profit >= 0 ? "win" : "lose", 0, profit, "2026-11-09 09:00:00", settledAt, "", "", "", "", "", "");
     }
 }

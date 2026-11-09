@@ -198,13 +198,15 @@
 | `POST /prod-api/user/predict` | `{ "token" }`。我的预测 |
 | `POST /prod-api/user/predict/rank` | `{ "token", "period", "board" }` |
 
-`market`：`rq` 让球（`betvalue` 1 主、2 客），`dx` 大小（1 大、2 小），`sf` 胜平负（1 胜、2 平、3 负）。`type` 缺省 1。`stake` 为 1 到 100000 的音浪整数。`clientId` 可选，同一用户重复提交不重复扣款。
+`market`：`rq` 让球（`betvalue` 1 主、2 客），`dx` 大小（1 大、2 小），`sf` 胜平负（1 胜、2 平、3 负）。`jq` 角球不开放，提交是「玩法不正确」。`type` 缺省 1。`stake` 为 1 到 100000 的音浪整数。`clientId` 可选，同一用户重复提交不重复扣款。
+
+只有未开赛能下。进行中是「这场已经开始」，完场是「这场已经结束」，推迟、取消、腰斩、待定、延期是「这场不能投注」。赛况拿不到是「这场还不能投注」。
 
 下注成功的 `data` 是一条预测，并带 `balance`。我的预测还有 `total`、`win`、`rate`、`profit`、`records`。`total` 不含未开奖和退回。`rate` 是胜场除以 `total`，百分数去掉小数。
 
-一条预测：`id`、`mid`、`type`、`market`、`betvalue`、`label`、`line`、`odds`、`stake`、`status`、`statusName`、`returned`、`profit`、`placedAt`、`settledAt`。`status` 为 `pending` 未开奖、`win` 赢、`lose` 输、`push` 走水、`half-win` 赢半、`half-lose` 输半、`refund` 退回。
+一条预测：`id`、`mid`、`type`、`market`、`betvalue`、`label`、`line`、`odds`、`stake`、`status`、`statusName`、`returned`、`profit`、`placedAt`、`settledAt`、`league`、`home`、`away`、`kickoff`、`score`。`league` 是联赛名，`home`、`away` 是主客队，`kickoff` 是开赛时间。`score` 结算后是完场比分，例如 `1-1`，未开奖是空串。以前下的注这些字段是空串。`status` 为 `pending` 未开奖、`win` 赢、`lose` 输、`push` 走水、`half-win` 赢半、`half-lose` 输半、`refund` 退回。
 
-收益榜 `period` 为 `day`、`week`、`month`，缺省 `day`，周从周一开始。`board` 为 `profit` 或 `roof`，缺省 `profit`。`profit` 按盈利从高到低，`roof` 按亏损从多到少。`records` 最多 50 条，字段 `rank`、`userId`、`nick`、`profit`、`win`、`total`。`mine` 是自己的名次，没有结算记录时 `rank` 为 0。
+收益榜 `period` 为 `day`、`week`、`month`，缺省 `day`，周从周一开始。`board` 为 `profit` 或 `roof`，缺省 `profit`。`profit` 按盈利从高到低，`roof` 按亏损从多到少。`records` 最多 50 条，字段 `rank`、`userId`、`nick`、`avatar`、`level`、`profit`、`win`、`total`。`avatar` 是账号头像，没有时是空串。`level` 是音浪等级：余额不足 100 为 1，否则是余额除以 100。`mine` 是自己的名次，没有结算记录时 `rank` 为 0。
 
 社球帝的评论、发帖、打赏、用户主页、通知和上传都在 [说球帝frontend.md](说球帝frontend.md) 的社球帝一节。评论和回复的 `likeCount` 不会小于原站。回复某一条回复时带 `replyToReplyId`。自己发的帖和评论会计入用户主页。公告从圈子详情和话题详情抓来；原站这两处目前是空的。发帖视频填已经能播的地址，不做转码。
 
@@ -224,7 +226,7 @@
 
 给比赛首页用。路径、参数和成功返回与 kzb001.net 的 `/prod-api` 一致。只读，不需要登录。
 
-今天的比赛每 2 分钟抓一次，顺带更新联赛和日期。上海时间 0 点到 6 点，同一轮再抓昨天。未来日期每 30 分钟抓一次。过去 7 天每天 04:00（上海）抓一次。`total` 会跟着原站变。卡片上的实时比分、分钟、半场和角球用下面的即时比分，不要等这份列表刷新。
+今天的比赛每 2 分钟抓一次，顺带更新联赛和日期。上海时间 0 点到 6 点，同一轮再抓昨天的全部场次。未来日期每 30 分钟抓一次。过去 7 天每天 04:00（上海）再抓一遍全部场次。`total` 会跟着原站变。今天卡片上的实时比分、分钟、半场和角球用下面的即时比分，不要等这份列表刷新。昨天和更早的赛果用这一天的 `list/new`，里面是开赛日落在这一天的全部比赛。
 
 `/prod-api/match/detail`、阵容、伤停、球员、指数这次没有提供。
 
@@ -350,11 +352,11 @@
 
 没有这场日期的数据时，`total` 为 `0`，三个列表为空。
 
-每次抓取都会记下这场在原站列表里的位置。三个列表都按这个位置返回，接口不再按开赛时间、联赛或在线人数重排。今天和昨天用 `zhuboType=1`，和原站带主播的那份名单一样。今天这份最多比原站晚约 2 分钟。
+每次抓取都会记下这场在原站列表里的位置。三个列表都按这个位置返回，接口不再按开赛时间、联赛或在线人数重排。今天用 `zhuboType=1`，和原站带主播的那份名单一样，最多比原站晚约 2 分钟。
 
 热门页在这个顺序上再做一次和原站相同的调整：`is_zd` 为 `1` 的场次抽到最前，按 `zd_level` 从高到低排，其余场次保持原顺序。足球、篮球分区不做这一步。开赛钟点按用户浏览器时区显示，接口里的 `matchtime` 仍是上海时间。
 
-今天和昨天：原站后面几页会带上后面几天的场次，这里也保留，不按开赛日再切，也不把一场比赛从另一个日期的列表里拿走。从明天起，主播名单往往还没排出来，带主播的列表是空的。这些日期改抓全部场次，只留下开赛日就是这一天的。同一天过一会儿再查，`total` 会变，因为原站还在更新，抓取会跟着补。
+今天：原站后面几页会带上后面几天的场次，这里也保留，不按开赛日再切，也不把一场比赛从另一个日期的列表里拿走。从昨天往前，以及从明天起，这一天改抓全部场次，只留下开赛日就是这一天的。赛果按日期查 `list/new` 就是这一天的全部比赛，没有主播的场次也在里面。同一天过一会儿再查，`total` 会变，因为原站还在更新，抓取会跟着补。
 
 ### 比赛对象
 
@@ -413,10 +415,19 @@
 | `GET /prod-api/match/detail/player` | 阵容里点球员的本场数据。参数照原站：`type`、`mid`、`playerid`、`teamtype`（主队 1、客队 2） |
 | `GET /prod-api/data/lanqiu/ranklist` | NBA 榜单。`ranktype=1` 球队、`2` 球员、`3` 伤病、`4` 日榜 |
 | `GET /prod-api/search/hot` | 热门搜索词 |
-| `GET /prod-api/search/content` | 搜索。查询参数照原站传，至少要 `key`、`pid`、`tab` |
+| `GET /prod-api/search/content` | 搜索。查询参数照原站传，至少要 `key`、`pid`、`tab`。`zoneId` 会改回包里比赛时间的时区，页面固定传 `Asia/Shanghai`。带了说球帝 `token` 时，这次搜索词记在账号上 |
+| `GET /prod-api/get/search/history` | 热词和这个账号的搜索词。参数 `pid`、`tab`，登录再带 `token` |
+| `GET` 或 `POST /prod-api/clear/search/history` | 清空这个账号的搜索词。参数同上一行 |
 | `GET /prod-api/news/list` | 资料库资讯列表 |
-| `GET /prod-api/news/detail` | 资讯详情。`newsid` 用列表里的 `id` |
+| `GET /prod-api/news/detail` | 资料库资讯详情。`newsid` 用资料库列表里的 `id` |
+| `GET /prod-api/news/information/detail` | 比赛资讯和相关资讯的详情。`id` 用比赛资讯列表里的 `id` |
 | `GET /prod-api/at/list` | 比赛聊天里的推广卡 |
+
+搜索历史的 `data.hotSearchHistory` 是上游热词。`userSearchHistory` 是说球帝账号自己的词，新的在前，最多 20 个，每项只有 `key`。没带令牌或令牌无效时这一列是空的，热词照常。这两条不缓存。令牌不会转给上游。
+
+比赛搜索 `tab=1` 时，上游后面几页经常是空的，`total` 和 `totalPage` 仍写着还有。这时改成第一页的实际条数，`totalPage` 为 1。别的 `tab` 不动。
+
+比赛资讯详情的正文在 `content`，封面是 `coverurl`。拿这个 `id` 去查 `/news/detail?newsid=` 会得到空对象。没有点赞和评论。列表里 `itemType` 为 1 的是动图，没有 `id`，`gif` 和 `cover` 就在这一项上。
 
 ## 即时比分
 
@@ -648,7 +659,7 @@
 | `/prod-api/team/getMatchListByCid` | `type` `cid` `year` `stageId` `roundNum` | 某一轮赛程 |
 | `/prod-api/team/getFbCompetitionStats` | `type` `cid` `year` | 足球轮次名，在 `data.nameZh`。最佳阵容用这些名字 |
 | `/prod-api/team/getFbCompetitionBestLineup` | `type` `cid` `year` `stats` | 最佳阵容。`stats` 是轮次名，例如 `第9轮`。缺了 `stats` 不会去补抓 |
-| `/prod-api/team/getMatchList` | `type` `teamId` `competitionId` `year` | 这支球队在这个联赛这一季的赛程 |
+| `/prod-api/team/getMatchList` | `type` `teamId` `year`，`competitionId` 可选 | 这支球队这一季的赛程。不传 `competitionId` 是全部赛事。第一次打开是 `null`，按需补抓后才有 |
 
 阶段列表示例，英超当前只有一个阶段：
 

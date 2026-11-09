@@ -41,6 +41,16 @@ class DatabaseQueryTest {
     }
 
     @Test
+    void teamScheduleAllowsEveryCompetition() {
+        assertTrue(DatabaseQuery.demandable("/team/getMatchList",
+                Map.of("type", "2", "teamId", "10149", "year", "2025-2026")));
+        assertTrue(DatabaseQuery.demandable("/team/getMatchList",
+                Map.of("type", "2", "teamId", "10149", "competitionId", "1", "year", "2025-2026")));
+        assertFalse(DatabaseQuery.demandable("/team/getMatchList",
+                Map.of("type", "2", "teamId", "10149", "competitionId", "all", "year", "2025-2026")));
+    }
+
+    @Test
     void teamStatsNeedsSeason() {
         assertFalse(DatabaseQuery.demandable("/team/getTeamAndPlayerStatsList", Map.of("cid", "82")));
         assertTrue(DatabaseQuery.demandable("/team/getTeamAndPlayerStatsList",

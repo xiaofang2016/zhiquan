@@ -144,19 +144,28 @@ public class SportUserRepository {
     }
 
     public void saveMission(String phone, String expected, String next) {
+        saveProfileJson(phone, "mission", expected, next);
+    }
+
+    public void saveSearch(String phone, String expected, String next) {
+        saveProfileJson(phone, "search", expected, next);
+    }
+
+    private void saveProfileJson(String phone, String attribute, String expected, String next) {
+        checkProfileField(attribute);
         Map<String, AttributeValue> values = new HashMap<>();
         values.put(":next", Attrs.s(next));
         String condition = "attribute_exists(pk)";
         if (expected == null || expected.isEmpty()) {
-            condition += " AND attribute_not_exists(mission)";
+            condition += " AND attribute_not_exists(" + attribute + ")";
         } else {
-            condition += " AND mission = :expected";
+            condition += " AND " + attribute + " = :expected";
             values.put(":expected", Attrs.s(expected));
         }
         dynamo.updateItem(UpdateItemRequest.builder()
                 .tableName(aws.getUserTable())
                 .key(key(phone, PROFILE))
-                .updateExpression("SET mission = :next")
+                .updateExpression("SET " + attribute + " = :next")
                 .conditionExpression(condition)
                 .expressionAttributeValues(values)
                 .build());
@@ -682,7 +691,8 @@ public class SportUserRepository {
     }
 
     private static void checkProfileField(String attribute) {
-        if (!"mission".equals(attribute) && !"predict".equals(attribute) && !"cash_sign".equals(attribute)) {
+        if (!"mission".equals(attribute) && !"predict".equals(attribute) && !"cash_sign".equals(attribute)
+                && !"search".equals(attribute)) {
             throw new IllegalStateException("unknown profile field");
         }
     }

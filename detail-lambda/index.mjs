@@ -1,6 +1,6 @@
 import { publicTab, putSection, readSection, sectionOf } from "./doc.mjs";
 import { read, write } from "./store.mjs";
-import { pull } from "./upstream.mjs";
+import { presentTip, pull } from "./upstream.mjs";
 
 const gates = new Map();
 const DETAIL_KEY = process.env.DETAIL_KEY || "";
@@ -14,6 +14,10 @@ function json(status, body) {
     },
     body: JSON.stringify(body)
   };
+}
+
+function show(tab, body) {
+  return tab === "tip" ? presentTip(body) : body;
 }
 
 function authorized(event) {
@@ -48,13 +52,13 @@ async function open(matchId, type, tab) {
   const loaded = await read(matchId);
   const now = Date.now();
   const cached = readSection(loaded.document, tab, now);
-  if (!cached.stale) return { code: "0", matchId, tab: publicTab(tab), data: cached.body };
+  if (!cached.stale) return { code: "0", matchId, tab: publicTab(tab), data: show(tab, cached.body) };
   try {
     const body = await pull(tab, matchId, type);
     const document = await save(matchId, loaded.etag, putSection(loaded.document, tab, body, now));
-    return { code: "0", matchId, tab: publicTab(tab), data: document.sections[tab].body };
+    return { code: "0", matchId, tab: publicTab(tab), data: show(tab, document.sections[tab].body) };
   } catch (error) {
-    if (cached.body != null) return { code: "0", matchId, tab: publicTab(tab), data: cached.body };
+    if (cached.body != null) return { code: "0", matchId, tab: publicTab(tab), data: show(tab, cached.body) };
     console.error(error && error.name, error && error.message);
     return { code: "1", msg: "这场资料暂时没有拿到", matchId, tab: publicTab(tab), data: null };
   }

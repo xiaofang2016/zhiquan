@@ -71,6 +71,12 @@ public class PredictService {
             throw new IllegalArgumentException("选项不正确");
         }
         PredictRules.Quote quote = PredictRules.readQuote(get(tipUrl + "?mid=" + mid + "&type=" + type), market, betvalue);
+        JsonNode match = get(matchUrl(mid, type));
+        String phase = PredictRules.phase(match);
+        if (!"upcoming".equals(phase)) {
+            throw new IllegalArgumentException(PredictRules.closed(phase));
+        }
+        PredictRules.Fixture fixture = PredictRules.fixture(match);
         LocalDateTime now = LocalDateTime.now(MissionRules.ZONE);
         for (int attempt = 0; attempt < 2; attempt++) {
             Held held = hold(user.getPhone());
@@ -92,7 +98,8 @@ public class PredictService {
             }
             PredictRules.Bet bet = new PredictRules.Bet("p" + UUID.randomUUID().toString().replace("-", ""),
                     user.getUserId(), user.getPhone(), SpeakService.nickOf(user), mid, type, market, betvalue,
-                    quote.label(), quote.line(), quote.odds(), stake, "pending", 0, 0, now.format(STAMP), "", clientId);
+                    quote.label(), quote.line(), quote.odds(), stake, "pending", 0, 0, now.format(STAMP), "", clientId,
+                    fixture.league(), fixture.home(), fixture.away(), fixture.kickoff(), "");
             MissionRules.State nextMission = MissionRules.change(held.mission(), "预测投注", -stake, now);
             List<PredictRules.Bet> nextBets = new ArrayList<>();
             nextBets.add(bet);
@@ -162,15 +169,16 @@ public class PredictService {
         String board = boardRaw == null || boardRaw.isBlank() ? "profit" : boardRaw.trim();
         settleBoard();
         PredictRules.BoardView view = PredictRules.rank(loadGlobal(), board, period, LocalDate.now(MissionRules.ZONE), user.getUserId());
+        Map<String, Face> faces = new LinkedHashMap<>();
         List<Map<String, Object>> records = new ArrayList<>();
         for (PredictRules.RankRow row : view.records()) {
-            records.add(viewRank(row));
+            records.add(viewRank(row, user, faces));
         }
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("period", period);
         data.put("board", board);
         data.put("records", records);
-        data.put("mine", viewRank(view.mine()));
+        data.put("mine", viewRank(view.mine(), user, faces));
         return data;
     }
 
@@ -218,7 +226,8 @@ public class PredictService {
                 if (outcome.returned() > 0) {
                     mission = MissionRules.change(mission, payoutTitle(outcome.status()), outcome.returned(), now);
                 }
-                next.add(finish(bet, outcome, now.format(STAMP)));
+                String score = "done".equals(end.kind()) ? end.home() + "-" + end.away() : "";
+                next.add(finish(bet, outcome, now.format(STAMP), score));
                 changed = true;
             }
             if (!changed) {
@@ -237,12 +246,16 @@ public class PredictService {
     }
 
     private PredictRules.MatchEnd fetchMatch(String mid, int type) {
-        String url = matchBase + "/prod-api/match/detail?mid=" + mid + "&type=" + type + "&isnew=1&pid=4&langtype=zh&zoneId=Asia/Shanghai";
-        JsonNode body = get(url);
+        JsonNode body = get(matchUrl(mid, type));
         if (body == null) {
             return new PredictRules.MatchEnd("open", 0, 0);
         }
         return PredictRules.readMatch(body);
+    }
+
+    private String matchUrl(String mid, int type) {
+        return matchBase + "/prod-api/match/detail?mid=" + mid + "&type=" + type
+                + "&isnew=1&pid=4&langtype=zh&zoneId=Asia/Shanghai";
     }
 
     private void undo(String phone, PredictRules.Bet bet, int stake, LocalDateTime now) {
@@ -457,10 +470,11 @@ public class PredictService {
         }
     }
 
-    private static PredictRules.Bet finish(PredictRules.Bet bet, PredictRules.Outcome outcome, String settledAt) {
+    private static PredictRules.Bet finish(PredictRules.Bet bet, PredictRules.Outcome outcome, String settledAt, String score) {
         return new PredictRules.Bet(bet.id(), bet.userId(), bet.phone(), bet.nick(), bet.mid(), bet.type(), bet.market(),
                 bet.betvalue(), bet.label(), bet.line(), bet.odds(), bet.stake(), outcome.status(), outcome.returned(),
-                outcome.profit(), bet.placedAt(), settledAt, bet.clientId());
+                outcome.profit(), bet.placedAt(), settledAt, bet.clientId(),
+                bet.league(), bet.home(), bet.away(), bet.kickoff(), score);
     }
 
     private static String payoutTitle(String status) {
@@ -499,18 +513,52 @@ public class PredictService {
         row.put("profit", bet.profit());
         row.put("placedAt", bet.placedAt());
         row.put("settledAt", bet.settledAt() == null ? "" : bet.settledAt());
+        row.put("league", blank(bet.league()));
+        row.put("home", blank(bet.home()));
+        row.put("away", blank(bet.away()));
+        row.put("kickoff", blank(bet.kickoff()));
+        row.put("score", blank(bet.score()));
         return row;
     }
 
-    private static Map<String, Object> viewRank(PredictRules.RankRow row) {
+    private Map<String, Object> viewRank(PredictRules.RankRow row, SportUser self, Map<String, Face> faces) {
+        String phone = self.getUserId().equals(row.userId()) ? self.getPhone() : row.phone();
+        Face face = face(phone, faces);
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("rank", row.rank());
         data.put("userId", row.userId());
         data.put("nick", row.nick());
+        data.put("avatar", face.avatar());
+        data.put("level", face.level());
         data.put("profit", row.profit());
         data.put("win", row.win());
         data.put("total", row.total());
         return data;
+    }
+
+    private Face face(String phone, Map<String, Face> faces) {
+        if (phone == null || phone.isBlank()) {
+            return new Face("", 1);
+        }
+        return faces.computeIfAbsent(phone, this::loadFace);
+    }
+
+    private Face loadFace(String phone) {
+        String avatar = users.find(phone).map(user -> user.getAvatar() == null ? "" : user.getAvatar()).orElse("");
+        int level = 1;
+        String raw = users.profileJson(phone, "mission");
+        if (raw != null && !raw.isBlank()) {
+            try {
+                level = MissionRules.level(json.readValue(raw, MissionRules.State.class).balance());
+            } catch (Exception ignored) {
+                level = 1;
+            }
+        }
+        return new Face(avatar, level);
+    }
+
+    private static String blank(String value) {
+        return value == null ? "" : value;
     }
 
     private static String statusName(String status) {
@@ -526,5 +574,8 @@ public class PredictService {
     }
 
     private record Held(String missionRaw, MissionRules.State mission, String predictRaw, List<PredictRules.Bet> bets) {
+    }
+
+    private record Face(String avatar, int level) {
     }
 }

@@ -62,7 +62,10 @@ public final class CommunityUpload {
                 && bytes[4] == 'f' && bytes[5] == 't' && bytes[6] == 'y' && bytes[7] == 'p';
     }
 
-    /** ftyp 里出现 hev1 或 hvc1 就是 HEVC，安卓和浏览器放不了。 */
+    /**
+     * ftyp 里的 hev1、hvc1 直接拒绝。iPhone 的 HEVC 往往只写在 moov 的 stsd 里，
+     * 所以还要看到 avc1 或 avc3 才收。
+     */
     static boolean h264(byte[] bytes) {
         if (!isMp4(bytes)) {
             return false;
@@ -79,7 +82,80 @@ public final class CommunityUpload {
                 return false;
             }
         }
-        return true;
+        return codecs(bytes, 0, bytes.length) == Codec.AVC;
+    }
+
+    private enum Codec {
+        NONE, AVC, HEVC
+    }
+
+    private static Codec codecs(byte[] bytes, int start, int end) {
+        Codec found = Codec.NONE;
+        int offset = start;
+        while (offset + 8 <= end) {
+            long size = readInt(bytes, offset) & 0xffffffffL;
+            int header = 8;
+            if (size == 1) {
+                if (offset + 16 > end) {
+                    break;
+                }
+                size = readLong(bytes, offset + 8);
+                header = 16;
+            } else if (size == 0) {
+                size = end - offset;
+            }
+            if (size < header || offset + size > end) {
+                break;
+            }
+            String type = brand(bytes, offset + 4);
+            int payload = offset + header;
+            int next = (int) (offset + size);
+            if ("stsd".equals(type)) {
+                found = stronger(found, sampleEntries(bytes, payload, next));
+            } else if (container(type)) {
+                found = stronger(found, codecs(bytes, payload, next));
+            }
+            if (found == Codec.HEVC) {
+                return found;
+            }
+            offset = next;
+        }
+        return found;
+    }
+
+    private static Codec sampleEntries(byte[] bytes, int start, int end) {
+        if (start + 8 > end) {
+            return Codec.NONE;
+        }
+        Codec found = Codec.NONE;
+        int offset = start + 8;
+        while (offset + 8 <= end) {
+            long size = readInt(bytes, offset) & 0xffffffffL;
+            if (size < 8 || offset + size > end) {
+                break;
+            }
+            String type = brand(bytes, offset + 4);
+            if (hevc(type) || "dvh1".equals(type) || "dvhe".equals(type)) {
+                return Codec.HEVC;
+            }
+            if ("avc1".equals(type) || "avc3".equals(type)) {
+                found = Codec.AVC;
+            }
+            offset += (int) size;
+        }
+        return found;
+    }
+
+    private static Codec stronger(Codec left, Codec right) {
+        if (left == Codec.HEVC || right == Codec.HEVC) {
+            return Codec.HEVC;
+        }
+        return left == Codec.AVC || right == Codec.AVC ? Codec.AVC : Codec.NONE;
+    }
+
+    private static boolean container(String type) {
+        return "moov".equals(type) || "trak".equals(type) || "mdia".equals(type)
+                || "minf".equals(type) || "stbl".equals(type);
     }
 
     private static boolean hevc(String brand) {
@@ -91,6 +167,17 @@ public final class CommunityUpload {
     }
 
     private static int readInt(byte[] bytes) {
-        return ((bytes[0] & 0xff) << 24) | ((bytes[1] & 0xff) << 16) | ((bytes[2] & 0xff) << 8) | (bytes[3] & 0xff);
+        return readInt(bytes, 0);
+    }
+
+    private static int readInt(byte[] bytes, int offset) {
+        return ((bytes[offset] & 0xff) << 24) | ((bytes[offset + 1] & 0xff) << 16)
+                | ((bytes[offset + 2] & 0xff) << 8) | (bytes[offset + 3] & 0xff);
+    }
+
+    private static long readLong(byte[] bytes, int offset) {
+        long high = readInt(bytes, offset) & 0xffffffffL;
+        long low = readInt(bytes, offset + 4) & 0xffffffffL;
+        return (high << 32) | low;
     }
 }
