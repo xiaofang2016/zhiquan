@@ -386,7 +386,9 @@ POST /prod-api/community/posts/{postId}/redpacket
 | `nickname` 或 `nickName`，再没有用消息的 `nick` | 封面第一行 `{名字}的红包` |
 | `status` | `1` 待领取，`2` 已领取，`3` 已领完。后两种直接看详情 |
 | `dbAmountPool` | 只留数字，去掉末两位，左侧补 0 到 6 位。这是奖池，不是领到的金额 |
-| `num`、`remainNum` | 两个都有写 `剩余 {remainNum}/{num}`。只有 `num` 写 `共 {num} 个` |
+| `num`、`remainNum` | 两个都有写 `剩余 {remainNum}/{num}`。只有 `num` 写 `共 {num} 个`。这是抓到这条消息时的数字 |
+
+原站群没有领取名单、锦鲤播报、优惠券记录，也没有再查剩余份数。这些留空，不要生成。
 | 卡片底栏 | 固定文案「职圈3.0红包」，不是接口字段 |
 
 点「开」时要已登录，否则去登录页。请求：
@@ -477,7 +479,7 @@ GET https://tip.kzbzcq.com/tip?mid=4498761&type=1
 
 手机号 11 位，`1` 开头，第二位 `3` 到 `9`，不带 `+86`。密码 6 到 20 位。注册验证码 6 位，5 分钟内有效，60 秒内不能重复获取。
 
-登录页「在线客服」新开页面 `https://zhiquan.78chat0.com/#/pages/cs/cs?merchantNo=sport`，进客服美美。还没登录说球帝时按访客进入，不能查余额和领彩金。
+登录页「在线客服」新开页面 `https://zhiquan.78chat0.com/#/pages/cs/cs?merchantNo=sport`，进客服美美。说球帝的会话和通讯录只出现客服美美，不出现吉祥体育客服和 UED 客服。客服美美回答职圈站内怎么操作时，按职圈客服知识库说明。还没登录说球帝时按访客进入，不能查余额和领彩金。
 
 | 接口 | 请求体 | 成功时 `data` |
 |---|---|---|
@@ -640,8 +642,11 @@ POST /prod-api/user/redpack
 | `claimedAmount` | 当前用户今天领到的金额，没领是 `0.00` |
 | `remainAmount` | 奖池剩余，元 |
 | `canClaim` | 已登录、今天还没领、奖池还有剩余时为 `true` |
+| `claims` | 这一轮已经领到的人，先领的在前。每条有 `nick`、`avatar`、`amount`、`time`。`avatar` 可能是空串，相对路径拼在网关基址后面。更早领的人可能没有昵称和头像 |
 
-`POST /prod-api/user/redpack/claim`，请求体 `{ "token" }`。成功后的 `data` 同上，`mine` 有值。今天领过返回「今日已领取」。
+`claims` 只列说球帝账号真正领到的。没有锦鲤奖池、榜单、优惠券记录，也不要再生成别人的名字和金额。
+
+`POST /prod-api/user/redpack/claim`，请求体 `{ "token" }`。成功后的 `data` 同上，`mine` 有值，`claims` 里多出自己这一条。今天领过返回「今日已领取」。
 
 ### 吉祥和 UED
 
@@ -663,6 +668,8 @@ POST /prod-api/user/redpack
 | `account` | 对方用户名打码。未绑定是空串 |
 | `balance` | 说球帝余额，元，两位小数 |
 | `withdrawn` | 这个平台累计提现成功的金额，元，两位小数 |
+
+账号密码绑定用吉祥现成的 `POST https://api.jixsports.com/login`，不要再要一条新接口。请求体是 `username`、`password`、`merchant_no`。吉祥商户号 `10011`，UED 是 `10012`。`username` 填用户名或手机号。成功时 `data` 的 `id`、`username`、`access_token`、`expire_time` 和短信绑定记下的是同一份，说球帝记在账号上，页面不要留下 `access_token`。异地登录打开、这次又是新 IP 时，成功体只有 `remote_login` 为 `2`、`uid` 和打码手机号，没有令牌，这种仍走验证码。
 
 未登录是「请先登录」。提现还没绑定时，吉祥是「请先绑定吉祥账号」，UED 把「吉祥」换成「UED」。
 

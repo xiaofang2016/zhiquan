@@ -162,6 +162,21 @@ class UserAccountTest {
     }
 
     @Test
+    void redpackKeepsNameAndReadsOlderClaims() throws Exception {
+        LocalDateTime now = LocalDateTime.of(2026, 11, 9, 18, 0, 0);
+        RedPackRules.Round round = RedPackRules.claim(RedPackRules.fresh(), "u1", "小球", "/a.png", now, new Random(1));
+        assertEquals("小球", round.claims().get(0).nick());
+        assertEquals("/a.png", round.claims().get(0).avatar());
+        ObjectMapper json = new ObjectMapper().registerModule(new ParameterNamesModule());
+        String older = "{\"count\":188,\"poolCent\":58800,\"remainCount\":187,\"remainCent\":58700,\"claims\":[{\"userId\":\"u0\",\"cent\":100,\"time\":\"2026-11-09 17:00:00\"}]}";
+        RedPackRules.Round restored = json.readValue(older, RedPackRules.Round.class);
+        assertEquals("", restored.claims().get(0).nick() == null ? "" : restored.claims().get(0).nick());
+        assertEquals(100L, restored.claims().get(0).cent());
+        RedPackRules.Round saved = json.readValue(json.writeValueAsString(round), RedPackRules.Round.class);
+        assertEquals("小球", saved.claims().get(0).nick());
+    }
+
+    @Test
     void tokenRoundTripRejectsTampering() {
         String token = UserToken.issue("test-secret", "13800138000", "abc", 4_000_000_000L);
         UserToken.Session session = UserToken.read("test-secret", token, 1_700_000_000L);

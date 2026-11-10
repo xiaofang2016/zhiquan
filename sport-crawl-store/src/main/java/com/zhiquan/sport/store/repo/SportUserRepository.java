@@ -157,16 +157,17 @@ public class SportUserRepository {
         values.put(":next", Attrs.s(next));
         String condition = "attribute_exists(pk)";
         if (expected == null || expected.isEmpty()) {
-            condition += " AND attribute_not_exists(" + attribute + ")";
+            condition += " AND attribute_not_exists(#attr)";
         } else {
-            condition += " AND " + attribute + " = :expected";
+            condition += " AND #attr = :expected";
             values.put(":expected", Attrs.s(expected));
         }
         dynamo.updateItem(UpdateItemRequest.builder()
                 .tableName(aws.getUserTable())
                 .key(key(phone, PROFILE))
-                .updateExpression("SET " + attribute + " = :next")
+                .updateExpression("SET #attr = :next")
                 .conditionExpression(condition)
+                .expressionAttributeNames(Map.of("#attr", attribute))
                 .expressionAttributeValues(values)
                 .build());
     }

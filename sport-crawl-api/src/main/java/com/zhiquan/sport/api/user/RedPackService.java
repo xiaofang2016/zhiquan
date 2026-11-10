@@ -10,7 +10,9 @@ import software.amazon.awssdk.services.dynamodb.model.TransactionCanceledExcepti
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -39,6 +41,7 @@ public class RedPackService {
         for (int attempt = 0; attempt < 2; attempt++) {
             Loaded loaded = loadToday();
             RedPackRules.Round next = RedPackRules.claim(loaded.round(), user.getUserId(),
+                    user.getNickname(), user.getAvatar(),
                     LocalDateTime.now(MissionRules.ZONE), ThreadLocalRandom.current());
             long cent = next.claims().get(next.claims().size() - 1).cent();
             try {
@@ -125,10 +128,27 @@ public class RedPackService {
         data.put("claimedAmount", mine == null ? "0.00" : JxtMoney.yuan(mine));
         data.put("remainAmount", JxtMoney.yuan(round.remainCent()));
         data.put("canClaim", user != null && mine == null && round.remainCount() > 0);
+        data.put("claims", claims(round));
         if (user != null) {
             data.put("balance", JxtMoney.yuan(user.getBalanceCent()));
         }
         return data;
+    }
+
+    private static List<Map<String, Object>> claims(RedPackRules.Round round) {
+        List<Map<String, Object>> rows = new ArrayList<>();
+        if (round.claims() == null) {
+            return rows;
+        }
+        for (RedPackRules.Grab grab : round.claims()) {
+            Map<String, Object> row = new LinkedHashMap<>();
+            row.put("nick", grab.nick() == null ? "" : grab.nick());
+            row.put("avatar", grab.avatar() == null ? "" : grab.avatar());
+            row.put("amount", JxtMoney.yuan(grab.cent()));
+            row.put("time", grab.time());
+            rows.add(row);
+        }
+        return rows;
     }
 
     private record Loaded(String day, String raw, RedPackRules.Round round) {

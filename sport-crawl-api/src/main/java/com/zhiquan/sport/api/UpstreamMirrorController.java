@@ -117,7 +117,8 @@ public class UpstreamMirrorController {
         if ("/prod-api/search/content".equals(path)) {
             searches.remember(query);
         }
-        return json(body, loaded.ok(), true);
+        boolean shared = !"/prod-api/search/content".equals(path) || SearchPages.param(query, "token").isBlank();
+        return json(body, loaded.ok(), shared);
     }
 
     @PostMapping("/prod-api/clear/search/history")

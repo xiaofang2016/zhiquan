@@ -162,7 +162,7 @@
 
 `page` 从 1 起，每页 10 条。`data` 含 `page`、`size`、`total`、`records`。每条有 `tradeNo`、`kind`、`platform`（`jxt` / `ued`，红包为空）、`title`、`amount`（提现为负数）、`status`（`1` 成功，`2` 失败已退回）、`statusName`、`failReason`、`time`、`createdAt`。
 
-红包额度用 `POST /prod-api/user/redpack`，不要用职圈 `GET /redpacket/quota`。已登录时 `data` 另有 `dailyLimit`、`claimedAmount`、`remainAmount`、`canClaim`。每天这一份和帖子红包都会出现在 `kind=redpacket` 里，标题分别是「红包」和「帖子红包」。
+红包额度用 `POST /prod-api/user/redpack`，不要用职圈 `GET /redpacket/quota`。已登录时 `data` 另有 `dailyLimit`、`claimedAmount`、`remainAmount`、`canClaim`。`claims` 是这一轮的领取名单，先领的在前，每条有 `nick`、`avatar`、`amount`（元）、`time`。昵称和头像在领取时记下，更早的记录这两项可能是空串。没有锦鲤奖池、榜单和优惠券记录。每天这一份和帖子红包都会出现在 `kind=redpacket` 里，标题分别是「红包」和「帖子红包」。
 
 帖子红包是说球帝自己发的，不走原站钱包。`POST /prod-api/community/posts/{postId}/redpacket`，请求体 `{ "token" }`。只出现在原站带红包标记的帖上，每帖 10 份、共 `10.00` 元，每个人每帖只能领一次。成功时 `data` 是这篇帖子，`redPacket.mine` 是领到的金额。领完返回「红包已领完」，这篇没有红包返回「这篇没有红包」。
 
@@ -415,7 +415,7 @@
 | `GET /prod-api/match/detail/player` | 阵容里点球员的本场数据。参数照原站：`type`、`mid`、`playerid`、`teamtype`（主队 1、客队 2） |
 | `GET /prod-api/data/lanqiu/ranklist` | NBA 榜单。`ranktype=1` 球队、`2` 球员、`3` 伤病、`4` 日榜 |
 | `GET /prod-api/search/hot` | 热门搜索词 |
-| `GET /prod-api/search/content` | 搜索。查询参数照原站传，至少要 `key`、`pid`、`tab`。`zoneId` 会改回包里比赛时间的时区，页面固定传 `Asia/Shanghai`。带了说球帝 `token` 时，这次搜索词记在账号上 |
+| `GET /prod-api/search/content` | 搜索。查询参数照原站传，至少要 `key`、`pid`、`tab`。`zoneId` 会改回包里比赛时间的时区，页面固定传 `Asia/Shanghai`。带了说球帝 `token` 时，这次搜索词记在账号上。带令牌的这一次不缓存 |
 | `GET /prod-api/get/search/history` | 热词和这个账号的搜索词。参数 `pid`、`tab`，登录再带 `token` |
 | `GET` 或 `POST /prod-api/clear/search/history` | 清空这个账号的搜索词。参数同上一行 |
 | `GET /prod-api/news/list` | 资料库资讯列表 |
@@ -423,7 +423,7 @@
 | `GET /prod-api/news/information/detail` | 比赛资讯和相关资讯的详情。`id` 用比赛资讯列表里的 `id` |
 | `GET /prod-api/at/list` | 比赛聊天里的推广卡 |
 
-搜索历史的 `data.hotSearchHistory` 是上游热词。`userSearchHistory` 是说球帝账号自己的词，新的在前，最多 20 个，每项只有 `key`。没带令牌或令牌无效时这一列是空的，热词照常。这两条不缓存。令牌不会转给上游。
+搜索历史的 `data.hotSearchHistory` 是上游热词。`userSearchHistory` 是说球帝账号自己的词，新的在前，最多 20 个，每项只有 `key`。没带令牌或令牌无效时这一列是空的，热词照常。历史和清空不缓存。带令牌的 `/search/content` 也不缓存，记词失败仍返回搜索结果。令牌不会转给上游。
 
 比赛搜索 `tab=1` 时，上游后面几页经常是空的，`total` 和 `totalPage` 仍写着还有。这时改成第一页的实际条数，`totalPage` 为 1。别的 `tab` 不动。
 
@@ -836,7 +836,7 @@ GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
 
 群头像：`{imageBase}/head/{avatar}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。消息图片：`{imageBase}/message/{fileMd5}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。文件名已经带 `?` 或本身是 `http` 地址时不再追加参数。
 
-红包 `content` 仍是 JSON，字段有 `description`、`title`、`nickname`、`nickName`、`status`、`dbAmountPool`、`num`、`remainNum`、`walletId`。`status` 为 `1` 待领取、`2` 已领取、`3` 已领完。奖池把 `dbAmountPool` 的数字去掉末两位再补齐 6 位。
+红包 `content` 仍是 JSON，字段有 `description`、`title`、`nickname`、`nickName`、`status`、`dbAmountPool`、`num`、`remainNum`、`walletId`。`status` 为 `1` 待领取、`2` 已领取、`3` 已领完。奖池把 `dbAmountPool` 的数字去掉末两位再补齐 6 位。`remainNum` 是抓到这条消息时的剩余份数，之后不再向原站重查。没有按 `walletId` 查领取名单、锦鲤播报或优惠券记录的接口。
 
 `status` 为 `1` 且 `remainNum` 不是 `0` 时可以领。登录后：
 

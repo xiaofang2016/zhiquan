@@ -19,7 +19,7 @@ public final class RedPackRules {
     private RedPackRules() {
     }
 
-    public record Grab(String userId, long cent, String time) {
+    public record Grab(String userId, long cent, String time, String nick, String avatar) {
     }
 
     public record Round(int count, long poolCent, int remainCount, long remainCent, List<Grab> claims) {
@@ -30,6 +30,10 @@ public final class RedPackRules {
     }
 
     public static Round claim(Round round, String userId, LocalDateTime now, Random random) {
+        return claim(round, userId, "", "", now, random);
+    }
+
+    public static Round claim(Round round, String userId, String nick, String avatar, LocalDateTime now, Random random) {
         if (userId == null || userId.isBlank()) {
             throw new IllegalArgumentException("请先登录");
         }
@@ -44,7 +48,7 @@ public final class RedPackRules {
         }
         long cent = draw(round.remainCent(), round.remainCount(), random);
         List<Grab> next = new ArrayList<>(claims);
-        next.add(new Grab(userId, cent, now.format(STAMP)));
+        next.add(new Grab(userId, cent, now.format(STAMP), nick == null ? "" : nick, avatar == null ? "" : avatar));
         return new Round(round.count(), round.poolCent(), round.remainCount() - 1, round.remainCent() - cent, next);
     }
 

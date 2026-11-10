@@ -50,6 +50,8 @@ public class SearchHistory {
                 if (attempt == 1) {
                     return;
                 }
+            } catch (RuntimeException ex) {
+                return;
             }
         }
     }
