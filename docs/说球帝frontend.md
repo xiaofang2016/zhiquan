@@ -174,6 +174,8 @@ GET /v1/competition-editions/{competition_edition_id}?lang=zh-hans&with_ranking=
 
 短名用赛季上的 `competition_short_name_zh`。没有时，把中文名开头的「英格兰足球」「英格兰」去掉再显示。
 
+这一份只有总积分，没有主场榜和客场榜。主场、客场按这一季的赛程在页面里算，往年也一样。不要去读网关的 `/prod-api/database/` 或 `/team/getTeamRankByTeamId`。
+
 ## 社球帝
 
 抓取后的副本，大约每 2 分钟更新。社区流默认按发布时间从新到旧，不是另一套推荐序。`postId` 是原站编号，同一帖不会改号。
@@ -395,9 +397,9 @@ POST /prod-api/community/posts/{postId}/redpacket
 | `status` | `1` 待领取，`2` 已领取，`3` 已领完。后两种直接看详情 |
 | `dbAmountPool` | 只留数字，去掉末两位，左侧补 0 到 6 位。这是奖池，不是领到的金额 |
 | `num`、`remainNum` | 两个都有写 `剩余 {remainNum}/{num}`。只有 `num` 写 `共 {num} 个`。这是抓到这条消息时的数字。不要按时间去估，也不要因为过了一会儿就把还能领的画成已领完 |
-
-原站群没有领取名单、锦鲤播报、优惠券记录，也没有再查剩余份数。这些留空，不要生成。
 | 卡片底栏 | 固定文案「职圈3.0红包」，不是接口字段 |
+
+原站群没有领取名单、锦鲤播报、优惠券记录，也没有再查剩余份数。这些留空，不要生成。文字、表情、图片、视频、文件、语音、红包、回复、撤回、删除都只留在这台手机上，别人看不到，没有上传接口。置顶和免打扰要换手机还在，用职圈 `PUT /api/group/top`、`/group/dnd`，群号用列表里的数字 `id`。删除会话、标已读、群昵称、退群仍只在本机。
 
 点「开」时要已登录，否则去登录页。请求：
 
@@ -483,7 +485,7 @@ GET https://tip.kzbzcq.com/tip?mid=4498761&type=1
 | 直播 | `environment` 场地，可能没有。有则用 `nameZh`、`city`、`temperature`、`humidity`。`tlive` 是文字直播，按时间顺序，每条 `time`、`data` |
 | 指数 | `yazhi` 让球，`ouzhi` 胜平负，`daxiao` 大小球，`jiaoqiu` 角球。一行有 `company_name`、`initial` 初盘、`realtime` 即时盘。没有的组不画。没有变化历史，只画这两行，不要从两行里插出走势，也不要另写几行 |
 | 数据 | `history` 里 `vs`、`home`、`away` 是数组，一行也是数组，按位置取联赛、日期、比分和队伍。`injury.home`、`injury.away` 用 `player_name`（没有时看 `name`、`player`）和 `reason`。篮球「常规赛」关键数据用 `/prod-api/match/detail/seasonData`，`data` 为 `null` 时显示「暂无常规赛关键数据」，不要编字段 |
-| 预测 | `forecast.rq` 让球（主、客），`dx` 大小（大、小），`sf` 胜平负（胜、平、负）。不返回 `jq`，角球不要画、也不要提交。每份有 `pankou` 和 `betList`。`betvalue` 从 `1` 起对应选项顺序，`numPeople` 是人数。`intel` 是情报：`home_good`、`away_good`、`neutral`、`home_bad`、`away_bad` |
+| 预测 | `forecast.rq` 让球（主、客），`dx` 大小（大、小），`sf` 胜平负（胜、平、负）。不返回 `jq`，角球不要画、也不要提交。每份有 `pankou` 和 `betList`。`betvalue` 从 `1` 起对应选项顺序，`numPeople` 是人数，投注额也在这份里。这两个数是原站的，不加说球帝自己下的注。`intel` 是情报：`home_good`、`away_good`、`neutral`、`home_bad`、`away_bad` |
 
 ## 账号
 
@@ -654,7 +656,7 @@ POST /prod-api/user/redpack
 | `canClaim` | 已登录、今天还没领、奖池还有剩余时为 `true` |
 | `claims` | 这一轮已经领到的人，先领的在前。每条有 `nick`、`avatar`、`amount`、`time`。`avatar` 可能是空串，相对路径拼在网关基址后面。更早领的人可能没有昵称和头像 |
 
-`claims` 只列说球帝账号真正领到的。没有锦鲤奖池、榜单、优惠券记录，也不要再生成别人的名字和金额。
+`claims` 只列说球帝账号真正领到的。没有锦鲤奖池、榜单、优惠券记录，也不要再生成别人的名字和金额。发包人只有名字「说球帝」，没有头像，继续用现在那张固定图。右上「在浏览器中打开」继续打开现在那个地址，没有单独的网页。
 
 `POST /prod-api/user/redpack/claim`，请求体 `{ "token" }`。成功后的 `data` 同上，`mine` 有值，`claims` 里多出自己这一条。今天领过返回「今日已领取」。
 
@@ -717,3 +719,7 @@ POST /prod-api/user/redpack
 | 电视 | 没有频道列表，入口可以留着，里面是空的 |
 | 观看、分享、邀请任务 | 领取会被拒绝，不要显示成已完成 |
 | 原站群成员头像、等级、VIP、@、人数、禁言、管理员、群主私聊 | 接口里没有这些字段，不要编 |
+| 原站群发言、撤回、删除 | 只在本机，别人看不到 |
+| 每日红包发包人头像 | 没有，继续用现在那张固定图 |
+| 预测卡片人数、投注额 | 用原站的数，不加说球帝自己的注 |
+| 资料库主客场积分 | 公共接口只有总榜，主场客场按赛程自己算 |

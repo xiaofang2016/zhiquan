@@ -73,18 +73,11 @@ public final class DatabasePlan {
     public static List<DocRequest> past(DatabaseCatalog.Competition competition, String year) {
         String type = Integer.toString(competition.sportsType());
         String id = Integer.toString(competition.id());
-        List<DocRequest> docs = new ArrayList<>();
-        docs.add(new DocRequest("/team/getTeamRankByTeamId",
-                Map.of("type", type, "competitionId", id, "year", year), DatabaseTier.FROZEN));
-        if (competition.sportsType() == 1) {
-            docs.add(new DocRequest("/team/getTeamRankByTeamId",
-                    Map.of("type", type, "competitionId", id, "year", year, "isHome", "1"), DatabaseTier.FROZEN));
-            docs.add(new DocRequest("/team/getTeamRankByTeamId",
-                    Map.of("type", type, "competitionId", id, "year", year, "isHome", "0"), DatabaseTier.FROZEN));
-        }
-        docs.add(new DocRequest("/team/getCompetitionBracket",
-                Map.of("type", type, "cid", id, "year", year), DatabaseTier.FROZEN));
-        return docs;
+        return List.of(
+                new DocRequest("/team/getTeamRankByTeamId",
+                        Map.of("type", type, "competitionId", id, "year", year), DatabaseTier.FROZEN),
+                new DocRequest("/team/getCompetitionBracket",
+                        Map.of("type", type, "cid", id, "year", year), DatabaseTier.FROZEN));
     }
 
     public static List<DocRequest> live(DatabaseCatalog.Competition competition, String year, List<Stage> stages) {
