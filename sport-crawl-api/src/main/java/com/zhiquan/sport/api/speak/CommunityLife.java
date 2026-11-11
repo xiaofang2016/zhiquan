@@ -37,7 +37,7 @@ public final class CommunityLife {
         String key = post.path("postId").asText("");
         JsonNode rewards = board == null ? null : board.path("rewards").path(key);
         int extra = rewards != null && rewards.isArray() ? rewards.size() : 0;
-        post.put("rewardCount", post.path("rewardCount").asInt(0) + extra);
+        post.put("rewardCount", extra);
         ArrayNode shown = post.putArray("rewardUsers");
         if (extra == 0) {
             return;

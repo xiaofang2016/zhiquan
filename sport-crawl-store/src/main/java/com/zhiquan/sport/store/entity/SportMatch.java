@@ -14,6 +14,9 @@ public class SportMatch {
     private LocalDate listDate;
     private LocalDateTime matchTime;
     private Integer isHot;
+    private Long homeTeamId;
+    private Long awayTeamId;
+    private Integer hasAnchor;
     private String listSection;
     private Integer sortOrder;
     private String payload;

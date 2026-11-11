@@ -49,19 +49,19 @@ public class ProdApiService {
     }
 
     public List<DateCountItem> dates() {
-        return dates(null, null);
+        return dates(null, List.of(), null, false);
     }
 
-    public List<DateCountItem> dates(Integer type, Integer cid) {
+    public List<DateCountItem> dates(Integer type, List<Integer> leagues, Long teamId, boolean anchored) {
         Integer sportType = type == null || type <= 0 ? null : type;
-        Integer leagueId = cid == null || cid == 0 ? null : cid;
-        boolean filtered = sportType != null || leagueId != null;
+        List<Integer> ids = leagues == null ? List.of() : leagues;
+        boolean filtered = sportType != null || !ids.isEmpty() || teamId != null || anchored;
         List<DateCountItem> result = new ArrayList<>();
         for (SportMatchDate row : dates.listAll()) {
             int total;
             if (filtered) {
                 total = (int) Math.min(Integer.MAX_VALUE,
-                    matches.count(row.getMatchDate(), ListSection.DATA, sportType, leagueId, null));
+                    matches.count(row.getMatchDate(), ListSection.DATA, sportType, ids, null, teamId, anchored));
             } else {
                 total = row.getTotalMatch() == null ? 0 : row.getTotalMatch();
             }
@@ -70,27 +70,28 @@ public class ProdApiService {
         return result;
     }
 
-    public Object matchList(LocalDate date, Integer type, Integer cid, Integer ishot, int page, int size, int liveType, String since) {
+    public Object matchList(LocalDate date, Integer type, List<Integer> leagues, Long teamId, boolean anchored,
+                            Integer ishot, int page, int size, int liveType, String since) {
         Integer sportType = type == null || type <= 0 ? null : type;
-        Integer leagueId = cid == null || cid == 0 ? null : cid;
+        List<Integer> ids = leagues == null ? List.of() : leagues;
         Integer hot = ishot == null || ishot < 0 ? null : ishot;
         // 原站热门置顶段会带上 isHot=0 的场次，例如正在进行的置顶。
         Integer topHot = ishot != null && ishot == 1 ? null : hot;
-        long total = matches.count(date, ListSection.DATA, sportType, leagueId, hot);
+        long total = matches.count(date, ListSection.DATA, sportType, ids, hot, teamId, anchored);
         int totalPage = total == 0 ? 0 : (int) ((total + size - 1) / size);
         List<SportMatch> notopRows = page == 1
-                ? matches.listLimited(date, ListSection.NOTOP, sportType, leagueId, hot, PINNED_LIMIT)
+                ? matches.listLimited(date, ListSection.NOTOP, sportType, ids, hot, teamId, anchored, PINNED_LIMIT)
                 : List.of();
         List<SportMatch> topRows = page == 1
-                ? matches.listLimited(date, ListSection.TOP, sportType, leagueId, topHot, PINNED_LIMIT)
+                ? matches.listLimited(date, ListSection.TOP, sportType, ids, topHot, teamId, anchored, PINNED_LIMIT)
                 : List.of();
-        List<SportMatch> dataRows = matches.pageNumber(date, ListSection.DATA, sportType, leagueId, hot, page, size);
+        List<SportMatch> dataRows = matches.pageNumber(date, ListSection.DATA, sportType, ids, hot, teamId, anchored, page, size);
         String rev = revision(total, totalPage, notopRows, topRows, dataRows);
         if (since != null && !since.isBlank() && since.equals(rev)) {
             return new MatchListDelta(rev, List.of(), List.of());
         }
-        String token = DigestUtils.md5DigestAsHex((date + "|" + page + "|" + size + "|" + type + "|" + cid + "|" + ishot)
-                .getBytes(StandardCharsets.UTF_8));
+        String token = DigestUtils.md5DigestAsHex((date + "|" + page + "|" + size + "|" + type + "|" + ids + "|" + ishot
+                + "|" + teamId + "|" + (anchored ? 1 : 0)).getBytes(StandardCharsets.UTF_8));
         return new MatchListData((int) Math.min(total, Integer.MAX_VALUE), totalPage, nodes(notopRows), nodes(dataRows), nodes(topRows),
                 liveType, date.toString(), page, token, rev);
     }

@@ -147,6 +147,23 @@ public class SportUserRepository {
         saveProfileJson(phone, "mission", expected, next);
     }
 
+    public String feedback(String phone) {
+        Map<String, AttributeValue> item = dynamo.getItem(GetItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .projectionExpression("feedback")
+                .build()).item();
+        if (item == null || item.isEmpty()) {
+            return "";
+        }
+        String saved = Attrs.str(item, "feedback");
+        return saved == null ? "" : saved;
+    }
+
+    public void saveFeedback(String phone, String expected, String next) {
+        saveProfileJson(phone, "feedback", expected, next);
+    }
+
     public void saveSearch(String phone, String expected, String next) {
         saveProfileJson(phone, "search", expected, next);
     }
@@ -693,7 +710,7 @@ public class SportUserRepository {
 
     private static void checkProfileField(String attribute) {
         if (!"mission".equals(attribute) && !"predict".equals(attribute) && !"cash_sign".equals(attribute)
-                && !"search".equals(attribute)) {
+                && !"search".equals(attribute) && !"feedback".equals(attribute)) {
             throw new IllegalStateException("unknown profile field");
         }
     }

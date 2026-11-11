@@ -42,6 +42,9 @@ public class MatchRowParser {
         row.setListDate(listDate);
         row.setMatchTime(matchTime(item.path("matchtime").asText("")));
         row.setIsHot(item.path("isHot").asInt(0) == 1 ? 1 : 0);
+        row.setHomeTeamId(longOrNull(item, "hteam_id"));
+        row.setAwayTeamId(longOrNull(item, "ateam_id"));
+        row.setHasAnchor(LiveLine.anchor(item) ? 1 : 0);
         row.setListSection(section);
         row.setSortOrder(ListSection.DATA.equals(section) ? pageNumber * 100_000 + index : index);
         try {
@@ -64,6 +67,28 @@ public class MatchRowParser {
             }
         }
         return urls;
+    }
+
+    private static Long longOrNull(JsonNode item, String field) {
+        JsonNode value = item.get(field);
+        if (value == null || value.isNull()) {
+            return null;
+        }
+        if (value.isNumber()) {
+            return value.longValue();
+        }
+        if (value.isTextual()) {
+            String text = value.asText().trim();
+            if (text.isEmpty()) {
+                return null;
+            }
+            try {
+                return Long.parseLong(text);
+            } catch (NumberFormatException ex) {
+                return null;
+            }
+        }
+        return null;
     }
 
     private static Integer numberOrNull(JsonNode item, String field) {

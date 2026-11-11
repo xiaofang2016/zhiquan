@@ -107,9 +107,29 @@ class MatchCrawlRulesTest {
         assertEquals(82, row.getCid());
         assertEquals(1, row.getSportType());
         assertEquals(1, row.getIsHot());
+        assertEquals(1, row.getHasAnchor());
         assertEquals(100000, row.getSortOrder());
         assertTrue(row.getPayload().contains("a.flv"));
         assertEquals(3, MatchRowParser.imageUrls(node).size());
+    }
+
+    @Test
+    void anchorIgnoresAnimation() throws Exception {
+        var json = new ObjectMapper();
+        assertTrue(LiveLine.anchor(json.readTree("{\"live_urls\":[{\"name\":\"冠希\",\"url\":\"https://example.com/a.flv\"}]}")));
+        assertFalse(LiveLine.anchor(json.readTree("{\"live_urls\":[{\"name\":\"动画\",\"url\":\"https://example.com/a.html\"}]}")));
+        assertFalse(LiveLine.anchor(json.readTree("{\"live_urls\":[{\"name\":\"线路\",\"url\":\"https://widgets-livetracker.nami.com/x\"}]}")));
+        assertTrue(LiveLine.anchor(json.readTree("""
+                {"live_urls":[{"name":"动画","url":"https://widgets-livetracker.nami.com/x"},{"name":"冠希","url":"https://example.com/a.flv"}]}
+                """)));
+        assertFalse(LiveLine.anchor(json.readTree("{\"live_urls\":[]}")));
+        assertTrue(LiveLine.anchor(json.readTree("{\"mirror_live_urls\":[{\"url\":\"https://example.com/b.flv\"}]}")));
+        SportMatch row = new MatchRowParser(json).toRow(json.readTree("""
+                {"id":1,"hteam_id":"101","ateam_id":202,"live_urls":[{"name":"动画","url":"https://example.com/a.html"}]}
+                """), LocalDate.parse("2026-11-10"), "data", 1, 0);
+        assertEquals(101L, row.getHomeTeamId());
+        assertEquals(202L, row.getAwayTeamId());
+        assertEquals(0, row.getHasAnchor());
     }
 
     @Test

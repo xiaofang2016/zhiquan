@@ -74,19 +74,39 @@ public class SearchHistory {
         }
     }
 
+    public byte[] local(List<String> keys) {
+        ObjectNode root = json.createObjectNode();
+        root.put("msg", "ok");
+        root.put("code", "0");
+        ObjectNode data = root.putObject("data");
+        data.putArray("hotSearchHistory");
+        writeKeys(data.putArray("userSearchHistory"), keys);
+        try {
+            return json.writeValueAsBytes(root);
+        } catch (Exception ex) {
+            return "{\"msg\":\"ok\",\"code\":\"0\",\"data\":{\"hotSearchHistory\":[],\"userSearchHistory\":[]}}".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        }
+    }
+
     public byte[] overlay(byte[] upstream, List<String> keys) {
         try {
             ObjectNode root = (ObjectNode) json.readTree(upstream);
             if (!root.path("data").isObject()) {
                 return upstream;
             }
-            ArrayNode list = ((ObjectNode) root.path("data")).putArray("userSearchHistory");
-            for (String key : keys) {
-                list.addObject().put("key", key);
-            }
+            writeKeys(((ObjectNode) root.path("data")).putArray("userSearchHistory"), keys);
             return json.writeValueAsBytes(root);
         } catch (Exception ex) {
             return upstream;
+        }
+    }
+
+    private static void writeKeys(ArrayNode list, List<String> keys) {
+        if (keys == null) {
+            return;
+        }
+        for (String key : keys) {
+            list.addObject().put("key", key);
         }
     }
 

@@ -93,13 +93,14 @@ public class CommunityMeController {
     @PostMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/edit")
     public KzbResult edit(@PathVariable String postId, @RequestBody TokenBody body) {
         SportUser user = auth.account(body.token());
+        boolean updateCity = body.cityName() != null;
+        String city = updateCity ? CommunityLife.postedCity(body.cityName(), "") : null;
+        KzbResult result = ready(speak.editPost(user.getUserId(), postId, body.title(), body.content(), body.circleIds(), body.pictures(), body.videos(), body.topicIds(), body.mentionUserIds(), body.matchId(), body.matchType(), city, updateCity));
         if (CommunityLife.rememberCity(body.cityName())) {
             auth.saveCity(body.token(), body.cityName());
             speak.saveProfile(user.getUserId(), null, null, body.cityName());
         }
-        boolean updateCity = body.cityName() != null;
-        String city = updateCity ? CommunityLife.postedCity(body.cityName(), "") : null;
-        return ready(speak.editPost(user.getUserId(), postId, body.title(), body.content(), body.circleIds(), body.pictures(), body.videos(), body.topicIds(), body.mentionUserIds(), body.matchId(), body.matchType(), city, updateCity));
+        return result;
     }
 
     @PostMapping("/prod-api/community/posts/{postId:[0-9]{1,18}}/remove")

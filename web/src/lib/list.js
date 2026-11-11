@@ -131,7 +131,7 @@ export async function listedMatch(route) {
       langtype: "zh",
       pid: "4",
       zoneId: browserZone(),
-      zhuboType: "1",
+      zhuboType: "0",
       starttime: shanghaiDay(offset),
       pn: "1",
       ps: "200"

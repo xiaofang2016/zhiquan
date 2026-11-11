@@ -4,6 +4,8 @@ import com.zhiquan.sport.api.chat.ZhiquanChatRows.GroupRow;
 import com.zhiquan.sport.api.chat.ZhiquanChatRows.MessageRow;
 import com.zhiquan.sport.store.aws.SportAwsProperties;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import software.amazon.awssdk.services.dynamodb.DynamoDbClient;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 import software.amazon.awssdk.services.dynamodb.model.GetItemRequest;
@@ -16,6 +18,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 /**
  * 调试页读 zhiquan_chat。群列表只带每个群最新一条，点开再取最新 100 条。
@@ -23,16 +27,24 @@ import java.util.Map;
 @Service
 public class ZhiquanChatDebugService {
 
+    private static final Logger log = LoggerFactory.getLogger(ZhiquanChatDebugService.class);
     private static final long IMAGE_BASE_TTL_MS = 30 * 60_000L;
 
     private final DynamoDbClient dynamo;
     private final SportAwsProperties aws;
+    private final ExecutorService groupRefresh = Executors.newSingleThreadExecutor(task -> {
+        Thread thread = new Thread(task, "zhiquan-chat-groups");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private final GroupCatalog groups = new GroupCatalog(GroupCatalog.TTL_MS, groupRefresh);
     private volatile String imageBase = "";
     private volatile long imageBaseAt;
 
     public ZhiquanChatDebugService(DynamoDbClient dynamo, SportAwsProperties aws) {
         this.dynamo = dynamo;
         this.aws = aws;
+        groups.prefetch(System.currentTimeMillis(), this::queryGroups);
     }
 
     public GroupPage groups() {
@@ -73,11 +85,24 @@ public class ZhiquanChatDebugService {
     }
 
     private Map<Long, GroupRow> loadGroups() {
+        return groups.get(System.currentTimeMillis(), this::queryGroups);
+    }
+
+    private Map<Long, GroupRow> queryGroups() {
+        try {
+            return readGroups();
+        } catch (RuntimeException ex) {
+            log.warn("读取职圈群列表失败: {}", ex.toString());
+            throw ex;
+        }
+    }
+
+    private Map<Long, GroupRow> readGroups() {
         Map<String, AttributeValue> values = Map.of(
                 ":pk", AttributeValue.fromS(aws.getZhiquanChatPartition()),
                 ":prefix", AttributeValue.fromS("group#"),
                 ":kind", AttributeValue.fromS("group"));
-        Map<Long, GroupRow> groups = new LinkedHashMap<>();
+        Map<Long, GroupRow> found = new LinkedHashMap<>();
         Map<String, AttributeValue> start = null;
         do {
             QueryRequest.Builder builder = QueryRequest.builder()
@@ -92,13 +117,13 @@ public class ZhiquanChatDebugService {
             for (Map<String, AttributeValue> item : response.items()) {
                 GroupRow row = ZhiquanChatRows.group(item);
                 if (row != null) {
-                    groups.put(row.id(), row);
+                    found.put(row.id(), row);
                 }
             }
             start = response.hasLastEvaluatedKey() && !response.lastEvaluatedKey().isEmpty()
                     ? response.lastEvaluatedKey() : null;
         } while (start != null);
-        return groups;
+        return found;
     }
 
     private List<MessageRow> latest(String gid, int limit) {

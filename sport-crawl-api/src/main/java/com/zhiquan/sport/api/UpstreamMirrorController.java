@@ -132,14 +132,13 @@ public class UpstreamMirrorController {
 
     private ResponseEntity<byte[]> history(String query, boolean clear) {
         Cached loaded = fetch("/prod-api/get/search/history", SearchPages.withoutAccount(query));
-        if (!loaded.ok()) {
-            return json(loaded.body(), false, false);
-        }
         String token = SearchPages.param(query, "token");
         if (clear) {
             searches.clear(token);
         }
-        return json(searches.overlay(loaded.body(), clear ? java.util.List.of() : searches.keys(token)), true, false);
+        java.util.List<String> keys = clear ? java.util.List.of() : searches.keys(token);
+        byte[] body = loaded.ok() ? searches.overlay(loaded.body(), keys) : searches.local(keys);
+        return json(body, true, false);
     }
 
     private Cached fetch(String path, String query) {

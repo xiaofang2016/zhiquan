@@ -527,7 +527,7 @@ public class PredictService {
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("rank", row.rank());
         data.put("userId", row.userId());
-        data.put("nick", row.nick());
+        data.put("nick", rankNick(row, self));
         data.put("avatar", face.avatar());
         data.put("level", face.level());
         data.put("profit", row.profit());
@@ -555,6 +555,16 @@ public class PredictService {
             }
         }
         return new Face(avatar, level);
+    }
+
+    static String rankNick(PredictRules.RankRow row, SportUser self) {
+        if (row.nick() != null && !row.nick().isBlank()) {
+            return row.nick();
+        }
+        if (self != null && self.getUserId() != null && self.getUserId().equals(row.userId())) {
+            return blank(self.getNickname());
+        }
+        return "";
     }
 
     private static String blank(String value) {

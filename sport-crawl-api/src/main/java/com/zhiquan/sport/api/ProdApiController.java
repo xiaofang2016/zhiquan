@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeParseException;
+import java.util.List;
 
 @RestController
 public class ProdApiController {
@@ -23,14 +24,18 @@ public class ProdApiController {
 
     @GetMapping("/prod-api/match/date/count")
     public KzbResult dates(@RequestParam(required = false) Integer type,
-                           @RequestParam(required = false) Integer cid) {
-        return KzbResult.ok(matches.dates(type, cid));
+                           @RequestParam(required = false) String cid,
+                           @RequestParam(required = false) String teamId,
+                           @RequestParam(required = false) Integer zhuboType) {
+        return KzbResult.ok(matches.dates(type, MatchFilters.leagues(cid), MatchFilters.team(teamId), MatchFilters.anchored(zhuboType)));
     }
 
     @GetMapping("/prod-api/match/list/new")
     public KzbResult matchList(@RequestParam(required = false) String starttime,
                                @RequestParam(required = false) Integer type,
-                               @RequestParam(required = false) Integer cid,
+                               @RequestParam(required = false) String cid,
+                               @RequestParam(required = false) String teamId,
+                               @RequestParam(required = false) Integer zhuboType,
                                @RequestParam(required = false) Integer ishot,
                                @RequestParam(required = false) Integer pn,
                                @RequestParam(required = false) Integer ps,
@@ -50,6 +55,8 @@ public class ProdApiController {
         if (size < 1 || size > 200) {
             throw new IllegalArgumentException("ps 必须在 1 到 200 之间");
         }
-        return KzbResult.ok(matches.matchList(date, type, cid, ishot, page, size, liveType == null ? 0 : liveType, since));
+        List<Integer> leagues = MatchFilters.leagues(cid);
+        return KzbResult.ok(matches.matchList(date, type, leagues, MatchFilters.team(teamId), MatchFilters.anchored(zhuboType),
+                ishot, page, size, liveType == null ? 0 : liveType, since));
     }
 }

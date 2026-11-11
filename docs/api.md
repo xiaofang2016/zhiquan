@@ -12,6 +12,8 @@
 |---|---|
 | `POST /prod-api/user/sms` `/register` `/login` `/session` | 账号 |
 | `POST /prod-api/user/gift`、`/predict`、`/predict/bet`、`/predict/rank`、`/wallet/sign`、`/phone/sms`、`/updatePhone` | 送礼、预测、现金签到、修改手机号 |
+| `POST /prod-api/user/feedback`、`/user/feedback/list` | 意见反馈。要登录。列表最多 20 条，新的在前 |
+| `POST /prod-api/applet/list` | 小程序目录。body `{ "client": "apk" }`，`client` 可以是 `apk`、`ipa`、`h5`，省略返回全部。不用登录 |
 | `POST /prod-api/user/jxt/status` `/sms` `/bind` `/unbind` `/withdraw` | 吉祥绑定和提现，见 [吉祥转账对接](jxt.md) |
 | `POST /prod-api/user/ued/status` `/sms` `/bind` `/unbind` `/withdraw` | UED 绑定和提现，商户号 `10012`，其余与吉祥相同 |
 | `POST /prod-api/user/bound-login` | 职圈取吉祥、UED 或说球帝直播令牌。浏览器不要调用，见 [吉祥转账对接](jxt.md) |
@@ -85,7 +87,11 @@
 | `cityName` | 当前城市，还没设置时是空串。评论定位用这个值 |
 | `token` | 登录令牌。保存下来，恢复登录时原样传回。30 天后失效 |
 
-设置城市是 `POST /prod-api/user/city`，body `{ "token", "cityName" }`。最多 20 个字。成功 `data` 仍是登录结果。发帖、发评论带了非空的 `cityName`，也会写进这里。这两处传空串只让这一条不带城市，不改账号。改资料仍按传入的 `cityName` 保存。
+设置城市是 `POST /prod-api/user/city`，body `{ "token", "cityName" }`。最多 20 个字。成功 `data` 仍是登录结果。发帖、发评论带了非空的 `cityName`，也会写进这里。这两处传空串只让这一条不带城市，不改账号。改帖带了城市时，帖子保存成功才写回账号。改资料仍按传入的 `cityName` 保存。
+
+意见反馈 `POST /prod-api/user/feedback`，body `{ "token", "content", "contact", "images" }`。`content` 必填，最多 1000 字。`contact` 最多 64 字。`images` 最多 3 个地址。成功 `data` 是这一条：`content`、`contact`、`images`、`time`（`yyyy-MM-dd HH:mm:ss`，北京时间）。`POST /prod-api/user/feedback/list` 的 body 是 `{ "token" }`，`data.records` 最多 20 条，新的在前。
+
+小程序 `POST /prod-api/applet/list`，body `{ "client": "h5" }`。`data` 是数组，每项 `appletId`、`appletName`、`appletTitle`、`appletImage`（空串，图标页面自备）、`appletUrl`、`program`、`idNum`。`apk` 没有「说球帝直播」。`program` 为 `jxt`、`ued`、`wallet`、`mall` 时 `appletUrl` 是空串，走现有吉祥、UED、红包和商城入口，不要拼原站账号参数。`ued专属网页` 的地址是 `https://445d6dq.com`，这个站拒绝被嵌进页面，用新窗口打开。
 
 ### 发送验证码
 
@@ -206,7 +212,7 @@
 
 一条预测：`id`、`mid`、`type`、`market`、`betvalue`、`label`、`line`、`odds`、`stake`、`status`、`statusName`、`returned`、`profit`、`placedAt`、`settledAt`、`league`、`home`、`away`、`kickoff`、`score`。`league` 是联赛名，`home`、`away` 是主客队，`kickoff` 是开赛时间。`score` 结算后是完场比分，例如 `1-1`，未开奖是空串。以前下的注这些字段是空串。`status` 为 `pending` 未开奖、`win` 赢、`lose` 输、`push` 走水、`half-win` 赢半、`half-lose` 输半、`refund` 退回。
 
-收益榜 `period` 为 `day`、`week`、`month`，缺省 `day`，周从周一开始。`board` 为 `profit` 或 `roof`，缺省 `profit`。`profit` 按盈利从高到低，`roof` 按亏损从多到少。`records` 最多 50 条，字段 `rank`、`userId`、`nick`、`avatar`、`level`、`profit`、`win`、`total`。`avatar` 是账号头像，没有时是空串。`level` 是音浪等级：余额不足 100 为 1，否则是余额除以 100。`mine` 是自己的名次，没有结算记录时 `rank` 为 0。
+收益榜 `period` 为 `day`、`week`、`month`，缺省 `day`，周从周一开始。`board` 为 `profit` 或 `roof`，缺省 `profit`。`profit` 按盈利从高到低，`roof` 按亏损从多到少。`records` 最多 50 条，字段 `rank`、`userId`、`nick`、`avatar`、`level`、`profit`、`win`、`total`。`avatar` 是账号头像，没有时是空串。`level` 是音浪等级：余额不足 100 为 1，否则是余额除以 100。这不是原站的等级名。`mine` 是自己的名次，没有结算记录时 `rank` 为 0，`nick` 是当前账号的昵称。
 
 社球帝的评论、发帖、打赏、用户主页、通知和上传都在 [说球帝frontend.md](说球帝frontend.md) 的社球帝一节。评论和回复的 `likeCount` 不会小于原站。回复某一条回复时带 `replyToReplyId`。自己发的帖和评论会计入用户主页。公告从圈子详情和话题详情抓来；原站这两处目前是空的。发帖视频填已经能播的地址，不做转码。
 
@@ -267,7 +273,7 @@
 
 `GET /prod-api/match/date/count?type=-1&cid=0`
 
-不带 `type`、`cid`，或 `type` 小于等于 0、`cid` 为 0 时，`totalmatch` 是上游日期接口的数字。带了 `type` 或 `cid` 时，按这一天已经抓到的场次重算。
+不带 `type`、`cid`、`teamId`，或 `type` 小于等于 0、`cid` 为 0、`teamId` 为 0，并且 `zhuboType` 不是 `1` 时，`totalmatch` 是上游日期接口的数字。带了 `type`、`cid`、`teamId`，或 `zhuboType=1` 时，按这一天已经抓到的场次重算。`cid` 可以逗号分隔多个，规则和比赛列表一样。`zhuboType=1` 只数有直播线路的场次。
 
 ```json
 {
@@ -295,11 +301,13 @@
 | `pn` | 否 | 页码，从 1 开始。缺省或小于 1 时按 1。最大 500 |
 | `ps` | 否 | 每页条数，默认 20，范围 1 到 200。超出返回 400，「ps 必须在 1 到 200 之间」 |
 | `type` | 否 | `0` 或不传为全部。`1` 足球，`2` 篮球，`3` 娱乐 |
-| `cid` | 否 | 联赛 id。`0` 或不传为全部 |
+| `cid` | 否 | 联赛 id。`0` 或不传为全部。多个用逗号，例如 `82,120`，最多 20 个，重复的只留一个。要配合 `type`，因为不同运动的联赛 id 会重复。超过 20 个返回 400，「cid 最多 20 个」。格式不对返回「cid 格式不对」 |
+| `teamId` | 否 | 球队 id。不传或 `0` 不筛。主队 `hteam_id` 或客队 `ateam_id` 对上就留下。格式不对返回 400，「teamId 格式不对」 |
 | `ishot` | 否 | `-1` 或不传为全部。`1` 只留 `isHot` 为 `1` 的场次，置顶段 `topList` 例外，里面 `isHot` 为 `0` 的场次也返回。顺序仍是抓取时的位置 |
+| `zhuboType` | 否 | `1` 只留有直播线路的场次。名字是「动画」，或地址里有 `nami.com`、`livetracker`，不算。`live_urls`、`mirror_live_urls`、`global_live_urls`、`live_cartoon_url` 里有一路直播就算。`0` 或不传不筛 |
 | `live_type` | 否 | 原样回在 `data.live_type`，缺省为 `0` |
 | `since` | 否 | 上次响应里的 `rev`。列表没变时只返回空的 `changed`。对不上时仍返回整页 |
-| `isfanye` `langtype` `pid` `zoneId` `zhuboType` `token` | 否 | 可以照原站传，服务端不使用 |
+| `isfanye` `langtype` `pid` `zoneId` `token` | 否 | 可以照原站传，服务端不使用 |
 
 ```json
 {
@@ -352,11 +360,13 @@
 
 没有这场日期的数据时，`total` 为 `0`，三个列表为空。
 
-每次抓取都会记下这场在原站列表里的位置。三个列表都按这个位置返回，接口不再按开赛时间、联赛或在线人数重排。今天用 `zhuboType=1`，和原站带主播的那份名单一样，最多比原站晚约 2 分钟。
+每次抓取都会记下这场在原站列表里的位置。三个列表都按这个位置返回，接口不再按开赛时间、联赛或在线人数重排。多个 `cid` 也按这个位置拼在一起。今天抓取用的是上游带主播的名单，最多比原站晚约 2 分钟。
 
 热门页在这个顺序上再做一次和原站相同的调整：`is_zd` 为 `1` 的场次抽到最前，按 `zd_level` 从高到低排，其余场次保持原顺序。足球、篮球分区不做这一步。开赛钟点按用户浏览器时区显示，接口里的 `matchtime` 仍是上海时间。
 
-今天：原站后面几页会带上后面几天的场次，这里也保留，不按开赛日再切，也不把一场比赛从另一个日期的列表里拿走。从昨天往前，以及从明天起，这一天改抓全部场次，只留下开赛日就是这一天的。赛果按日期查 `list/new` 就是这一天的全部比赛，没有主播的场次也在里面。同一天过一会儿再查，`total` 会变，因为原站还在更新，抓取会跟着补。
+今天：原站后面几页会带上后面几天的场次，这里也保留，不按开赛日再切，也不把一场比赛从另一个日期的列表里拿走。从昨天往前，以及从明天起，这一天改抓全部场次，只留下开赛日就是这一天的。不传 `zhuboType` 或传 `0` 时，赛果按日期查 `list/new` 就是这一天的全部比赛，没有主播的场次也在里面。传 `zhuboType=1` 时只留有直播线路的。同一天过一会儿再查，`total` 会变，因为原站还在更新，抓取会跟着补。
+
+球队 id 和有没有直播线路，在抓取时写到这场上。还没再次抓过的场次没有这两项：`teamId` 选不中；`zhuboType=1` 先留着，下一轮抓取后再按线路去掉。今天大约 2 分钟内会补上，昨天和过去 7 天在上海时间 04:00。更早的日期要等再次抓取。
 
 ### 比赛对象
 
@@ -394,7 +404,7 @@
 | `url` | 播放地址。直播目前给的是 `.flv`。同一地址把后缀换成 `.m3u8` 就是这一路的 HLS，iOS 用这个。动画是网页地址 |
 | `status` | `1` 可播 |
 | `index` | 排序 |
-| `streamId` `live_user_name` `liveUserId` `room_num` | 直播间信息。动画线路通常没有这些字段 |
+| `streamId` `live_user_name` `liveUserId` `room_num` | 直播间信息。动画线路通常没有这些字段。没有主播头像 |
 
 播放时用 `url`。不要把 `.flv` 当成文件下载。`mirror_live_urls`、`global_live_urls` 现在和 `live_urls` 内容相同，还没有单独的镜像线路。
 
@@ -411,7 +421,7 @@
 | `GET /prod-api/match/detail/tabs` | 阵容页，含阵型、站位、评分 |
 | `GET /prod-api/match/detail/lineupAnalysis` | 阵容分析 |
 | `GET /prod-api/match/detail/playersStatSeason` | 本赛季球员数据 |
-| `GET /prod-api/match/detail/seasonData` | 篮球常规赛关键数据。上游没有时 `data` 为 `null` |
+| `GET /prod-api/match/detail/seasonData` | 篮球常规赛关键数据。上游没有时 `data` 为 `null`，页面显示「暂无常规赛关键数据」，不要编字段 |
 | `GET /prod-api/match/detail/player` | 阵容里点球员的本场数据。参数照原站：`type`、`mid`、`playerid`、`teamtype`（主队 1、客队 2） |
 | `GET /prod-api/data/lanqiu/ranklist` | NBA 榜单。`ranktype=1` 球队、`2` 球员、`3` 伤病、`4` 日榜 |
 | `GET /prod-api/search/hot` | 热门搜索词 |
@@ -421,13 +431,13 @@
 | `GET /prod-api/news/list` | 资料库资讯列表 |
 | `GET /prod-api/news/detail` | 资料库资讯详情。`newsid` 用资料库列表里的 `id` |
 | `GET /prod-api/news/information/detail` | 比赛资讯和相关资讯的详情。`id` 用比赛资讯列表里的 `id` |
-| `GET /prod-api/at/list` | 比赛聊天里的推广卡 |
+| `GET /prod-api/at/list` | 原站比赛聊天的推广卡。不要用。里面是原站注册页和别的聊天 App。页面继续用现在写死的两张 |
 
-搜索历史的 `data.hotSearchHistory` 是上游热词。`userSearchHistory` 是说球帝账号自己的词，新的在前，最多 20 个，每项只有 `key`。没带令牌或令牌无效时这一列是空的，热词照常。历史和清空不缓存。带令牌的 `/search/content` 也不缓存，记词失败仍返回搜索结果。令牌不会转给上游。
+搜索历史的 `data.hotSearchHistory` 是上游热词。`userSearchHistory` 是说球帝账号自己的词，新的在前，最多 20 个，每项只有 `key`。没带令牌或令牌无效时这一列是空的，热词照常。上游热词拿不到时，这两条仍是 HTTP 200，`hotSearchHistory` 为空数组，账号的词照常返回；清空也照样清掉账号的词。历史和清空不缓存。带令牌的 `/search/content` 也不缓存，记词失败仍返回搜索结果。令牌不会转给上游。
 
 比赛搜索 `tab=1` 时，上游后面几页经常是空的，`total` 和 `totalPage` 仍写着还有。这时改成第一页的实际条数，`totalPage` 为 1。别的 `tab` 不动。
 
-比赛资讯详情的正文在 `content`，封面是 `coverurl`。拿这个 `id` 去查 `/news/detail?newsid=` 会得到空对象。没有点赞和评论。列表里 `itemType` 为 1 的是动图，没有 `id`，`gif` 和 `cover` 就在这一项上。
+比赛资讯详情的正文在 `content`，封面是 `coverurl`。拿这个 `id` 去查 `/news/detail?newsid=` 会得到空对象。没有点赞和评论。列表里没有前瞻视频，这一排留空，不要编地址。`itemType` 为 1 的是动图，没有 `id`，`gif` 和 `cover` 就在这一项上。
 
 ## 即时比分
 
@@ -821,6 +831,8 @@ GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
 
 每个群有 `id`、`gid`、`name`、`ownerName`、`updatedAt`、`notice`、`avatar`、`latest`。`avatar` 是群头像文件名，没有则为空。`notice` 在原站 `enabled` 为 `0` 时是空字符串。`latest` 没有消息时为 `null`，否则和下面的消息行一样。
 
+群名单在接口进程里缓存大约 45 秒。这期间群名、公告、头像可能还是上一份。消息正文不走这份缓存，点进群和翻页仍直接读库。不存在的群立刻返回空列表。
+
 消息页 `data` 有 `id`、`gid`、`name`、`imageBase`、`messages`、`older`。`messages` 从旧到新，最多 100 条。扫到头时 `older` 为空；否则把 `older` 当作下一次的 `before`。单条内容正好是「领取了红包」「已领取了红包」或以此结尾的不返回。「等12/200人已领取了红包」这种汇总会返回。
 
 一条消息：
@@ -836,7 +848,7 @@ GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
 
 群头像：`{imageBase}/head/{avatar}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。消息图片：`{imageBase}/message/{fileMd5}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。文件名已经带 `?` 或本身是 `http` 地址时不再追加参数。
 
-红包 `content` 仍是 JSON，字段有 `description`、`title`、`nickname`、`nickName`、`status`、`dbAmountPool`、`num`、`remainNum`、`walletId`。`status` 为 `1` 待领取、`2` 已领取、`3` 已领完。奖池把 `dbAmountPool` 的数字去掉末两位再补齐 6 位。`remainNum` 是抓到这条消息时的剩余份数，之后不再向原站重查。没有按 `walletId` 查领取名单、锦鲤播报或优惠券记录的接口。
+红包 `content` 仍是 JSON，字段有 `description`、`title`、`nickname`、`nickName`、`status`、`dbAmountPool`、`num`、`remainNum`、`walletId`。`status` 为 `1` 待领取、`2` 已领取、`3` 已领完。奖池把 `dbAmountPool` 的数字去掉末两位再补齐 6 位。`remainNum` 是抓到这条消息时的剩余份数，之后不再向原站重查。页面按这个数字画，不要按时间去估，也不要因此把还能领的画成已领完。没有按 `walletId` 查领取名单、锦鲤播报或优惠券记录的接口。
 
 `status` 为 `1` 且 `remainNum` 不是 `0` 时可以领。登录后：
 
@@ -1024,6 +1036,8 @@ GET https://tip.kzbzcq.com/tip?mid=4498761&type=1
 | `company_name` | 公司名 |
 | `initial` | 初盘 |
 | `realtime` | 即时盘 |
+
+没有变化历史。只画这两行，不要从两行里插出走势，也不要另写几行。
 
 ### 数据 `data.kzbzcq.com/data`
 

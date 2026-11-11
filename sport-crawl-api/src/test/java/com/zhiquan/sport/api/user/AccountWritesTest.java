@@ -2,6 +2,7 @@ package com.zhiquan.sport.api.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhiquan.sport.store.aws.Attrs;
+import com.zhiquan.sport.store.entity.SportUser;
 import com.zhiquan.sport.store.repo.PhoneMove;
 import org.junit.jupiter.api.Test;
 
@@ -15,6 +16,13 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class AccountWritesTest {
+
+    private static SportUser named(String userId, String nickname) {
+        SportUser user = new SportUser();
+        user.setUserId(userId);
+        user.setNickname(nickname);
+        return user;
+    }
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 11, 9, 12, 0);
     private static final ObjectMapper JSON = new ObjectMapper();
@@ -105,6 +113,9 @@ class AccountWritesTest {
         assertEquals(2, profit.mine().rank());
         PredictRules.BoardView roof = PredictRules.rank(bets, "roof", "week", today, "b");
         assertEquals("b", roof.records().get(0).userId());
+        assertEquals("小球", PredictService.rankNick(new PredictRules.RankRow(0, "me", "", 0, 0, 0, ""), named("me", "小球")));
+        assertEquals("下注时的名字", PredictService.rankNick(new PredictRules.RankRow(1, "me", "下注时的名字", 10, 1, 1, ""), named("me", "小球")));
+        assertEquals("", PredictService.rankNick(new PredictRules.RankRow(2, "other", "", 0, 0, 0, ""), named("me", "小球")));
         assertFalse(PredictRules.inPeriod(today.minusDays(8), "week", today));
         assertTrue(PredictRules.inPeriod(today.with(java.time.DayOfWeek.MONDAY), "week", today));
     }
