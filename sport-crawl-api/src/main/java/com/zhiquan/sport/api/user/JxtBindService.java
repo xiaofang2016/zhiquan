@@ -40,7 +40,25 @@ public class JxtBindService {
         if (!code.matches("\\d{4,6}")) {
             throw new IllegalArgumentException("请输入验证码");
         }
-        JxtClient.JxtAccount account = jxt.confirm(user.getPhone(), code);
+        remember(user, jxt.confirm(user.getPhone(), code));
+        return view(user);
+    }
+
+    public Map<String, String> password(String token, String usernameRaw, String passwordRaw) {
+        SportUser user = user(token);
+        String username = usernameRaw == null ? "" : usernameRaw.trim();
+        String password = passwordRaw == null ? "" : passwordRaw;
+        if (username.isEmpty() || username.length() > 64) {
+            throw new IllegalArgumentException("请输入账号");
+        }
+        if (password.isBlank() || password.length() > 64) {
+            throw new IllegalArgumentException("请输入密码");
+        }
+        remember(user, jxt.login(username, password));
+        return view(user);
+    }
+
+    private void remember(SportUser user, JxtClient.JxtAccount account) {
         String shown = account.username().isBlank() ? user.getPhone() : account.username();
         users.saveJxt(user.getPhone(), account.uid(), shown, account.accessToken(), account.expireAt());
         user.setJxtBound(true);
@@ -48,7 +66,6 @@ public class JxtBindService {
         user.setJxtAccount(shown);
         user.setJxtAccessToken(account.accessToken());
         user.setJxtTokenExpire(account.expireAt());
-        return view(user);
     }
 
     public Map<String, String> unbind(String token) {

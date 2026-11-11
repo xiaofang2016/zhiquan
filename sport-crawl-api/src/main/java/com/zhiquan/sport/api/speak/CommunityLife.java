@@ -654,8 +654,8 @@ public final class CommunityLife {
         String name = "";
         String cover = "";
         Integer participants = null;
-        int views = 0;
-        int comments = 0;
+        Integer views = null;
+        Integer comments = null;
         JsonNode announces = null;
         int posts = 0;
         if (feed != null) {
@@ -670,10 +670,10 @@ public final class CommunityLife {
                         participants = topic.path("participantCount").asInt(0);
                     }
                     if (topic.hasNonNull("viewCount")) {
-                        views = topic.path("viewCount").asInt(views);
+                        views = topic.path("viewCount").asInt(0);
                     }
                     if (topic.hasNonNull("commentCount")) {
-                        comments = topic.path("commentCount").asInt(comments);
+                        comments = topic.path("commentCount").asInt(0);
                     }
                     if (topic.path("announces").isArray() && topic.path("announces").size() > 0) {
                         announces = topic.path("announces");
@@ -695,11 +695,19 @@ public final class CommunityLife {
         body.put("cover", cover);
         body.put("intro", "");
         body.put("postCount", posts);
-        body.put("participantCount", participants == null ? posts : participants);
-        body.put("viewCount", views);
-        body.put("commentCount", comments);
+        putCount(body, "participantCount", participants);
+        putCount(body, "viewCount", views);
+        putCount(body, "commentCount", comments);
         body.set("announces", announces == null ? json.createArrayNode() : announces.deepCopy());
         return body;
+    }
+
+    private static void putCount(ObjectNode body, String field, Integer value) {
+        if (value == null) {
+            body.putNull(field);
+        } else {
+            body.put(field, value);
+        }
     }
 
     public static ObjectNode announce(JsonNode feed, long announceId) {

@@ -40,7 +40,25 @@ public class UedBindService {
         if (!code.matches("\\d{4,6}")) {
             throw new IllegalArgumentException("请输入验证码");
         }
-        UedClient.UedAccount account = ued.confirm(user.getPhone(), code);
+        remember(user, ued.confirm(user.getPhone(), code));
+        return view(user);
+    }
+
+    public Map<String, String> password(String token, String usernameRaw, String passwordRaw) {
+        SportUser user = user(token);
+        String username = usernameRaw == null ? "" : usernameRaw.trim();
+        String password = passwordRaw == null ? "" : passwordRaw;
+        if (username.isEmpty() || username.length() > 64) {
+            throw new IllegalArgumentException("请输入账号");
+        }
+        if (password.isBlank() || password.length() > 64) {
+            throw new IllegalArgumentException("请输入密码");
+        }
+        remember(user, ued.login(username, password));
+        return view(user);
+    }
+
+    private void remember(SportUser user, UedClient.UedAccount account) {
         String shown = account.username().isBlank() ? user.getPhone() : account.username();
         users.saveUed(user.getPhone(), account.uid(), shown, account.accessToken(), account.expireAt());
         user.setUedBound(true);
@@ -48,7 +66,6 @@ public class UedBindService {
         user.setUedAccount(shown);
         user.setUedAccessToken(account.accessToken());
         user.setUedTokenExpire(account.expireAt());
-        return view(user);
     }
 
     public Map<String, String> unbind(String token) {

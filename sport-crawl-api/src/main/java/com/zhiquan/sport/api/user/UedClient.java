@@ -57,18 +57,32 @@ public class UedClient {
     }
 
     public UedAccount confirm(String phone, String code) {
-        JsonNode data = postPublic("/mobilelogin", Map.of(
+        return account(postPublic("/mobilelogin", Map.of(
                 "mobile", phone,
                 "code", code,
                 "phone_area_code", "86"
+        )), phone);
+    }
+
+    public UedAccount login(String username, String password) {
+        JsonNode data = postPublic("/login", Map.of(
+                "username", username,
+                "password", password
         ));
+        if (data.path("access_token").asText("").isBlank() && "2".equals(data.path("remote_login").asText(""))) {
+            throw new IllegalArgumentException("请用短信验证");
+        }
+        return account(data, username);
+    }
+
+    private static UedAccount account(JsonNode data, String fallbackName) {
         String uid = data.path("id").asText("");
         if (uid.isBlank()) {
             uid = text(data, "uid");
         }
         String username = data.path("username").asText("");
         if (username.isBlank()) {
-            username = phone;
+            username = fallbackName;
         }
         String accessToken = data.path("access_token").asText("");
         if (accessToken.isBlank()) {

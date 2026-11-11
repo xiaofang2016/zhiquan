@@ -92,22 +92,55 @@ public class WalletBook {
             throw new IllegalArgumentException("流水类型无效");
         }
         int page = pageRaw == null || pageRaw < 1 ? 1 : pageRaw;
-        List<Map<String, Object>> matched = new ArrayList<>();
+        List<Map<String, AttributeValue>> matched = new ArrayList<>();
         for (Map<String, AttributeValue> item : users.listLedger(user.getPhone())) {
             String itemKind = Attrs.str(item, "kind");
             if (!"bill".equals(normalized) && !normalized.equals(itemKind)) {
                 continue;
             }
-            matched.add(view(item));
+            matched.add(item);
         }
         int from = (page - 1) * PAGE_SIZE;
-        List<Map<String, Object>> slice = from >= matched.size() ? List.of() : matched.subList(from, Math.min(matched.size(), from + PAGE_SIZE));
+        List<Map<String, Object>> slice = new ArrayList<>();
+        if (from < matched.size()) {
+            for (Map<String, AttributeValue> item : matched.subList(from, Math.min(matched.size(), from + PAGE_SIZE))) {
+                slice.add(view(item));
+            }
+        }
         Map<String, Object> data = new LinkedHashMap<>();
         data.put("page", page);
         data.put("size", PAGE_SIZE);
         data.put("total", matched.size());
         data.put("records", slice);
+        if ("redpacket".equals(normalized)) {
+            putRedpacketTotals(data, matched);
+        }
         return data;
+    }
+
+    static void putRedpacketTotals(Map<String, Object> data, List<Map<String, AttributeValue>> rows) {
+        long sent = 0;
+        long received = 0;
+        int sentCount = 0;
+        int receivedCount = 0;
+        for (Map<String, AttributeValue> item : rows) {
+            Integer status = Attrs.num(item, "status");
+            if (status != null && status != 1) {
+                continue;
+            }
+            long cents = Attrs.lng(item, "amount_cent") == null ? 0 : Attrs.lng(item, "amount_cent");
+            if ("debit".equals(Attrs.str(item, "direction"))) {
+                sent += Math.abs(cents);
+                sentCount++;
+            } else {
+                received += Math.abs(cents);
+                receivedCount++;
+            }
+        }
+        data.put("sentCount", sentCount);
+        data.put("sentAmount", JxtMoney.yuan(sent));
+        data.put("receivedCount", receivedCount);
+        data.put("receivedAmount", JxtMoney.yuan(received));
     }
 
     private void put(Map<String, AttributeValue> row) {

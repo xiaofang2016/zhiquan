@@ -2,10 +2,14 @@ package com.zhiquan.sport.api.user;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.module.paramnames.ParameterNamesModule;
+import com.zhiquan.sport.store.aws.Attrs;
 import org.junit.jupiter.api.Test;
+import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
 import java.time.LocalDateTime;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.Set;
@@ -66,6 +70,29 @@ class UserAccountTest {
                 JxtBoximSign.payload("1700000000000", "abc", "POST", "/external/transfer/cross-platform", "{}"));
         assertEquals("ab1eb9e70f1d04248a586e3d56793c21d8512ec9786d1a21d425ee3879119a5d",
                 JxtBoximSign.sign("test-secret", "1700000000000", "abc", "POST", "/external/transfer/cross-platform", "{}"));
+    }
+
+    @Test
+    void redpacketTotalsSplitSentAndReceived() {
+        Map<String, Object> data = new LinkedHashMap<>();
+        WalletBook.putRedpacketTotals(data, List.of(
+                ledger("debit", 1000, 1),
+                ledger("", 250, 1),
+                ledger("credit", 500, 1),
+                ledger("debit", 900, 2)
+        ));
+        assertEquals(1, data.get("sentCount"));
+        assertEquals("10.00", data.get("sentAmount"));
+        assertEquals(2, data.get("receivedCount"));
+        assertEquals("7.50", data.get("receivedAmount"));
+    }
+
+    private static Map<String, AttributeValue> ledger(String direction, long cents, int status) {
+        Map<String, AttributeValue> item = new LinkedHashMap<>();
+        item.put("direction", Attrs.s(direction));
+        item.put("amount_cent", Attrs.n(cents));
+        item.put("status", Attrs.n(status));
+        return item;
     }
 
     @Test

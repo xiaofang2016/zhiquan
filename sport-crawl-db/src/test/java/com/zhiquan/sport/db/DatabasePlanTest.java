@@ -59,7 +59,10 @@ class DatabasePlanTest {
 
         var past = DatabasePlan.past(new DatabaseCatalog.Competition(82, 1), "2025-2026");
         assertEquals(DatabaseTier.FROZEN, past.get(0).tier());
+        assertTrue(past.stream().anyMatch(request -> "1".equals(request.query().get("isHome"))));
+        assertTrue(past.stream().anyMatch(request -> "0".equals(request.query().get("isHome"))));
         assertFalse(past.stream().anyMatch(request -> request.path().contains("MatchList")));
+        assertFalse(DatabasePlan.past(nba, "2025-2026").stream().anyMatch(request -> request.query().containsKey("isHome")));
     }
 
     @Test

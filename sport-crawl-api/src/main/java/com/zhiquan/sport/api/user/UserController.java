@@ -168,6 +168,11 @@ public class UserController {
         return KzbResult.ok(jxt.confirm(body.token(), body.code()));
     }
 
+    @PostMapping("/prod-api/user/jxt/bind/password")
+    public KzbResult jxtBindPassword(@RequestBody UserRequest body) {
+        return KzbResult.ok(jxt.password(body.token(), body.username(), body.password()));
+    }
+
     @PostMapping("/prod-api/user/jxt/unbind")
     public KzbResult jxtUnbind(@RequestBody UserRequest body) {
         return KzbResult.ok(jxt.unbind(body.token()));
@@ -192,6 +197,11 @@ public class UserController {
     @PostMapping("/prod-api/user/ued/bind")
     public KzbResult uedBind(@RequestBody UserRequest body) {
         return KzbResult.ok(ued.confirm(body.token(), body.code()));
+    }
+
+    @PostMapping("/prod-api/user/ued/bind/password")
+    public KzbResult uedBindPassword(@RequestBody UserRequest body) {
+        return KzbResult.ok(ued.password(body.token(), body.username(), body.password()));
     }
 
     @PostMapping("/prod-api/user/ued/unbind")

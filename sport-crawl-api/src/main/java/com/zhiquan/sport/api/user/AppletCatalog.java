@@ -26,7 +26,7 @@ public final class AppletCatalog {
             Map<String, String> row = new LinkedHashMap<>();
             row.put("appletId", item.id);
             row.put("appletName", item.name);
-            row.put("appletTitle", item.name);
+            row.put("appletTitle", item.title);
             row.put("appletImage", "");
             row.put("appletUrl", item.url);
             row.put("program", item.program);
@@ -37,18 +37,20 @@ public final class AppletCatalog {
         return rows;
     }
 
-    private record Item(String id, String name, String url, String program, String clients) {
+    private record Item(String id, String name, String title, String url, String program, String clients) {
     }
 
+    private static final String LIVE_TITLE = "西甲赞助商，五大联赛，NBA，CBA 无延迟超高清观看";
+
     private static final List<Item> ITEMS = List.of(
-            new Item("live", "说球帝直播", "https://kzb.7pgb88.com/", "", "ipa,h5"),
-            new Item("movie", "H片", "https://miniapp.mxzrbz.com", "", "apk,ipa,h5"),
-            new Item("drama", "原创短剧", "https://miniapp.mxzrbz.com/movieList", "", "apk,ipa,h5"),
-            new Item("community", "社球帝", "https://community.syjxyz.com", "", "apk,ipa,h5"),
-            new Item("jxt", "吉祥体育官方网站", "", "jxt", "apk,ipa,h5"),
-            new Item("ued", "UED体育官方网站", "", "ued", "apk,ipa,h5"),
-            new Item("wallet", "活动红包", "", "wallet", "apk,ipa,h5"),
-            new Item("mall", "红包商城", "", "mall", "apk,ipa,h5"),
-            new Item("ued-page", "ued专属网页", "https://445d6dq.com", "", "apk,ipa,h5")
+            new Item("live", "说球帝直播", LIVE_TITLE, "https://kzb.7pgb88.com/", "", "ipa,h5"),
+            new Item("movie", "H片", "H片", "https://miniapp.mxzrbz.com", "", "apk,ipa,h5"),
+            new Item("drama", "成人短剧", "成人短剧", "https://miniapp.mxzrbz.com/movieList", "", "apk,ipa,h5"),
+            new Item("community", "社球帝", "社球帝", "https://community.syjxyz.com", "", "apk,ipa,h5"),
+            new Item("ued", "UED体育官方网站", "UED体育官方网站", "", "ued", "apk,ipa,h5"),
+            new Item("jxt", "吉祥体育官方网站", "吉祥体育官方网站", "", "jxt", "apk,ipa,h5"),
+            new Item("wallet", "活动红包", "活动红包", "", "wallet", "apk,ipa,h5"),
+            new Item("mall", "红包商城", "红包商城", "", "mall", "apk,ipa,h5"),
+            new Item("ued-page", "ued专属网页", "ued专属网页", "https://445d6dq.com", "", "apk,ipa,h5")
     );
 }

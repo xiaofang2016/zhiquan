@@ -14,8 +14,8 @@
 | `POST /prod-api/user/gift`、`/predict`、`/predict/bet`、`/predict/rank`、`/wallet/sign`、`/phone/sms`、`/updatePhone` | 送礼、预测、现金签到、修改手机号 |
 | `POST /prod-api/user/feedback`、`/user/feedback/list` | 意见反馈。要登录。列表最多 20 条，新的在前 |
 | `POST /prod-api/applet/list` | 小程序目录。body `{ "client": "apk" }`，`client` 可以是 `apk`、`ipa`、`h5`，省略返回全部。不用登录 |
-| `POST /prod-api/user/jxt/status` `/sms` `/bind` `/unbind` `/withdraw` | 吉祥绑定和提现，见 [吉祥转账对接](jxt.md) |
-| `POST /prod-api/user/ued/status` `/sms` `/bind` `/unbind` `/withdraw` | UED 绑定和提现，商户号 `10012`，其余与吉祥相同 |
+| `POST /prod-api/user/jxt/status` `/sms` `/bind` `/bind/password` `/unbind` `/withdraw` | 吉祥绑定和提现。短信见 [吉祥转账对接](jxt.md)。账号密码是 `/bind/password`，body `{ "token", "username", "password" }`，页面拿不到 `access_token` |
+| `POST /prod-api/user/ued/status` `/sms` `/bind` `/bind/password` `/unbind` `/withdraw` | UED 绑定和提现，商户号 `10012`，其余与吉祥相同 |
 | `POST /prod-api/user/bound-login` | 职圈取吉祥、UED 或说球帝直播令牌。浏览器不要调用，见 [吉祥转账对接](jxt.md) |
 | `GET /prod-api/match/list/new2` | 即时比分 |
 | `GET /prod-api/database/`、`/prod-api/team/`、`/prod-api/player/`、`/prod-api/manage/` | 资料库 |
@@ -91,7 +91,7 @@
 
 意见反馈 `POST /prod-api/user/feedback`，body `{ "token", "content", "contact", "images" }`。`content` 必填，最多 1000 字。`contact` 最多 64 字。`images` 最多 3 个地址。成功 `data` 是这一条：`content`、`contact`、`images`、`time`（`yyyy-MM-dd HH:mm:ss`，北京时间）。`POST /prod-api/user/feedback/list` 的 body 是 `{ "token" }`，`data.records` 最多 20 条，新的在前。
 
-小程序 `POST /prod-api/applet/list`，body `{ "client": "h5" }`。`data` 是数组，每项 `appletId`、`appletName`、`appletTitle`、`appletImage`（空串，图标页面自备）、`appletUrl`、`program`、`idNum`。`apk` 没有「说球帝直播」。`program` 为 `jxt`、`ued`、`wallet`、`mall` 时 `appletUrl` 是空串，走现有吉祥、UED、红包和商城入口，不要拼原站账号参数。`ued专属网页` 的地址是 `https://445d6dq.com`，这个站拒绝被嵌进页面，用新窗口打开。
+小程序 `POST /prod-api/applet/list`，body `{ "client": "h5" }`。`data` 是数组，每项 `appletId`、`appletName`、`appletTitle`、`appletImage`（空串，图标页面自备）、`appletUrl`、`program`、`idNum`。顺序是说球帝直播、H片、成人短剧、社球帝、UED体育官方网站、吉祥体育官方网站、活动红包、红包商城、ued专属网页。说球帝直播的 `appletTitle` 是「西甲赞助商，五大联赛，NBA，CBA 无延迟超高清观看」，其余标题和名字相同。`apk` 没有「说球帝直播」。`program` 为 `jxt`、`ued`、`wallet`、`mall` 时 `appletUrl` 是空串，走现有吉祥、UED、红包和商城入口，不要拼原站账号参数。`ued专属网页` 的地址是 `https://445d6dq.com`，这个站拒绝被嵌进页面，用新窗口打开。
 
 ### 发送验证码
 
@@ -166,7 +166,7 @@
 | `POST /prod-api/user/wallet/records` | `{ "token", "kind", "page" }`。`kind` 为 `bill`、`redpacket` 或 `withdraw` |
 | `POST /prod-api/user/withdraw/records` | `{ "token", "page" }`。等同 `kind=withdraw` |
 
-`page` 从 1 起，每页 10 条。`data` 含 `page`、`size`、`total`、`records`。每条有 `tradeNo`、`kind`、`platform`（`jxt` / `ued`，红包为空）、`title`、`amount`（提现为负数）、`status`（`1` 成功，`2` 失败已退回）、`statusName`、`failReason`、`time`、`createdAt`。
+`page` 从 1 起，每页 10 条。`data` 含 `page`、`size`、`total`、`records`。每条有 `tradeNo`、`kind`、`platform`（`jxt` / `ued`，红包为空）、`title`、`amount`（提现为负数）、`status`（`1` 成功，`2` 失败已退回）、`statusName`、`failReason`、`time`、`createdAt`。`kind` 为 `redpacket` 时另有全部成功记录的 `sentCount`、`sentAmount`、`receivedCount`、`receivedAmount`。扣款方向算发出，其余算收到。金额是元，两位小数。失败已退回的不计入。合计覆盖全部记录，不限当前页。
 
 红包额度用 `POST /prod-api/user/redpack`，不要用职圈 `GET /redpacket/quota`。已登录时 `data` 另有 `dailyLimit`、`claimedAmount`、`remainAmount`、`canClaim`。`claims` 是这一轮的领取名单，先领的在前，每条有 `nick`、`avatar`、`amount`（元）、`time`。昵称和头像在领取时记下，更早的记录这两项可能是空串。没有锦鲤奖池、榜单和优惠券记录。每天这一份和帖子红包都会出现在 `kind=redpacket` 里，标题分别是「红包」和「帖子红包」。
 
@@ -714,7 +714,7 @@
 }
 ```
 
-`sdf` 是胜/平/负，`io` 是进/失球。杯赛的 `rankList` 可能是空的。足球当前赛季的总积分、主场、客场各抓一份。主场是 `isHome=1`，客场是 `isHome=0`，积分只算这一边。
+`sdf` 是胜/平/负，`io` 是进/失球。杯赛的 `rankList` 可能是空的。足球当前赛季和往年赛季的总积分、主场、客场各抓一份。主场是 `isHome=1`，客场是 `isHome=0`，积分只算这一边。往年那两份要等下一轮历史补抓之后才有，还没有时 `data` 为 `null`。
 
 近期赛事：
 

@@ -205,7 +205,7 @@ GET /prod-api/community/circles/{circleId}?token=
 | `posts` | 当前页。默认新发的在前；`sortRule=comment` 时最后回复的在前 |
 | `total` `page` `pages` | 分页 |
 
-圈子：`id`、`name`、`icon`、`cover`、`followCount`、`postCount`、`ownerName`、`ownerHead`、`topics`、`followed`、`isHot`。`topics` 里是 `id`、`name`，圈子上的话题还有 `cover`。抓到原站话题详情之后，话题上还有 `participantCount`、`viewCount`、`commentCount` 和这个话题自己的 `announces`。`GET /circles` 的 `data` 就是这个数组；没有单独热门标记时，前两个 `isHot` 为 `true`。话题列表是 `GET /community/topics`，每项有 `id`、`name`、`cover`、`postCount`、`participantCount`、`viewCount`、`commentCount`、`announces`。`participantCount` 是原站话题详情里的参与人数。这一轮还没抓到时，用副本里的帖子数。`viewCount`、`commentCount` 同样来自原站；还没抓到是 `0`。`announces` 是这个话题自己的公告，没有时是空数组。单个圈子没有时 `data` 为 `null`。没带有效 `token` 时 `followed` 是 `false`。单个话题是 `GET /community/topics/{topicId}`，字段和列表里的一项相同，另外有 `intro`。
+圈子：`id`、`name`、`icon`、`cover`、`followCount`、`postCount`、`ownerName`、`ownerHead`、`topics`、`followed`、`isHot`。`topics` 里是 `id`、`name`，圈子上的话题还有 `cover`。抓到原站话题详情之后，话题上还有 `participantCount`、`viewCount`、`commentCount` 和这个话题自己的 `announces`。`GET /circles` 的 `data` 就是这个数组；没有单独热门标记时，前两个 `isHot` 为 `true`。话题列表是 `GET /community/topics`，每项有 `id`、`name`、`cover`、`postCount`、`participantCount`、`viewCount`、`commentCount`、`announces`。`participantCount`、`viewCount`、`commentCount` 来自原站话题详情。还没抓到是 `null`，不要把 `0` 和没抓到混在一起，也不要用帖子数去填参与人数。`postCount` 仍是这份副本里的帖子数。列表顺序是圈子上的先后，原站没有单独的排序字段。`announces` 是这个话题自己的公告，没有时是空数组。单个圈子没有时 `data` 为 `null`。没带有效 `token` 时 `followed` 是 `false`。单个话题是 `GET /community/topics/{topicId}`，字段和列表里的一项相同，另外有 `intro`。
 
 社区流抓最近 20 页，精华 3 页，每个圈子 2 页。更早的帖第一次打开单帖或评论时再向上游要这一篇，之后就留在副本里。
 
@@ -350,6 +350,8 @@ POST /prod-api/community/posts/{postId}/redpacket
 成功时 `data` 仍是这篇帖子，`redPacket.mine` 有值。每天那份 588 元红包是另一条接口，和帖子红包互不相干。
 
 职圈群里发出去的红包也记在这份余额里。流水标题是「发红包」「群红包」「红包退回」。
+
+红包记录页的收发合计用 `POST /prod-api/user/wallet/records`，`kind` 为 `redpacket`。用返回的 `sentCount`、`sentAmount`、`receivedCount`、`receivedAmount`，不要把已经翻到的几页加起来。
 
 ## 职圈群聊天
 
@@ -677,7 +679,7 @@ POST /prod-api/user/redpack
 | `balance` | 说球帝余额，元，两位小数 |
 | `withdrawn` | 这个平台累计提现成功的金额，元，两位小数 |
 
-账号密码绑定用吉祥现成的 `POST https://api.jixsports.com/login`，不要再要一条新接口。请求体是 `username`、`password`、`merchant_no`。吉祥商户号 `10011`，UED 是 `10012`。`username` 填用户名或手机号。成功时 `data` 的 `id`、`username`、`access_token`、`expire_time` 和短信绑定记下的是同一份，说球帝记在账号上，页面不要留下 `access_token`。异地登录打开、这次又是新 IP 时，成功体只有 `remote_login` 为 `2`、`uid` 和打码手机号，没有令牌，这种仍走验证码。
+账号密码绑定走 `POST /prod-api/user/jxt/bind/password`，UED 是 `POST /prod-api/user/ued/bind/password`。请求体 `{ "token", "username", "password" }`。`username` 填用户名或手机号。页面不要自己调吉祥登录，也不要留下 `access_token`。成功 `data` 和短信绑定一样，是 `isBind`、`account`、`balance`、`withdrawn`。账号或密码空着时是「请输入账号」或「请输入密码」。异地登录要短信时是「请用短信验证」，改走验证码。账号或密码不对时 `msg` 是吉祥原文。
 
 未登录是「请先登录」。提现还没绑定时，吉祥是「请先绑定吉祥账号」，UED 把「吉祥」换成「UED」。
 
@@ -693,6 +695,7 @@ POST /prod-api/user/redpack
 
 | `msg` | 含义 |
 |---|---|
+| 请用短信验证 | 吉祥开了异地登录，这次没有令牌。改走短信绑定 |
 | 请重新验证吉祥账号 | 没有对方令牌，或令牌已过 30 天。UED 把「吉祥」换成「UED」 |
 | 提现金额不正确 | 不是金额，或超过上限，或小数超过两位 |
 | 提现金额不能小于10元 | 低于 10 元 |
@@ -701,7 +704,7 @@ POST /prod-api/user/redpack
 
 意见反馈走 `POST /prod-api/user/feedback`。提交成功提示「提交成功」。`images` 用已经上传好的地址，最多 3 张。列表用 `POST /prod-api/user/feedback/list`，本地不必再当唯一记录。
 
-小程序目录走 `POST /prod-api/applet/list`，body `{ "client": "apk" }` 或 `ipa`、`h5`。`appletImage` 是空串，图标继续用页面上的。`apk` 不显示「说球帝直播」。`program` 是 `jxt`、`ued`、`wallet`、`mall` 时打开现有入口，不要把账号参数带到原站。`ued专属网页` 地址 `https://445d6dq.com` 拒绝被嵌进页面，新开一页。
+小程序目录走 `POST /prod-api/applet/list`，body `{ "client": "apk" }` 或 `ipa`、`h5`。顺序是说球帝直播、H片、成人短剧、社球帝、UED体育官方网站、吉祥体育官方网站、活动红包、红包商城、ued专属网页。说球帝直播的标题是「西甲赞助商，五大联赛，NBA，CBA 无延迟超高清观看」。`appletImage` 是空串，图标继续用页面上的。`apk` 不显示「说球帝直播」。`program` 是 `jxt`、`ued`、`wallet`、`mall` 时打开现有入口，不要把账号参数带到原站。`ued专属网页` 地址 `https://445d6dq.com` 拒绝被嵌进页面，新开一页。
 
 下面这些没有数据，页面留空或用现在的固定文案，不要自己补：
 

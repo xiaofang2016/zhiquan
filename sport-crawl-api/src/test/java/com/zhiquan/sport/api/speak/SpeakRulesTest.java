@@ -298,6 +298,19 @@ class SpeakRulesTest {
     }
 
     @Test
+    void topicLeavesMissingCountsNull() throws Exception {
+        var feed = json.readTree("""
+                {"circles":[{"topics":[{"id":11,"name":"还没详情"}]}],
+                 "posts":[{"postId":1,"topics":[{"id":11}]}]}
+                """);
+        ObjectNode topic = CommunityLife.topic(json, feed, 11);
+        assertTrue(topic.path("participantCount").isNull());
+        assertTrue(topic.path("viewCount").isNull());
+        assertTrue(topic.path("commentCount").isNull());
+        assertEquals(1, topic.path("postCount").asInt());
+    }
+
+    @Test
     void rewardRecordKeepsWhetherTheHeadIsShown() throws Exception {
         ObjectNode board = CommunityBoard.ensure(json, json.createObjectNode());
         String author = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
