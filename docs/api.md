@@ -829,7 +829,7 @@ GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
 | `imageBase` | 图片根地址。空或 `oss.imnono.net` 时页面改用 `https://imfile.dtthsp.com` |
 | `groups` | 按最新一条消息的时间从新到旧 |
 
-每个群有 `id`、`gid`、`name`、`ownerName`、`updatedAt`、`notice`、`avatar`、`latest`。`avatar` 是群头像文件名，没有则为空。`notice` 在原站 `enabled` 为 `0` 时是空字符串。`latest` 没有消息时为 `null`，否则和下面的消息行一样。
+每个群有 `id`、`gid`、`name`、`ownerName`、`ownerId`、`updatedAt`、`notice`、`noticeStyle`、`avatar`、`memberCount`、`muted`、`createdTime`、`latest`。`avatar` 是群头像文件名，没有则为空。`ownerId` 是群主编号，没有则为空。`memberCount` 是原站群人数，没抓到是 `null`。`muted` 为 `true` 时是禁言。`noticeStyle` 是公告样式编号，没有是 `null`。`createdTime` 是原站记下的创建时间，例如 `2022-12-15 14:09`，没有则是空字符串。`notice` 在原站 `enabled` 为 `0` 时是空字符串。`latest` 没有消息时为 `null`，否则和下面的消息行一样。没有管理员名单，也没有群主头像。
 
 群名单在接口进程里缓存大约 45 秒。这期间群名、公告、头像可能还是上一份。消息正文不走这份缓存，点进群和翻页仍直接读库。不存在的群立刻返回空列表。
 
@@ -843,7 +843,8 @@ GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
 | `nick` | 发送人昵称 |
 | `sendUid` | 发送人编号 |
 | `type` | 字符串。`0` 文字，不要写成空字符串。`1` 单图文件名，`10` 红包 JSON，`11` 回复，`12` @，`13` 多图，`90` 系统提示，`91` 撤回 |
-| `content` | 原文，最长 2000 字 |
+| `content` | 原文，最长 2000 字。`type` 为 `12` 时已换成正文 |
+| `mentions` | `@` 到的人。每项 `uid`、`nick`。没有时是空数组。`@全体` 往往只在正文里，不会出现在这里 |
 | `id` | 排序键，翻页和去重都用它。推送里的 `groupId` 是群的数字 `id`，不是这条排序键 |
 
 群头像：`{imageBase}/head/{avatar}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。消息图片：`{imageBase}/message/{fileMd5}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。文件名已经带 `?` 或本身是 `http` 地址时不再追加参数。

@@ -4,6 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import software.amazon.awssdk.services.dynamodb.model.AttributeValue;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
@@ -19,10 +21,16 @@ public final class ZhiquanChatRows {
     private ZhiquanChatRows() {
     }
 
-    public record GroupRow(long id, String gid, String name, String ownerName, long updatedAt, String notice, String avatar, MessageRow latest) {
+    public record GroupRow(long id, String gid, String name, String ownerName, long updatedAt, String notice,
+                           String avatar, MessageRow latest, Long memberCount, boolean muted, String ownerId,
+                           Integer noticeStyle, String createdTime) {
     }
 
-    public record MessageRow(long time, String nick, String sendUid, String type, String content, String id) {
+    public record Mention(String uid, String nick) {
+    }
+
+    public record MessageRow(long time, String nick, String sendUid, String type, String content, String id,
+                             List<Mention> mentions) {
     }
 
     public static GroupRow group(Map<String, AttributeValue> item) {
@@ -34,8 +42,10 @@ public final class ZhiquanChatRows {
         if (id == null) {
             return null;
         }
+        Map<String, AttributeValue> raw = map(item.get("raw"));
         return new GroupRow(id, gid, text(item.get("name")), text(item.get("ownerName")),
-                millis(number(item.get("updatedAt"))), notice(item), avatar(item), null);
+                millis(number(item.get("updatedAt"))), notice(item), avatar(item), null,
+                memberCount(item, raw), muted(item, raw), ownerId(item, raw), noticeStyle(raw), createdTime(raw));
     }
 
     /**
@@ -85,7 +95,8 @@ public final class ZhiquanChatRows {
         if (sendUid.isEmpty()) {
             sendUid = text(item.get("sendId"));
         }
-        return new MessageRow(time, nick, sendUid, type, shown(text(item.get("content"))), text(item.get("sk")));
+        String content = text(item.get("content"));
+        return new MessageRow(time, nick, sendUid, type, shown(content), text(item.get("sk")), mentions(content));
     }
 
     /**
@@ -109,6 +120,56 @@ public final class ZhiquanChatRows {
             return clip(text);
         }
         return clip(text);
+    }
+
+    static Long memberCount(Map<String, AttributeValue> item, Map<String, AttributeValue> raw) {
+        return longValue(first(field(raw.get("g_member_count")), field(item.get("g_member_count"))));
+    }
+
+    static boolean muted(Map<String, AttributeValue> item, Map<String, AttributeValue> raw) {
+        String status = first(field(raw.get("forbid_status")), field(item.get("forbid_status")));
+        return !status.isEmpty() && !"0".equals(status);
+    }
+
+    static String ownerId(Map<String, AttributeValue> item, Map<String, AttributeValue> raw) {
+        return first(field(raw.get("g_owner_user_uid")), field(item.get("g_owner_user_uid")));
+    }
+
+    static String createdTime(Map<String, AttributeValue> raw) {
+        return text(raw.get("create_time")).trim();
+    }
+
+    static Integer noticeStyle(Map<String, AttributeValue> raw) {
+        Long style = longValue(field(map(raw.get("noticeCarousel")).get("style")));
+        if (style == null || style < 0 || style > Integer.MAX_VALUE) {
+            return null;
+        }
+        return style.intValue();
+    }
+
+    static List<Mention> mentions(String content) {
+        String text = content == null ? "" : content.trim();
+        if (!text.startsWith("{")) {
+            return List.of();
+        }
+        try {
+            JsonNode people = JSON.readTree(text).path("select_obj");
+            if (!people.isArray() || people.isEmpty()) {
+                return List.of();
+            }
+            List<Mention> mentions = new ArrayList<>();
+            for (JsonNode person : people) {
+                String uid = person.path("user_uid").asText("").trim();
+                String nick = person.path("nickname").asText("").trim();
+                if (uid.isEmpty() && nick.isEmpty()) {
+                    continue;
+                }
+                mentions.add(new Mention(uid, nick));
+            }
+            return List.copyOf(mentions);
+        } catch (Exception ignored) {
+            return List.of();
+        }
     }
 
     /** 翻页游标必须是这个群自己的消息排序键，避免串到别的群。 */
@@ -150,6 +211,10 @@ public final class ZhiquanChatRows {
             return 0;
         }
         return raw < 10_000_000_000L ? raw * 1000 : raw;
+    }
+
+    private static Long longValue(String text) {
+        return parseLong(text);
     }
 
     private static Long parseLong(String text) {

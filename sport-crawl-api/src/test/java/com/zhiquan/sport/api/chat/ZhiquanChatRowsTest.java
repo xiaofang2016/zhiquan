@@ -46,6 +46,22 @@ class ZhiquanChatRowsTest {
                 "raw", AttributeValue.fromM(Map.of(
                         "group_avatar_file_name", AttributeValue.fromS("01c47016f1acca765c4ef6312ebcf104")))));
         assertEquals("01c47016f1acca765c4ef6312ebcf104", avatar.avatar());
+
+        var counted = ZhiquanChatRows.group(Map.of(
+                "gid", AttributeValue.fromS("0000000390"),
+                "name", AttributeValue.fromS("红包收米群"),
+                "raw", AttributeValue.fromM(Map.of(
+                        "g_member_count", AttributeValue.fromS("467739"),
+                        "forbid_status", AttributeValue.fromS("0"),
+                        "g_owner_user_uid", AttributeValue.fromS("400409"),
+                        "create_time", AttributeValue.fromS("2022-12-15 14:09"),
+                        "noticeCarousel", AttributeValue.fromM(Map.of(
+                                "style", AttributeValue.fromN("1")))))));
+        assertEquals(467739L, counted.memberCount());
+        assertFalse(counted.muted());
+        assertEquals("400409", counted.ownerId());
+        assertEquals(1, counted.noticeStyle());
+        assertEquals("2022-12-15 14:09", counted.createdTime());
         assertTrue(ZhiquanChatRows.olderCursor("0000008447", "group#0000008447#msg#0001793492389481#abcdef"));
         assertFalse(ZhiquanChatRows.olderCursor("0000008447", "group#0000000390#msg#0001793492389481#abcdef"));
         assertFalse(ZhiquanChatRows.olderCursor("0000008447", "group#0000008447#msg#"));
@@ -90,6 +106,9 @@ class ZhiquanChatRowsTest {
                         "{\"gid\":\"00000001042\",\"origin_text\":\"@包包揣金豆爱你\",\"select_obj\":[{\"nickname\":\"包包揣金豆\",\"user_uid\":\"2310686\"}]}")));
         assertEquals("@包包揣金豆爱你", mention.content());
         assertEquals("12", mention.type());
+        assertEquals(1, mention.mentions().size());
+        assertEquals("2310686", mention.mentions().get(0).uid());
+        assertEquals("包包揣金豆", mention.mentions().get(0).nick());
         assertTrue(ZhiquanChatRows.isClaimNotice("独自孤单已领取了红包"));
         assertTrue(ZhiquanChatRows.isClaimNotice("领取了红包"));
         assertFalse(ZhiquanChatRows.isClaimNotice("似有似无，等171/200人已领取了红包"));

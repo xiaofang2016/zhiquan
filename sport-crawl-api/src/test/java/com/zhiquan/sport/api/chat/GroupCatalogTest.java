@@ -92,6 +92,6 @@ class GroupCatalogTest {
     }
 
     private static GroupRow row(long id) {
-        return new GroupRow(id, Long.toString(id), "群", "", 0, "", "", null);
+        return new GroupRow(id, Long.toString(id), "群", "", 0, "", "", null, null, false, "", null, "");
     }
 }

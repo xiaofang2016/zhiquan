@@ -363,7 +363,7 @@ POST /prod-api/community/posts/{postId}/redpacket
 
 新消息不要轮询 HTTP。打开页面拉一次列表和当前群的最新 100 条，之后只接 WebSocket。抓取挂着原站长连接，消息到达就会推过来。页面这条 socket 断了，1 秒后重连，之后加倍，最长 30 秒，连上再从 1 秒算。抓取自己断线会先补离线再推。新加入的群大约一分钟内出现。群名、公告、头像最多晚大约 45 秒。消息列表不缓存。
 
-列表是 `GET /prod-api/chat/groups`，按 `latest.time` 从新到旧。每群有 `id`、`gid`、`name`、`ownerName`、`notice`、`avatar`、`latest`。路由和未读都用数字 `id`，不要用可能补零的 `gid`。`avatar` 是文件名，拼在 `imageBase` 上：`{imageBase}/head/{文件名}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。`imageBase` 为空，或是打不开的 `oss.imnono.net` 时，用 `https://imfile.dtthsp.com`。文件名已经是 `http` 地址就直接用；已经带 `?` 就不要再追加参数。没有文件名，或这一页里图片加载失败，显示群名里第一个汉字、字母或数字，没有就显示「群」。刷新页面后再试一次图片。
+列表是 `GET /prod-api/chat/groups`，按 `latest.time` 从新到旧。每群有 `id`、`gid`、`name`、`ownerName`、`ownerId`、`notice`、`noticeStyle`、`avatar`、`memberCount`、`muted`、`createdTime`、`latest`。人数用 `memberCount`，没抓到是 `null`，不要再按群号估一个人数。`muted` 为 `true` 时输入栏显示禁言。`noticeStyle` 是公告样式编号，没有是 `null`。`createdTime` 是创建时间原文。`ownerId` 是群主编号。群主头像和私信没有。路由和未读都用数字 `id`，不要用可能补零的 `gid`。`avatar` 是文件名，拼在 `imageBase` 上：`{imageBase}/head/{文件名}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。`imageBase` 为空，或是打不开的 `oss.imnono.net` 时，用 `https://imfile.dtthsp.com`。文件名已经是 `http` 地址就直接用；已经带 `?` 就不要再追加参数。没有文件名，或这一页里图片加载失败，显示群名里第一个汉字、字母或数字，没有就显示「群」。刷新页面后再试一次图片。
 
 列表右侧预览：图片没有配文时是 `[图片]`，红包用标题，撤回用那句系统字。谁领了红包的单条预览留空。有昵称时写成 `{昵称} {预览}`。时间用 `latest.time`，上海时区，格式 `MM-DD HH:mm`。没有消息显示「没有消息」。
 
@@ -378,7 +378,7 @@ POST /prod-api/community/posts/{postId}/redpacket
 | `type` | 页面 |
 |---|---|
 | `0` 文字、`90` 系统提示 | 普通气泡。`90` 不居中 |
-| `11` 回复、`12` @ | 普通气泡。`12` 的 `@` JSON 接口已经换成正文，例如 `@包包揣金豆爱你`，直接画 `content`，不要再解析那串 JSON。万一还是 JSON，取 `origin_text`。里面的 `[/吐]` 按表情画 |
+| `11` 回复、`12` @ | 普通气泡。`12` 的正文已经换成 `content`，例如 `@包包揣金豆爱你`。被点名的人在 `mentions`，每项 `uid`、`nick`。没有时是空数组。`@全体` 往往只在正文里。里面的 `[/吐]` 按表情画 |
 | `1` | 一张图。`content` 本身就是文件名，不是 JSON |
 | `13` | `content` 是 `{ "text": "", "files": [{ "fileMd5": "", "fileName": "" }] }`。每张图用 `fileMd5`，没有再用 `fileName`。`text` 画在图下面，里面的表情同样要换 |
 | `10` | 红包卡片。见下面。`content` 仍是 JSON |
@@ -720,7 +720,7 @@ POST /prod-api/user/redpack
 | 红包商城 | 只展示，不兑换 |
 | 电视 | 没有频道列表，入口可以留着，里面是空的 |
 | 观看、分享、邀请任务 | 领取会被拒绝，不要显示成已完成 |
-| 原站群成员头像、等级、VIP、@、人数、禁言、管理员、群主私聊 | 接口里没有这些字段，不要编 |
+| 原站群发言人头像、等级、VIP、管理员名单、群主头像和私信 | 接口里没有，不要编。人数、禁言、群主编号、公告样式、消息里点名的人已经在群列表和 `mentions` |
 | 原站群发言、撤回、删除 | 只在本机，别人看不到 |
 | 每日红包发包人头像 | 没有，继续用现在那张固定图 |
 | 预测卡片人数、投注额 | 用原站的数，不加说球帝自己的注 |
