@@ -130,7 +130,7 @@ CodeDeploy 按 `appspec.yml` 盖到 `/var/local/sport-crawl`，钩子以 root �
 | 改了什么 | 怎么上 |
 |---|---|
 | `web/` 页面和三个 Java 包 | 推 `main`。CodeBuild 更新 Lambda `sport-crawl-web`，`scripts/start.sh` 把 `site/web/` 拷进站点目录 |
-| `score-lambda`、`chat-lambda`、`detail-lambda` | 各自打 zip，更新对应函数。比分循环在新代码起来之后的下一轮自我调用里换上。预测拿掉角球要更新 `sport-crawl-detail`，已经存下的正文在返回时也会拿掉 |
+| `score-lambda`、`chat-lambda`、`detail-lambda` | 各自打 zip，更新对应函数。比分循环在新代码起来之后的下一轮自我调用里换上。预测拿掉角球的 `sport-crawl-detail` 已在跑，已经存下的正文在返回时也会拿掉 |
 | 动画桥 | 改 `3.112.56.84` 上的 `anim-bridge`，CloudFront 仍指这台机器的 80 端口 |
 | 职圈群抓取 | `3.112.56.84` 上的 `zhiquan-chat-scraper`，代码在 `/var/local/zhiquan-chat-scraper/bin/scraper.py`。改完要单独拷上去再重启，不随 `main` 流水线 |
 | 职圈群实时 | API Gateway WebSocket `ix1ui9ljn6`，函数 `sport-crawl-chat-live`。页面订阅和推送逻辑在仓库 `chat-live/`。改函数要单独更新代码，推 `main` 只换页面和 Java |

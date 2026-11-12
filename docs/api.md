@@ -91,7 +91,7 @@
 
 意见反馈 `POST /prod-api/user/feedback`，body `{ "token", "content", "contact", "images" }`。`content` 必填，最多 1000 字。`contact` 最多 64 字。`images` 最多 3 个地址。成功 `data` 是这一条：`content`、`contact`、`images`、`time`（`yyyy-MM-dd HH:mm:ss`，北京时间）。`POST /prod-api/user/feedback/list` 的 body 是 `{ "token" }`，`data.records` 最多 20 条，新的在前。
 
-小程序 `POST /prod-api/applet/list`，body `{ "client": "h5" }`。`data` 是数组，每项 `appletId`、`appletName`、`appletTitle`、`appletImage`（空串，图标页面自备）、`appletUrl`、`program`、`idNum`。顺序是说球帝直播、H片、成人短剧、社球帝、UED体育官方网站、吉祥体育官方网站、活动红包、红包商城、ued专属网页。说球帝直播的 `appletTitle` 是「西甲赞助商，五大联赛，NBA，CBA 无延迟超高清观看」，其余标题和名字相同。`apk` 没有「说球帝直播」。`program` 为 `jxt`、`ued`、`wallet`、`mall` 时 `appletUrl` 是空串，走现有吉祥、UED、红包和商城入口，不要拼原站账号参数。`ued专属网页` 的地址是 `https://445d6dq.com`，这个站拒绝被嵌进页面，用新窗口打开。
+小程序 `POST /prod-api/applet/list`，body `{ "client": "h5" }`。`data` 是数组，每项 `appletId`、`appletName`、`appletTitle`、`appletImage`（空串，图标页面自备）、`appletUrl`、`program`、`idNum`。顺序是说球帝直播、H片、成人短剧、社球帝、UED体育官方网站、吉祥体育官方网站、活动红包、红包商城、ued专属网页。说球帝直播的 `appletTitle` 是「西甲赞助商，五大联赛，NBA，CBA 无延迟超高清观看」，其余标题和名字相同。`apk` 没有「说球帝直播」。`program` 为 `jxt`、`ued`、`wallet`、`mall` 时 `appletUrl` 是空串，走现有吉祥、UED、红包和商城入口，不要拼原站账号参数。H片 `appletUrl` 是 `https://miniapp.mxzrbz.com/videoList`，社球帝是 `https://community.syjxyz.com/community/index`，ued专属网页是 `https://445d6dq.com/live-login`。`client` 为 `ipa` 或 `h5` 时这项 `appletTitle` 是「群管晨曦专属」，`apk` 仍是「ued专属网页」。这个站拒绝被嵌进页面，用新窗口打开。
 
 ### 发送验证码
 

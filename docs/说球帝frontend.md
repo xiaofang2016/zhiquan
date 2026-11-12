@@ -357,7 +357,7 @@ POST /prod-api/community/posts/{postId}/redpacket
 
 ## 职圈群聊天
 
-职圈聊天接口看《职圈前端接口》，不要打开 `https://zhiquan.78chat0.com/api/v3/api-docs`。表情专辑目前只有 1 个，原站有 4 个分类，要不要再配等运营定。
+职圈聊天接口看同目录《职圈前端接口》。不要打开 `https://zhiquan.78chat0.com/api/v3/api-docs`。表情专辑目前只有 1 个。原站有 4 个分类，另外 3 个的名字和图还没有，所以没有多配。
 
 首页顶栏是比赛、即时比分、资料库、社球帝，没有「聊天」。职圈群这一屏不从首页进入。比赛播放页里的聊天室还在。下面是职圈群列表的画法，看消息不登录。红包在原站还是待领取时，登录后可以在这里领，钱进说球帝余额。不要写「原站红包，这里只能查看」。不要用抓取账号去原站领。
 
@@ -708,7 +708,7 @@ POST /prod-api/user/redpack
 
 意见反馈走 `POST /prod-api/user/feedback`。提交成功提示「提交成功」。`images` 用已经上传好的地址，最多 3 张。列表用 `POST /prod-api/user/feedback/list`，本地不必再当唯一记录。
 
-小程序目录走 `POST /prod-api/applet/list`，body `{ "client": "apk" }` 或 `ipa`、`h5`。顺序是说球帝直播、H片、成人短剧、社球帝、UED体育官方网站、吉祥体育官方网站、活动红包、红包商城、ued专属网页。说球帝直播的标题是「西甲赞助商，五大联赛，NBA，CBA 无延迟超高清观看」。`appletImage` 是空串，图标继续用页面上的。`apk` 不显示「说球帝直播」。`program` 是 `jxt`、`ued`、`wallet`、`mall` 时打开现有入口，不要把账号参数带到原站。`ued专属网页` 地址 `https://445d6dq.com` 拒绝被嵌进页面，新开一页。
+小程序目录走 `POST /prod-api/applet/list`，body `{ "client": "apk" }` 或 `ipa`、`h5`。顺序是说球帝直播、H片、成人短剧、社球帝、UED体育官方网站、吉祥体育官方网站、活动红包、红包商城、ued专属网页。说球帝直播的标题是「西甲赞助商，五大联赛，NBA，CBA 无延迟超高清观看」。`appletImage` 是空串，图标继续用页面上的。`apk` 不显示「说球帝直播」。`program` 是 `jxt`、`ued`、`wallet`、`mall` 时打开现有入口，不要把账号参数带到原站。H片地址 `https://miniapp.mxzrbz.com/videoList`，社球帝 `https://community.syjxyz.com/community/index`，ued专属网页 `https://445d6dq.com/live-login`。`ipa` 和 `h5` 上这项标题是「群管晨曦专属」，`apk` 上是「ued专属网页」。这个地址拒绝被嵌进页面，新开一页。
 
 下面这些没有数据，页面留空或用现在的固定文案，不要自己补：
 
