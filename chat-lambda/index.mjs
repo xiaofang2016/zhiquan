@@ -1,4 +1,5 @@
 import { isFresh, latest, merge, newerThan, olderThan, pack } from "./doc.mjs";
+import { refresh, rewrite } from "./jx8.mjs";
 import { history } from "./host.mjs";
 import { read, write } from "./store.mjs";
 
@@ -7,14 +8,15 @@ const LATEST = 100;
 const FRESH_MS = Number(process.env.CHAT_FRESH_MS || 8000);
 const CHAT_KEY = process.env.CHAT_KEY || "";
 
-function json(status, body) {
+async function json(status, body) {
+  await refresh();
   return {
     statusCode: status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store"
     },
-    body: JSON.stringify(body)
+    body: rewrite(body)
   };
 }
 

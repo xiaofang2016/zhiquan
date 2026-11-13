@@ -1,13 +1,15 @@
 import { InvokeCommand, LambdaClient } from "@aws-sdk/client-lambda";
 import { changes, counts, query, stamp } from "./board.mjs";
 import { claim, loadBoard, readBoard, release, writeBoard } from "./store.mjs";
+import { refresh, rewrite } from "./jx8.mjs";
 import { pull } from "./upstream.mjs";
 
 const GAP_MS = Number(process.env.SCORE_GAP_MS || 15000);
 const STALE_MS = Number(process.env.SCORE_STALE_MS || 90000);
 const lambda = new LambdaClient({ region: process.env.AWS_REGION || "ap-northeast-1" });
 
-function json(status, body, event) {
+async function json(status, body, event) {
+  await refresh();
   const headers = {
     "content-type": "application/json; charset=utf-8",
     "cache-control": "no-store"
@@ -19,7 +21,7 @@ function json(status, body, event) {
   return {
     statusCode: status,
     headers,
-    body: JSON.stringify(body)
+    body: rewrite(body)
   };
 }
 

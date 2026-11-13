@@ -26,6 +26,8 @@
 
 `code` 是字符串 `"0"`。先看 `code`，再读 `data`。参数或账号错误一般是 HTTP 400，`msg` 可以直接提示。
 
+网关、聊天室、四个栏目和职圈群推送里的域名，接口按名单成对换过。一行一对，左边整段换成右边。页面不用再换。
+
 聊天和四个栏目暂时拿不到时仍是 HTTP 200，`code` 为 `"1"`，`msg` 可提示。
 
 资料库是另一套。HTTP 成功后读 `data`，翻页读 `meta`。失败时用 `message`。
@@ -437,6 +439,8 @@ X-Admin-Key: 后台密钥
 ```text
 GET https://kzb001.net/prod-api/match/detail?mid={id}&type={type}&isnew=1&pid=4&langtype=zh&test=1&zoneId=Asia/Shanghai
 ```
+
+这一份不经过说球帝接口。页面先读 `GET /prod-api/domain-rewrites`，再按同样的名单换。名单还没拿到时按 `JX8.com=JX8.CC` 和 `qiumishuo.com=qiumishuo.cc`。`www.jx8.com` 和 `jx8.com.cn` 不包含在 `JX8.com` 这一对里。
 
 线路来自比赛对象的 `live_urls`、`mirror_live_urls`、`global_live_urls`、`live_cartoon_url`。同一 `url` 只留一条。名字是「动画」，或地址里有 `nami.com`、`livetracker`，就当动画。动画里 `https://widgets-livetracker.nami.com/` 开头的地址改去：
 

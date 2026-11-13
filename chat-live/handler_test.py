@@ -1,6 +1,6 @@
 import unittest
 
-from handler import group_number, is_claim, live_payload, shown_content, unmarshall
+from handler import apply_pairs, group_number, is_claim, live_payload, parse_pairs, rewrite_jx8, shown_content, unmarshall
 
 
 def image(**fields):
@@ -80,6 +80,17 @@ class LivePayloadTest(unittest.TestCase):
         })
         self.assertEqual("0", payload["message"]["type"])
         self.assertEqual(8447, payload["groupId"])
+
+    def test_domain_ignores_case(self):
+        self.assertEqual('{"name":"去 JX8.CC 和 JX8.CC"}', rewrite_jx8('{"name":"去 JX8.com 和 jx8.COM"}'))
+        self.assertEqual("www.jx8.com", rewrite_jx8("www.jx8.com"))
+        self.assertEqual("去 qiumishuo.cc", rewrite_jx8("去 qiumishuo.com"))
+        self.assertEqual("www.qiumishuo.com", rewrite_jx8("www.qiumishuo.com"))
+
+    def test_pairs_stay_one_to_one(self):
+        rules = parse_pairs("www.jx8.com=www.JX8.CC\nJX8.com=JX8.CC\nJX8.com=JX8.NET\n")
+        self.assertEqual([("www.jx8.com", "www.JX8.CC"), ("JX8.com", "JX8.NET")], rules)
+        self.assertEqual("看 www.JX8.CC 和 JX8.NET", apply_pairs("看 www.jx8.com 和 jx8.com", rules))
 
     def test_messages_fan_out_to_the_group_and_everyone(self):
         from handler import fanout_keys, live_group, target_of

@@ -22,6 +22,8 @@ services:
       JAVA_TOOL_OPTIONS: "-XX:MaxRAMPercentage=75"
       SPORT_AUTH_TOKEN_SECRET: ${SPORT_AUTH_TOKEN_SECRET}
       SPORT_ADMIN_KEY: ${SPORT_ADMIN_KEY:-}
+    volumes:
+      - /var/local/sport-crawl-config:/etc/sport-crawl:ro
     mem_limit: 1g
     cpus: 0.5
     restart: unless-stopped

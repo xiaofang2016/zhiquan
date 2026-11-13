@@ -1,18 +1,20 @@
 import { publicTab, putSection, readSection, sectionOf } from "./doc.mjs";
 import { read, write } from "./store.mjs";
+import { refresh, rewrite } from "./jx8.mjs";
 import { presentTip, pull } from "./upstream.mjs";
 
 const gates = new Map();
 const DETAIL_KEY = process.env.DETAIL_KEY || "";
 
-function json(status, body) {
+async function json(status, body) {
+  await refresh();
   return {
     statusCode: status,
     headers: {
       "content-type": "application/json; charset=utf-8",
       "cache-control": "no-store"
     },
-    body: JSON.stringify(body)
+    body: rewrite(body)
   };
 }
 

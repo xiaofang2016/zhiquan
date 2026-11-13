@@ -2,6 +2,83 @@
 
 import json
 import os
+import re
+import time
+import urllib.request
+
+_NAME = re.compile(
+    r"[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$",
+    re.IGNORECASE,
+)
+_DEFAULT = [("JX8.com", "JX8.CC"), ("qiumishuo.com", "qiumishuo.cc")]
+_PINNED = bool(os.environ.get("SPORT_DOMAIN_REWRITES", "").strip())
+_RULES = []
+_FETCHED = 0.0
+
+
+def parse_pairs(text):
+    if text is None:
+        return list(_DEFAULT)
+    found = {}
+    for line in str(text).splitlines():
+        trimmed = line.strip()
+        if not trimmed or trimmed.startswith("#"):
+            continue
+        for piece in trimmed.split(","):
+            item = piece.strip()
+            split = item.find("=")
+            if split <= 0:
+                continue
+            src = item[:split].strip()
+            dst = item[split + 1:].strip()
+            if _NAME.fullmatch(src) and _NAME.fullmatch(dst) and len(src) <= 253 and len(dst) <= 253:
+                found[src.lower()] = (src, dst)
+    return sorted(found.values(), key=lambda pair: len(pair[0]), reverse=True)
+
+
+def apply_pairs(text, pairs=None):
+    rules = _RULES if pairs is None else pairs
+    if not text or not rules:
+        return text
+    pattern = re.compile("|".join(re.escape(src) for src, _dst in rules), re.IGNORECASE)
+    table = {src.lower(): dst for src, dst in rules}
+
+    def replacer(match):
+        start, end = match.span()
+        before = text[start - 1] if start else ""
+        after = text[end] if end < len(text) else ""
+        if (before and re.match(r"[A-Za-z0-9.-]", before)) or (after and re.match(r"[A-Za-z0-9.-]", after)):
+            return match.group(0)
+        return table.get(match.group(0).lower(), match.group(0))
+
+    return pattern.sub(replacer, text)
+
+
+def refresh_rules():
+    global _RULES, _FETCHED
+    if _PINNED or time.time() - _FETCHED < 60:
+        return
+    _FETCHED = time.time()
+    url = os.environ.get(
+        "SPORT_DOMAIN_REWRITES_URL",
+        "https://dgtplaoir00la.cloudfront.net/prod-api/domain-rewrites",
+    )
+    try:
+        with urllib.request.urlopen(url, timeout=2) as response:
+            body = json.loads(response.read().decode("utf-8"))
+        rows = body.get("data") if isinstance(body, dict) else None
+        if isinstance(rows, list):
+            _RULES = parse_pairs("\n".join(f"{row.get('from', '')}={row.get('to', '')}" for row in rows if isinstance(row, dict)))
+    except Exception:
+        return
+
+
+def rewrite_jx8(text):
+    return apply_pairs(text)
+
+
+_RULES = parse_pairs(os.environ.get("SPORT_DOMAIN_REWRITES") if _PINNED else None)
+
 
 TABLE = os.environ.get("TABLE", "zhiquan_chat")
 WS_ENDPOINT = os.environ.get("WS_ENDPOINT", "")
@@ -252,7 +329,8 @@ def push(payload):
     keys = fanout_keys(payload)
     if not keys:
         return
-    data = json.dumps(payload, ensure_ascii=False).encode("utf-8")
+    refresh_rules()
+    data = rewrite_jx8(json.dumps(payload, ensure_ascii=False)).encode("utf-8")
     sent = set()
     for key in keys:
         start = None

@@ -21,7 +21,8 @@ public class CommunityCacheFilter extends OncePerRequestFilter {
                 && !path.startsWith("/prod-api/community/video/")
                 && !path.startsWith("/prod-api/community/media/"))
                 || path.startsWith("/prod-api/chat/groups")
-                || path.startsWith("/prod-api/goods/"))) {
+                || path.startsWith("/prod-api/goods/")
+                || path.startsWith("/prod-api/domain-rewrites"))) {
             response.setHeader("Cache-Control", "no-store");
         }
         chain.doFilter(request, response);

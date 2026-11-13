@@ -44,3 +44,5 @@ sport:
   ued:
     base-url: ${SPORT_UED_BASE_URL:https://api.jixsports.com}
     boxim-secret-name: ${SPORT_UED_BOXIM_SECRET_NAME:prod/jxt-boxim}
+  domain-rewrites: ${SPORT_DOMAIN_REWRITES:}
+  domain-rewrites-file: ${SPORT_DOMAIN_REWRITES_FILE:/etc/sport-crawl/domain-rewrites}

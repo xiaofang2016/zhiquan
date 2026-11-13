@@ -1,8 +1,9 @@
 import { reactive } from "vue";
-import { state, toast } from "../state.js";
+import { API, state, toast } from "../state.js";
 import { postAccount } from "./api.js";
 import { openAccount } from "./session.js";
 import { animationSrc, applyScore, linesOf, playerPath, readPlayerRoute, sportType } from "./match.js";
+import { loadRules, rewriteJx8 } from "./jx8.js";
 import { listedMatch } from "./list.js";
 
 const CHAT_API = "https://chat.kzbzcq.com/chat";
@@ -98,7 +99,7 @@ export async function loadPlayer(route) {
       zoneId: "Asia/Shanghai"
     });
     const response = await fetch("https://kzb001.net/prod-api/match/detail?" + query);
-    const body = await response.json();
+    const body = rewriteJx8(await response.json(), await loadRules(API));
     const info = body && body.data && body.data.matchinfo;
     if (info && String(info.id) === String(route.id)) match = info;
   } catch (error) {}
