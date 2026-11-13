@@ -12,6 +12,7 @@
         </div>
         <iframe v-if="frameSrc" :src="frameSrc" allowfullscreen></iframe>
         <video v-show="videoOn" ref="video" controls autoplay playsinline @resize="reveal" @playing="reveal" @error="covered = true"></video>
+        <div v-show="patch" class="wm" :style="patchStyle"></div>
       </div>
       <div class="screen-top">
         <button class="back" type="button" @click="closePlayer">返回</button>
@@ -62,6 +63,7 @@ import DetailFacts from "./DetailFacts.vue";
 import { state, toast } from "../state.js";
 import { applyScore, liveStatus, phase, scoreText, sportType } from "../lib/match.js";
 import { animationFrame, chatOlder, closePlayer, detailLines, loadDetail, openRoomChat, playLine, room, sendRoomChat, showDetailTab, stopPlayback, stopRoomChat, stopDetailRoom } from "../lib/detail.js";
+import { videoContentBox, watermarkPatch } from "../lib/watermark.js";
 
 const stage = ref(null);
 const video = ref(null);
@@ -70,6 +72,7 @@ const draft = ref("");
 const sending = ref(false);
 const covered = ref(true);
 const videoOn = ref(false);
+const patch = ref(null);
 const frameSrc = ref("");
 const active = ref(-1);
 const tabs = [
@@ -87,8 +90,30 @@ const coverScore = computed(() => {
   return phase(current) === "wait" || !current.score ? "-" : String(current.score).replace("-", " : ");
 });
 
+const patchStyle = computed(() => {
+  const box = patch.value;
+  if (!box) return {};
+  return {
+    left: box.left + "px",
+    top: box.top + "px",
+    width: box.width + "px",
+    height: box.height + "px"
+  };
+});
+
+function placeWatermark() {
+  const el = video.value;
+  if (!el || covered.value || !videoOn.value) {
+    patch.value = null;
+    return;
+  }
+  const content = videoContentBox(el.clientWidth, el.clientHeight, el.videoWidth, el.videoHeight);
+  patch.value = watermarkPatch(sportType(match.value), content);
+}
+
 function reveal() {
   if (video.value && video.value.videoWidth > 0) covered.value = false;
+  placeWatermark();
 }
 
 async function play(choice, index) {
@@ -146,6 +171,8 @@ function onChatScroll() {
   chatOlder(state.detail);
 }
 
+watch([covered, videoOn], () => placeWatermark());
+
 watch(() => room.messages.length, async () => {
   await nextTick();
   const list = chatList.value;
@@ -162,7 +189,12 @@ function startRoom() {
   if (firstVideo >= 0) play(choices[firstVideo], firstVideo);
 }
 
-onMounted(startRoom);
+let frameObserver;
+onMounted(() => {
+  startRoom();
+  frameObserver = new ResizeObserver(() => placeWatermark());
+  if (stage.value) frameObserver.observe(stage.value);
+});
 watch(() => state.detail && state.detail.id, (id, prev) => {
   if (!id || id === prev) return;
   stopPlayback();
@@ -175,6 +207,7 @@ watch(() => state.detail && state.detail.id, (id, prev) => {
   startRoom();
 });
 onUnmounted(() => {
+  if (frameObserver) frameObserver.disconnect();
   stopPlayback();
   stopRoomChat();
   stopDetailRoom();

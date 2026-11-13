@@ -446,6 +446,8 @@ GET https://player.kzbzcq.com/anim?src={编码后的原地址}
 
 其余地址原样播放。`.flv` 用 flv.js 1.6.2。同一地址把后缀换成 `.m3u8` 给 iOS。
 
+篮球直播画面右上角的域名是压在画面里的。播出后按画面本身盖一块圆角遮罩，画面用 `contain` 留边时遮罩跟着画面走，不挡返回、底部比分和线路。足球右上角是比分，不盖。动画不盖。
+
 比赛资讯用网关的 `/prod-api/match/news/information/list` 和 `/news/information/detail`。前瞻下面那一排视频列表里没有，留空，不要编地址。详情没有点赞和评论。
 
 聊天、直播、指数、数据、预测都要 `mid` 和 `type`。`mid` 是比赛 id。`type` 缺省按 `1`。
