@@ -815,7 +815,7 @@ CBA（`id=3`、`type=2`）：
 
 ## 职圈群聊天
 
-首页顶栏没有「聊天」。职圈群接口仍在，走上面的网关，不是播放页聊天室。只读，不需要登录。响应 `cache-control: no-store`。
+首页顶栏有「聊天」，打开职圈群。接口走上面的网关，不是播放页聊天室。只读，不需要登录。响应 `cache-control: no-store`。
 
 ```text
 GET /prod-api/chat/groups
