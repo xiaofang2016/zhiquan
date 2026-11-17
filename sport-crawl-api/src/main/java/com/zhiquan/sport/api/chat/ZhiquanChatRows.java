@@ -96,6 +96,13 @@ public final class ZhiquanChatRows {
             sendUid = text(item.get("sendId"));
         }
         String content = text(item.get("content"));
+        if ("1".equals(field(item.get("recalled")))) {
+            String recall = text(item.get("recall")).trim();
+            if (!recall.isEmpty()) {
+                content = recall;
+                type = "91";
+            }
+        }
         return new MessageRow(time, nick, sendUid, type, shown(content), text(item.get("sk")), mentions(content));
     }
 

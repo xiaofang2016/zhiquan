@@ -109,6 +109,16 @@ class ZhiquanChatRowsTest {
         assertEquals(1, mention.mentions().size());
         assertEquals("2310686", mention.mentions().get(0).uid());
         assertEquals("包包揣金豆", mention.mentions().get(0).nick());
+
+        var recalled = ZhiquanChatRows.message(Map.of(
+                "time", AttributeValue.fromN("5"),
+                "msgType", AttributeValue.fromS("0"),
+                "nickName", AttributeValue.fromS("甲"),
+                "content", AttributeValue.fromS("你好"),
+                "recalled", AttributeValue.fromS("1"),
+                "recall", AttributeValue.fromS("{\"uid\":\"1\",\"nickName\":\"甲\",\"beUid\":\"1\",\"beNickName\":\"甲\",\"fpForMessage\":\"abc\"}")));
+        assertEquals("91", recalled.type());
+        assertTrue(recalled.content().contains("fpForMessage"));
         assertTrue(ZhiquanChatRows.isClaimNotice("独自孤单已领取了红包"));
         assertTrue(ZhiquanChatRows.isClaimNotice("领取了红包"));
         assertFalse(ZhiquanChatRows.isClaimNotice("似有似无，等171/200人已领取了红包"));

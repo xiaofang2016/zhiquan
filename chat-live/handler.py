@@ -147,7 +147,9 @@ def live_payload(item):
     if str(item.get("kind") or "") != "group_msg":
         return None
     group_id = group_of(item)
-    content = shown_content(str(item.get("content") or ""))
+    raw_content = str(item.get("content") or "")
+    named = mention_list(raw_content)
+    content = shown_content(raw_content)
     if not group_id or not content.strip() or is_claim(content):
         return None
     sk = str(item.get("sk") or "")
@@ -163,9 +165,34 @@ def live_payload(item):
             "sendUid": str(item.get("sendUid") or item.get("sendId") or ""),
             "type": msg_type(item),
             "content": content,
+            "mentions": named,
             "id": sk,
         },
     }
+
+
+def mention_list(content):
+    """和 HTTP 一样，从 select_obj 取出被 @ 的人。"""
+    text = str(content or "").strip()
+    if not text.startswith("{"):
+        return []
+    try:
+        data = json.loads(text)
+    except json.JSONDecodeError:
+        return []
+    people = data.get("select_obj") if isinstance(data, dict) else None
+    if not isinstance(people, list):
+        return []
+    found = []
+    for person in people:
+        if not isinstance(person, dict):
+            continue
+        uid = str(person.get("user_uid") or "").strip()
+        nick = str(person.get("nickname") or "").strip()
+        if not uid and not nick:
+            continue
+        found.append({"uid": uid, "nick": nick})
+    return found
 
 
 def shown_content(content):

@@ -849,7 +849,7 @@ GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
 | `type` | 字符串。`0` 文字，不要写成空字符串。`1` 单图文件名，`10` 红包 JSON，`11` 回复，`12` @，`13` 多图，`90` 系统提示，`91` 撤回 |
 | `content` | 原文，最长 2000 字。`type` 为 `12` 时已换成正文 |
 | `mentions` | `@` 到的人。每项 `uid`、`nick`。没有时是空数组。`@全体` 往往只在正文里，不会出现在这里 |
-| `id` | 排序键，翻页和去重都用它。推送里的 `groupId` 是群的数字 `id`，不是这条排序键 |
+| `id` | 排序键，翻页和去重都用它。推送里的 `groupId` 是群的数字 `id`，不是这条排序键。原站抓来的末段是指纹前 16 位。职圈写进去的末段是完整 `localId`，只留字母和数字，最长 64 位 |
 
 群头像：`{imageBase}/head/{avatar}?imageView2/1/w/256/h/256&imgType=group&imageMogr2/format/webp`。消息图片：`{imageBase}/message/{fileMd5}?imageView2/2/w/640/h/640&imageMogr2/format/webp`。文件名已经带 `?` 或本身是 `http` 地址时不再追加参数。
 
@@ -887,14 +887,14 @@ wss://ix1ui9ljn6.execute-api.ap-northeast-1.amazonaws.com/prod
 连上后发送 `{ "action": "subscribe", "groupId": "all" }`。保活发送 `{ "action": "ping" }`。新消息推送：
 
 ```json
-{ "groupId": 8447, "message": { "time": 0, "nick": "", "sendUid": "", "type": "0", "content": "", "id": "" } }
+{ "groupId": 8447, "message": { "time": 0, "nick": "", "sendUid": "", "type": "0", "content": "", "mentions": [], "id": "" } }
 ```
 
-推送里的 `content` 和上面的 HTTP 一样：带 `origin_text` 的 @ 已经换成正文，红包和图片仍是 JSON。
+推送里的 `message` 和上面的 HTTP 那一行一样，带 `mentions`。没有被点名的人时是空数组。`content` 同样处理：带 `origin_text` 的 @ 已经换成正文，红包和图片仍是 JSON。
 
 新出现的群推送 `{ "group": { "id": 0, "gid": "", "name": "", "ownerName": "", "notice": "", "avatar": "" } }`。未读数不在接口里，由页面按推送在本地累加，点开该群后清掉，没有上限。
 
-数据在 DynamoDB `zhiquan_chat`。抓取挂着原站长连接，消息到达后由上面的函数推给已连接的浏览器，页面不用为了新消息轮询这两个 GET。抓取断线会先补离线再重连，补上的新行也会推。群列表大约每分钟重读，账号新加入的群在这一轮写入后推送。账号没加入的群不会出现。
+数据在 DynamoDB `zhiquan_chat`。抓取挂着原站长连接，消息到达后由上面的函数推给已连接的浏览器，页面不用为了新消息轮询这两个 GET。抓取断线会先补离线再重连，补上的新行也会推。职圈复制群里发出的消息写进同一张表后，也会调用这个函数推送。撤回只改原来那一行，标成 `type` `91`，正文是 `uid`、`nickName`、`beUid`、`beNickName`、`fpForMessage`，不再另插一条。群列表大约每分钟重读，账号新加入的群在这一轮写入后推送。账号没加入的群不会出现。
 
 ## 播放页发言
 

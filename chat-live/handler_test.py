@@ -32,6 +32,7 @@ class LivePayloadTest(unittest.TestCase):
             "sendUid": "400275",
             "type": "0",
             "content": "你好[/发呆]",
+            "mentions": [],
             "id": "group#0000008447#msg#0001793492389481#abcdefabcdefabcd",
         }, payload["message"])
 
@@ -65,6 +66,7 @@ class LivePayloadTest(unittest.TestCase):
         ))
         self.assertEqual("@包包揣金豆爱你", payload["message"]["content"])
         self.assertEqual("12", payload["message"]["type"])
+        self.assertEqual([{"uid": "2310686", "nick": "包包揣金豆"}], payload["message"]["mentions"])
         self.assertEqual(shown_content('{"walletId":"1","description":"西甲赞助商"}'), '{"walletId":"1","description":"西甲赞助商"}')
 
     def test_text_type_zero_is_kept(self):
