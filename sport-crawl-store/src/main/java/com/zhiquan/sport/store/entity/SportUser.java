@@ -22,11 +22,15 @@ public class SportUser {
     private String jxtAccount;
     private String jxtAccessToken;
     private long jxtTokenExpire;
+    /** {@code "1"} 还没设过吉祥登录密码，{@code "0"} 已经有，空是还没判断。 */
+    private String jxtNeedPassword;
     private boolean uedBound;
     private String uedUid;
     private String uedAccount;
     private String uedAccessToken;
     private long uedTokenExpire;
+    /** {@code "1"} 还没设过 UED 登录密码，{@code "0"} 已经有，空是还没判断。 */
+    private String uedNeedPassword;
     private long balanceCent;
     private long jxtWithdrawnCent;
     private long uedWithdrawnCent;

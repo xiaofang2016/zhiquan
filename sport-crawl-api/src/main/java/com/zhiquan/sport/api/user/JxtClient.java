@@ -74,6 +74,50 @@ public class JxtClient {
         return account(data, username);
     }
 
+    /**
+     * 短信登录之后看这个号还要不要设登录密码。
+     * 对方 {@code is_first_set_pass} 不是 1，或初始密码已经登不上，算已经设过。
+     * 初始密码还能登录时返回新令牌，调用方要换掉刚才那张。
+     */
+    public Inspect inspectNewAccount(String username, String accessToken, String agentPhone) {
+        int first = firstSet(accessToken, agentPhone);
+        if (first != 1) {
+            return new Inspect(VendorPassword.needAfter(first, null, false), null);
+        }
+        try {
+            JsonNode data = postPublic("/login", Map.of(
+                    "username", username,
+                    "password", VendorPassword.INITIAL
+            ), agentPhone);
+            if (data.path("access_token").asText("").isBlank()) {
+                boolean matched = "2".equals(data.path("remote_login").asText(""));
+                return new Inspect(matched ? "1" : null, null);
+            }
+            return new Inspect("1", account(data, username));
+        } catch (IllegalArgumentException ex) {
+            return new Inspect(VendorPassword.needAfter(1, ex.getMessage(), false), null);
+        }
+    }
+
+    public void setLoginPassword(String accessToken, String password, String agentPhone) {
+        postAuthed("/setpass", accessToken, agentPhone, Map.of(
+                "password", password,
+                "repassword", password
+        ));
+    }
+
+    private int firstSet(String accessToken, String agentPhone) {
+        try {
+            JsonNode data = getAuthed("/accountsafe", accessToken, agentPhone);
+            if (data == null || data.isMissingNode() || !data.has("is_first_set_pass")) {
+                return -1;
+            }
+            return data.path("is_first_set_pass").asInt(-1);
+        } catch (RuntimeException ex) {
+            return -1;
+        }
+    }
+
     private static JxtAccount account(JsonNode data, String fallbackName) {
         String uid = data.path("id").asText("");
         if (uid.isBlank()) {
@@ -126,20 +170,55 @@ public class JxtClient {
     }
 
     private JsonNode postPublic(String path, Map<String, ?> fields) {
+        Object mobile = fields.get("mobile");
+        return postPublic(path, fields, mobile == null ? "" : String.valueOf(mobile));
+    }
+
+    private JsonNode postPublic(String path, Map<String, ?> fields, String agentPhone) {
         if (baseUrl.isBlank()) {
             throw new IllegalArgumentException("吉祥接口未配置");
         }
         ObjectNode body = json.createObjectNode();
         body.put("merchant_no", "10011");
         fields.forEach((key, value) -> body.put(key, String.valueOf(value)));
-        Object mobile = fields.get("mobile");
         HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + path))
                 .timeout(Duration.ofSeconds(15))
                 .header("content-type", "application/json")
-                .header("user-agent", SportVendorAgent.forPhone(mobile == null ? "" : String.valueOf(mobile)))
+                .header("user-agent", SportVendorAgent.forPhone(agentPhone))
                 .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
                 .build();
         return send(request);
+    }
+
+    private JsonNode getAuthed(String path, String accessToken, String agentPhone) {
+        if (baseUrl.isBlank()) {
+            throw new IllegalArgumentException("吉祥接口未配置");
+        }
+        HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + path))
+                .timeout(Duration.ofSeconds(15))
+                .header("authorization", "Bearer " + accessToken)
+                .header("user-agent", SportVendorAgent.forPhone(agentPhone))
+                .GET()
+                .build();
+        return send(request);
+    }
+
+    private void postAuthed(String path, String accessToken, String agentPhone, Map<String, ?> fields) {
+        if (baseUrl.isBlank()) {
+            throw new IllegalArgumentException("吉祥接口未配置");
+        }
+        ObjectNode body = json.createObjectNode();
+        body.put("merchant_no", "10011");
+        body.put("access_token", accessToken);
+        fields.forEach((key, value) -> body.put(key, String.valueOf(value)));
+        HttpRequest request = HttpRequest.newBuilder(URI.create(baseUrl + path))
+                .timeout(Duration.ofSeconds(15))
+                .header("content-type", "application/json")
+                .header("authorization", "Bearer " + accessToken)
+                .header("user-agent", SportVendorAgent.forPhone(agentPhone))
+                .POST(HttpRequest.BodyPublishers.ofString(body.toString()))
+                .build();
+        send(request);
     }
 
     private JsonNode send(HttpRequest request) {
@@ -239,5 +318,9 @@ public class JxtClient {
     }
 
     public record JxtAccount(String uid, String username, String accessToken, long expireAt) {
+    }
+
+    /** {@code need} 为 {@code "1"}、{@code "0"} 或 {@code null}。{@code replacement} 是初始密码登录换来的新令牌。 */
+    public record Inspect(String need, JxtAccount replacement) {
     }
 }

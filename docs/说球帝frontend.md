@@ -677,6 +677,7 @@ POST /prod-api/user/redpack
 | `POST /prod-api/user/{jxt\|ued}/status` | `{ "token" }` | 绑定状态 |
 | `POST /prod-api/user/{jxt\|ued}/sms` | `{ "token" }` | `null`。手机号用当前登录账号，不要再传 |
 | `POST /prod-api/user/{jxt\|ued}/bind` | `{ "token", "code" }` | 绑定状态 |
+| `POST /prod-api/user/{jxt\|ued}/password` | `{ "token", "password", "confirm" }` | 绑定状态。只在 `needPassword` 为 `"1"` 时调用 |
 | `POST /prod-api/user/{jxt\|ued}/unbind` | `{ "token" }` | 绑定状态 |
 | `POST /prod-api/user/{jxt\|ued}/withdraw` | `{ "token", "amount" }` | 绑定状态，另有 `tradeNo`。`amount` 是元，最多两位小数，最低 10 |
 
@@ -688,8 +689,13 @@ POST /prod-api/user/redpack
 | `account` | 对方用户名打码。未绑定是空串 |
 | `balance` | 说球帝余额，元，两位小数 |
 | `withdrawn` | 这个平台累计提现成功的金额，元，两位小数 |
+| `needPassword` | `"1"` 这个吉祥或 UED 号还没有登录密码。`"0"` 是已经有，或这次判断不了。没这个字段时按 `"0"` |
 
-账号密码绑定走 `POST /prod-api/user/jxt/bind/password`，UED 是 `POST /prod-api/user/ued/bind/password`。请求体 `{ "token", "username", "password" }`。`username` 填用户名或手机号。页面不要自己调吉祥登录，也不要留下 `access_token`。成功 `data` 和短信绑定一样，是 `isBind`、`account`、`balance`、`withdrawn`。账号或密码空着时是「请输入账号」或「请输入密码」。异地登录要短信时是「请用短信验证」，改走验证码。账号或密码不对时 `msg` 是吉祥原文。
+短信绑定返回 `needPassword` 为 `"1"` 时，打开设置登录密码页，把两次输入交给 `POST /prod-api/user/jxt/password`（UED 换成 `ued`）。不要只在本地记「已经看过」。成功后 `needPassword` 变成 `"0"`，之后用用户名或手机号加这个密码走账号密码绑定。失败时 `msg` 原样提示。已经是 `"0"` 时不要再打开，再提交会得到「已经设置过密码」，原来的密码不变。
+
+对方实际规则是 8 到 16 位，必须同时有字母和数字，不能有符号、空格或中文。不符合时是「密码必须包含字母+数字，且长度8~16位」。吉祥页如果只验至少 6 位，更短的密码会被这句拒绝。UED 还不能和账号或手机号相同，否则是「密码不能与账号相同」。弱密码名单继续用页面自己的，说球帝不另给一份。密码不要记在本地。
+
+账号密码绑定走 `POST /prod-api/user/jxt/bind/password`，UED 是 `POST /prod-api/user/ued/bind/password`。请求体 `{ "token", "username", "password" }`。`username` 填用户名或手机号。页面不要自己调吉祥登录，也不要留下 `access_token`。成功 `data` 和短信绑定一样，并带 `needPassword`，账号密码绑上的是 `"0"`。账号或密码空着时是「请输入账号」或「请输入密码」。异地登录要短信时是「请用短信验证」，改走验证码。账号或密码不对时 `msg` 是吉祥原文。
 
 未登录是「请先登录」。提现还没绑定时，吉祥是「请先绑定吉祥账号」，UED 把「吉祥」换成「UED」。
 

@@ -14,8 +14,8 @@
 | `POST /prod-api/user/gift`、`/predict`、`/predict/bet`、`/predict/rank`、`/wallet/sign`、`/phone/sms`、`/updatePhone` | 送礼、预测、现金签到、修改手机号 |
 | `POST /prod-api/user/feedback`、`/user/feedback/list` | 意见反馈。要登录。列表最多 20 条，新的在前 |
 | `POST /prod-api/applet/list` | 小程序目录。body `{ "client": "apk" }`，`client` 可以是 `apk`、`ipa`、`h5`，省略返回全部。不用登录 |
-| `POST /prod-api/user/jxt/status` `/sms` `/bind` `/bind/password` `/unbind` `/withdraw` | 吉祥绑定和提现。短信见 [吉祥转账对接](jxt.md)。账号密码是 `/bind/password`，body `{ "token", "username", "password" }`，页面拿不到 `access_token` |
-| `POST /prod-api/user/ued/status` `/sms` `/bind` `/bind/password` `/unbind` `/withdraw` | UED 绑定和提现，商户号 `10012`，其余与吉祥相同 |
+| `POST /prod-api/user/jxt/status` `/sms` `/bind` `/bind/password` `/password` `/unbind` `/withdraw` | 吉祥绑定、首次设登录密码和提现。短信见 [吉祥转账对接](jxt.md)。`status` 和 `bind` 的 `data` 多 `needPassword`：`"1"` 是这个吉祥号还没有登录密码，`"0"` 是已经有或判断不了。设密码是 `/password`，body `{ "token", "password", "confirm" }`，成功后 `needPassword` 为 `"0"`。账号密码绑定仍是 `/bind/password`，body `{ "token", "username", "password" }`，页面拿不到 `access_token` |
+| `POST /prod-api/user/ued/status` `/sms` `/bind` `/bind/password` `/password` `/unbind` `/withdraw` | UED 绑定、首次设登录密码和提现，商户号 `10012`，其余与吉祥相同。UED 密码不能和账号或手机号相同 |
 | `POST /prod-api/user/bound-login` | 职圈取吉祥、UED 或说球帝直播令牌。浏览器不要调用，见 [吉祥转账对接](jxt.md) |
 | `GET /prod-api/match/list/new2` | 即时比分 |
 | `GET /prod-api/database/`、`/prod-api/team/`、`/prod-api/player/`、`/prod-api/manage/` | 资料库 |

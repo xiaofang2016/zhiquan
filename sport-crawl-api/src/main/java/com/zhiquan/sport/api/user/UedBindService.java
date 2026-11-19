@@ -40,7 +40,38 @@ public class UedBindService {
         if (!code.matches("\\d{4,6}")) {
             throw new IllegalArgumentException("请输入验证码");
         }
-        remember(user, ued.confirm(user.getPhone(), code));
+        UedClient.UedAccount account = ued.confirm(user.getPhone(), code);
+        String username = account.username().isBlank() ? user.getPhone() : account.username();
+        UedClient.Inspect inspect = ued.inspectNewAccount(username, account.accessToken(), user.getPhone());
+        if (inspect.replacement() != null) {
+            account = inspect.replacement();
+        }
+        remember(user, account, inspect.need());
+        return view(user);
+    }
+
+    public Map<String, String> setPassword(String token, String passwordRaw, String confirm) {
+        SportUser user = user(token);
+        if (!user.isUedBound() || user.getUedUid() == null || user.getUedUid().isBlank()) {
+            throw new IllegalArgumentException("请先绑定UED账号");
+        }
+        if (!tokenFresh(user.getUedAccessToken(), user.getUedTokenExpire())) {
+            throw new IllegalArgumentException("请重新验证UED账号");
+        }
+        if (!"1".equals(user.getUedNeedPassword())) {
+            throw new IllegalArgumentException(VendorPassword.ALREADY);
+        }
+        VendorPassword.check(passwordRaw, confirm, user.getUedAccount(), user.getPhone(), true);
+        try {
+            ued.setLoginPassword(user.getUedAccessToken(), passwordRaw, user.getPhone());
+        } catch (IllegalArgumentException ex) {
+            if (VendorPassword.alreadyChanged(ex.getMessage())) {
+                markPasswordSet(user);
+                throw new IllegalArgumentException(VendorPassword.ALREADY);
+            }
+            throw ex;
+        }
+        markPasswordSet(user);
         return view(user);
     }
 
@@ -54,11 +85,11 @@ public class UedBindService {
         if (password.isBlank() || password.length() > 64) {
             throw new IllegalArgumentException("请输入密码");
         }
-        remember(user, ued.login(username, password));
+        remember(user, ued.login(username, password), "0");
         return view(user);
     }
 
-    private void remember(SportUser user, UedClient.UedAccount account) {
+    private void remember(SportUser user, UedClient.UedAccount account, String need) {
         String shown = account.username().isBlank() ? user.getPhone() : account.username();
         users.saveUed(user.getPhone(), account.uid(), shown, account.accessToken(), account.expireAt());
         user.setUedBound(true);
@@ -66,6 +97,19 @@ public class UedBindService {
         user.setUedAccount(shown);
         user.setUedAccessToken(account.accessToken());
         user.setUedTokenExpire(account.expireAt());
+        if ("1".equals(need) || "0".equals(need)) {
+            users.saveUedNeed(user.getPhone(), need);
+            user.setUedNeedPassword(need);
+        }
+    }
+
+    private void markPasswordSet(SportUser user) {
+        users.saveUedNeed(user.getPhone(), "0");
+        user.setUedNeedPassword("0");
+    }
+
+    private static boolean tokenFresh(String access, long expireAt) {
+        return access != null && !access.isBlank() && expireAt > Instant.now().getEpochSecond();
     }
 
     public Map<String, String> unbind(String token) {
@@ -79,6 +123,7 @@ public class UedBindService {
         user.setUedAccount(null);
         user.setUedAccessToken(null);
         user.setUedTokenExpire(0);
+        user.setUedNeedPassword(null);
         return view(user);
     }
 
@@ -88,7 +133,7 @@ public class UedBindService {
             throw new IllegalArgumentException("请先绑定UED账号");
         }
         String access = user.getUedAccessToken();
-        if (access == null || access.isBlank() || user.getUedTokenExpire() <= Instant.now().getEpochSecond()) {
+        if (!tokenFresh(access, user.getUedTokenExpire())) {
             throw new IllegalArgumentException("请重新验证UED账号");
         }
         long cents = JxtMoney.cents(amountRaw);
@@ -134,6 +179,7 @@ public class UedBindService {
         data.put("account", JxtBindService.mask(user.getUedAccount()));
         data.put("balance", JxtMoney.yuan(user.getBalanceCent()));
         data.put("withdrawn", JxtMoney.yuan(user.getUedWithdrawnCent()));
+        data.put("needPassword", "1".equals(user.getUedNeedPassword()) ? "1" : "0");
         return data;
     }
 }

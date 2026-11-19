@@ -40,7 +40,38 @@ public class JxtBindService {
         if (!code.matches("\\d{4,6}")) {
             throw new IllegalArgumentException("请输入验证码");
         }
-        remember(user, jxt.confirm(user.getPhone(), code));
+        JxtClient.JxtAccount account = jxt.confirm(user.getPhone(), code);
+        String username = account.username().isBlank() ? user.getPhone() : account.username();
+        JxtClient.Inspect inspect = jxt.inspectNewAccount(username, account.accessToken(), user.getPhone());
+        if (inspect.replacement() != null) {
+            account = inspect.replacement();
+        }
+        remember(user, account, inspect.need());
+        return view(user);
+    }
+
+    public Map<String, String> setPassword(String token, String passwordRaw, String confirm) {
+        SportUser user = user(token);
+        if (!user.isJxtBound() || user.getJxtUid() == null || user.getJxtUid().isBlank()) {
+            throw new IllegalArgumentException("请先绑定吉祥账号");
+        }
+        if (!tokenFresh(user.getJxtAccessToken(), user.getJxtTokenExpire())) {
+            throw new IllegalArgumentException("请重新验证吉祥账号");
+        }
+        if (!"1".equals(user.getJxtNeedPassword())) {
+            throw new IllegalArgumentException(VendorPassword.ALREADY);
+        }
+        VendorPassword.check(passwordRaw, confirm, user.getJxtAccount(), user.getPhone(), false);
+        try {
+            jxt.setLoginPassword(user.getJxtAccessToken(), passwordRaw, user.getPhone());
+        } catch (IllegalArgumentException ex) {
+            if (VendorPassword.alreadyChanged(ex.getMessage())) {
+                markPasswordSet(user);
+                throw new IllegalArgumentException(VendorPassword.ALREADY);
+            }
+            throw ex;
+        }
+        markPasswordSet(user);
         return view(user);
     }
 
@@ -54,11 +85,11 @@ public class JxtBindService {
         if (password.isBlank() || password.length() > 64) {
             throw new IllegalArgumentException("请输入密码");
         }
-        remember(user, jxt.login(username, password));
+        remember(user, jxt.login(username, password), "0");
         return view(user);
     }
 
-    private void remember(SportUser user, JxtClient.JxtAccount account) {
+    private void remember(SportUser user, JxtClient.JxtAccount account, String need) {
         String shown = account.username().isBlank() ? user.getPhone() : account.username();
         users.saveJxt(user.getPhone(), account.uid(), shown, account.accessToken(), account.expireAt());
         user.setJxtBound(true);
@@ -66,6 +97,19 @@ public class JxtBindService {
         user.setJxtAccount(shown);
         user.setJxtAccessToken(account.accessToken());
         user.setJxtTokenExpire(account.expireAt());
+        if ("1".equals(need) || "0".equals(need)) {
+            users.saveJxtNeed(user.getPhone(), need);
+            user.setJxtNeedPassword(need);
+        }
+    }
+
+    private void markPasswordSet(SportUser user) {
+        users.saveJxtNeed(user.getPhone(), "0");
+        user.setJxtNeedPassword("0");
+    }
+
+    private static boolean tokenFresh(String access, long expireAt) {
+        return access != null && !access.isBlank() && expireAt > Instant.now().getEpochSecond();
     }
 
     public Map<String, String> unbind(String token) {
@@ -79,6 +123,7 @@ public class JxtBindService {
         user.setJxtAccount(null);
         user.setJxtAccessToken(null);
         user.setJxtTokenExpire(0);
+        user.setJxtNeedPassword(null);
         return view(user);
     }
 
@@ -88,7 +133,7 @@ public class JxtBindService {
             throw new IllegalArgumentException("请先绑定吉祥账号");
         }
         String access = user.getJxtAccessToken();
-        if (access == null || access.isBlank() || user.getJxtTokenExpire() <= Instant.now().getEpochSecond()) {
+        if (!tokenFresh(access, user.getJxtTokenExpire())) {
             throw new IllegalArgumentException("请重新验证吉祥账号");
         }
         long cents = JxtMoney.cents(amountRaw);
@@ -134,6 +179,7 @@ public class JxtBindService {
         data.put("account", mask(user.getJxtAccount()));
         data.put("balance", JxtMoney.yuan(user.getBalanceCent()));
         data.put("withdrawn", JxtMoney.yuan(user.getJxtWithdrawnCent()));
+        data.put("needPassword", "1".equals(user.getJxtNeedPassword()) ? "1" : "0");
         return data;
     }
 

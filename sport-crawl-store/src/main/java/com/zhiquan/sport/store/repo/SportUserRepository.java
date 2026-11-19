@@ -115,12 +115,14 @@ public class SportUserRepository {
         user.setJxtAccessToken(Attrs.str(item, "jxt_token"));
         Long tokenExpire = Attrs.lng(item, "jxt_token_expire");
         user.setJxtTokenExpire(tokenExpire == null ? 0 : tokenExpire);
+        user.setJxtNeedPassword(Attrs.str(item, "jxt_need_password"));
         user.setUedBound("1".equals(Attrs.str(item, "ued_bound")));
         user.setUedUid(Attrs.str(item, "ued_uid"));
         user.setUedAccount(Attrs.str(item, "ued_account"));
         user.setUedAccessToken(Attrs.str(item, "ued_token"));
         Long uedExpire = Attrs.lng(item, "ued_token_expire");
         user.setUedTokenExpire(uedExpire == null ? 0 : uedExpire);
+        user.setUedNeedPassword(Attrs.str(item, "ued_need_password"));
         Long balance = Attrs.lng(item, "balance_cent");
         user.setBalanceCent(balance == null ? 0 : balance);
         Long jxtWithdrawn = Attrs.lng(item, "jxt_withdrawn_cent");
@@ -225,6 +227,25 @@ public class SportUserRepository {
                 .build());
     }
 
+    public void saveJxtNeed(String phone, String need) {
+        saveNeed(phone, "jxt_need_password", need);
+    }
+
+    public void saveUedNeed(String phone, String need) {
+        saveNeed(phone, "ued_need_password", need);
+    }
+
+    private void saveNeed(String phone, String attribute, String need) {
+        dynamo.updateItem(UpdateItemRequest.builder()
+                .tableName(aws.getUserTable())
+                .key(key(phone, PROFILE))
+                .updateExpression("SET #need = :need")
+                .conditionExpression("attribute_exists(pk)")
+                .expressionAttributeNames(Map.of("#need", attribute))
+                .expressionAttributeValues(Map.of(":need", Attrs.s(need)))
+                .build());
+    }
+
     public void saveUed(String phone, String uid, String account, String token, long tokenExpire) {
         Map<String, AttributeValue> values = new HashMap<>();
         values.put(":bound", Attrs.s("1"));
@@ -245,7 +266,7 @@ public class SportUserRepository {
         dynamo.updateItem(UpdateItemRequest.builder()
                 .tableName(aws.getUserTable())
                 .key(key(phone, PROFILE))
-                .updateExpression("SET ued_bound = :bound REMOVE ued_uid, ued_account, ued_token, ued_token_expire")
+                .updateExpression("SET ued_bound = :bound REMOVE ued_uid, ued_account, ued_token, ued_token_expire, ued_need_password")
                 .conditionExpression("attribute_exists(pk)")
                 .expressionAttributeValues(Map.of(":bound", Attrs.s("0")))
                 .build());
@@ -255,7 +276,7 @@ public class SportUserRepository {
         dynamo.updateItem(UpdateItemRequest.builder()
                 .tableName(aws.getUserTable())
                 .key(key(phone, PROFILE))
-                .updateExpression("SET jxt_bound = :bound REMOVE jxt_uid, jxt_account, jxt_token, jxt_token_expire")
+                .updateExpression("SET jxt_bound = :bound REMOVE jxt_uid, jxt_account, jxt_token, jxt_token_expire, jxt_need_password")
                 .conditionExpression("attribute_exists(pk)")
                 .expressionAttributeValues(Map.of(":bound", Attrs.s("0")))
                 .build());

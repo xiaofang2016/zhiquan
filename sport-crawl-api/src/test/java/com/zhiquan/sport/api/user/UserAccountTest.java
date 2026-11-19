@@ -22,6 +22,20 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class UserAccountTest {
 
     @Test
+    void vendorPasswordNeed() {
+        assertEquals("0", VendorPassword.needAfter(2, null, false));
+        assertEquals(null, VendorPassword.needAfter(-1, null, false));
+        assertEquals("1", VendorPassword.needAfter(1, null, true));
+        assertEquals("0", VendorPassword.needAfter(1, "用户名或者密码错误", false));
+        assertEquals(null, VendorPassword.needAfter(1, "当前操作太频繁请您1分钟后再尝试", false));
+        assertThrows(IllegalArgumentException.class, () -> VendorPassword.check("", "a", "u", "13800138000", false));
+        assertThrows(IllegalArgumentException.class, () -> VendorPassword.check("abcdef12", "abcdef13", "u", "13800138000", false));
+        assertThrows(IllegalArgumentException.class, () -> VendorPassword.check("13800138000", "13800138000", "name1", "13800138000", true));
+        VendorPassword.check("abcdef12", "abcdef12", "name1", "13800138000", true);
+        assertTrue(VendorPassword.alreadyChanged("旧密码输入错误"));
+    }
+
+    @Test
     void phoneAndPasswordRules() {
         assertEquals("13800138000", AccountCheck.phone(" 13800138000 "));
         assertEquals("138****8000", AccountCheck.mask("13800138000"));
