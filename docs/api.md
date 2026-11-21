@@ -833,7 +833,7 @@ GET /prod-api/chat/groups/{groupId}/messages?before={排序键}
 | `imageBase` | 图片根地址。空或 `oss.imnono.net` 时页面改用 `https://imfile.dtthsp.com` |
 | `groups` | 按最新一条消息的时间从新到旧 |
 
-每个群有 `id`、`gid`、`name`、`ownerName`、`ownerId`、`updatedAt`、`notice`、`noticeStyle`、`avatar`、`memberCount`、`muted`、`createdTime`、`latest`。`avatar` 是群头像文件名，没有则为空。`ownerId` 是群主编号，没有则为空。`memberCount` 是原站群人数，没抓到是 `null`。`muted` 为 `true` 时是禁言。`noticeStyle` 是公告样式编号，没有是 `null`。`createdTime` 是原站记下的创建时间，例如 `2022-12-15 14:09`，没有则是空字符串。`notice` 在原站 `enabled` 为 `0` 时是空字符串。`latest` 没有消息时为 `null`，否则和下面的消息行一样。没有管理员名单，也没有群主头像。
+每个群有 `id`、`gid`、`name`、`ownerName`、`ownerId`、`updatedAt`、`notice`、`noticeStyle`、`avatar`、`memberCount`、`muted`、`createdTime`、`latest`。`avatar` 是群头像文件名，没有则为空。`ownerId` 是群主编号，没有则为空。`memberCount` 是原站群人数，没抓到是 `null`。`muted` 为 `true` 时是禁言。`noticeStyle` 是公告样式编号，没有是 `null`。`createdTime` 是原站记下的创建时间，例如 `2022-12-15 14:09`，没有则是空字符串。`notice` 在原站 `enabled` 为 `0` 时是空字符串。`latest` 没有消息时为 `null`，否则和下面的消息行一样。这份群列表没有管理员名单，也没有群主头像。管理员在职圈 `GET /group/members/{groupId}`，名字、头像和编号跟原站一致。
 
 群名单在接口进程里缓存大约 45 秒。这期间群名、公告、头像可能还是上一份。消息正文不走这份缓存，点进群和翻页仍直接读库。不存在的群立刻返回空列表。
 
